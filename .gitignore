@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+_srs_unpacked/
+_srs_temp.zip
+postgres_data/
+terminals/

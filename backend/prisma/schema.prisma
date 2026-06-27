@@ -1,0 +1,383 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductCategory {
+  yarn
+  fabric
+  garment
+}
+
+enum UserRole {
+  admin
+  weaver
+  merchant
+}
+
+enum WorkOrderStatus {
+  assigned
+  in_progress
+  returned
+  reconciled
+}
+
+enum SaleMovementType {
+  merchant_fabric_sale
+  weaver_yarn_sale
+  weaver_fabric_purchase
+  adjustment
+}
+
+// --- Catalog ---
+
+model Product {
+  productId   Int             @id @default(autoincrement()) @map("product_id")
+  name        String          @db.VarChar(120)
+  category    ProductCategory
+  basePrice   Decimal         @map("base_price") @db.Decimal(12, 2)
+  isActive    Boolean         @default(true) @map("is_active")
+  fabricVariants FabricVariant[]
+
+  @@map("products")
+}
+
+model Color {
+  colorId    Int    @id @default(autoincrement()) @map("color_id")
+  colorCode  String @unique @map("color_code") @db.VarChar(10)
+  name       String @unique @db.VarChar(80)
+  warpFabricVariants FabricVariant[] @relation("WarpColor")
+  weftFabricVariants FabricVariant[] @relation("WeftColor")
+  yarnVariants YarnVariant[]
+
+  @@map("colors")
+}
+
+model Design {
+  designId Int    @id @default(autoincrement()) @map("design_id")
+  name     String @unique @db.VarChar(120)
+  fabricVariants FabricVariant[]
+
+  @@map("designs")
+}
+
+model Supplier {
+  supplierId   Int    @id @default(autoincrement()) @map("supplier_id")
+  name         String @unique @db.VarChar(120)
+  contactPhone String? @map("contact_phone") @db.VarChar(30)
+  isActive     Boolean @default(true) @map("is_active")
+  yarnVariants YarnVariant[]
+  yarnPurchases YarnPurchase[]
+  supplierPayments SupplierPayment[]
+
+  @@map("suppliers")
+}
+
+model YarnType {
+  yarnTypeId   Int    @id @default(autoincrement()) @map("yarn_type_id")
+  materialName String @unique @map("material_name") @db.VarChar(80)
+  yarnVariants YarnVariant[]
+
+  @@map("yarn_types")
+}
+
+// --- Variants ---
+
+model FabricVariant {
+  fabricVariantId Int     @id @default(autoincrement()) @map("fabric_variant_id")
+  productId       Int     @map("product_id")
+  designId        Int?    @map("design_id")
+  warpColorId     Int     @map("warp_color_id")
+  weftColorId     Int     @map("weft_color_id")
+  basePrice       Decimal? @map("base_price") @db.Decimal(12, 2)
+  sku             String  @unique @db.VarChar(40)
+  stockSnapshot   Decimal @default(0) @map("stock_snapshot") @db.Decimal(12, 2)
+  isActive        Boolean @default(true) @map("is_active")
+
+  product    Product  @relation(fields: [productId], references: [productId])
+  design     Design?  @relation(fields: [designId], references: [designId])
+  warpColor  Color    @relation("WarpColor", fields: [warpColorId], references: [colorId])
+  weftColor  Color    @relation("WeftColor", fields: [weftColorId], references: [colorId])
+  workOrders WorkOrder[]
+  fabricReturns FabricReturn[]
+  sales      Sale[]
+  qualityRule QualityRule?
+  bonusRule   BonusRule?
+
+  @@map("fabric_variants")
+}
+
+model YarnVariant {
+  yarnVariantId Int     @id @default(autoincrement()) @map("yarn_variant_id")
+  yarnTypeId    Int     @map("yarn_type_id")
+  colorId       Int     @map("color_id")
+  supplierId    Int     @map("supplier_id")
+  basePrice     Decimal? @map("base_price") @db.Decimal(12, 2)
+  sku           String  @unique @db.VarChar(40)
+  stockSnapshot Decimal @default(0) @map("stock_snapshot") @db.Decimal(12, 2)
+  isActive      Boolean @default(true) @map("is_active")
+
+  yarnType  YarnType @relation(fields: [yarnTypeId], references: [yarnTypeId])
+  color     Color    @relation(fields: [colorId], references: [colorId])
+  supplier  Supplier @relation(fields: [supplierId], references: [supplierId])
+  purchaseLines YarnPurchaseLine[]
+  yarnGiven YarnGiven[]
+  sales     Sale[]
+
+  @@map("yarn_variants")
+}
+
+// --- Calculation rules (improvement over hardcoded Python) ---
+
+model QualityRule {
+  qualityRuleId       Int     @id @default(autoincrement()) @map("quality_rule_id")
+  fabricVariantId     Int     @unique @map("fabric_variant_id")
+  minWeightThreshold  Decimal @map("min_weight_threshold") @db.Decimal(10, 2)
+  deductionRatePerUnit Decimal @default(10) @map("deduction_rate_per_unit") @db.Decimal(10, 2)
+  isActive            Boolean @default(true) @map("is_active")
+
+  fabricVariant FabricVariant @relation(fields: [fabricVariantId], references: [fabricVariantId])
+
+  @@map("quality_rules")
+}
+
+model BonusRule {
+  bonusRuleId        Int     @id @default(autoincrement()) @map("bonus_rule_id")
+  fabricVariantId    Int     @unique @map("fabric_variant_id")
+  minWeightThreshold Decimal @map("min_weight_threshold") @db.Decimal(10, 2)
+  bonusRatePerUnit   Decimal @default(10) @map("bonus_rate_per_unit") @db.Decimal(10, 2)
+  maxBonusPerPiece   Decimal? @map("max_bonus_per_piece") @db.Decimal(12, 2)
+  isActive           Boolean @default(true) @map("is_active")
+
+  fabricVariant FabricVariant @relation(fields: [fabricVariantId], references: [fabricVariantId])
+
+  @@map("bonus_rules")
+}
+
+// --- Auth & Actors ---
+
+model Weaver {
+  weaverId          Int     @id @default(autoincrement()) @map("weaver_id")
+  firstName         String  @map("first_name") @db.VarChar(80)
+  lastName          String  @map("last_name") @db.VarChar(80)
+  phone             String? @db.VarChar(30)
+  email             String? @db.VarChar(120)
+  bankAccountNumber String? @map("bank_account_number") @db.VarChar(40)
+  isActive          Boolean @default(true) @map("is_active")
+
+  user       User?
+  workOrders WorkOrder[]
+  sales      Sale[]
+  payments   Payment[]
+
+  @@map("weavers")
+}
+
+model Merchant {
+  merchantId   Int     @id @default(autoincrement()) @map("merchant_id")
+  companyName  String? @map("company_name") @db.VarChar(120)
+  contactPhone String  @map("contact_phone") @db.VarChar(30)
+  contactEmail String? @map("contact_email") @db.VarChar(120)
+  isActive     Boolean @default(true) @map("is_active")
+
+  user             User?
+  sales            Sale[]
+  merchantPayments MerchantPayment[]
+
+  @@map("merchants")
+}
+
+model User {
+  userId       Int      @id @default(autoincrement()) @map("user_id")
+  username     String   @unique @db.VarChar(60)
+  passwordHash String?  @map("password_hash") @db.VarChar(200)
+  role         UserRole
+  weaverId     Int?     @unique @map("weaver_id")
+  merchantId   Int?     @unique @map("merchant_id")
+  isActive     Boolean  @default(true) @map("is_active")
+
+  weaver   Weaver?   @relation(fields: [weaverId], references: [weaverId], onDelete: SetNull)
+  merchant Merchant? @relation(fields: [merchantId], references: [merchantId], onDelete: SetNull)
+
+  yarnPurchasesCreated     YarnPurchase[]     @relation("YarnPurchaseCreator")
+  supplierPaymentsRecorded SupplierPayment[]  @relation("SupplierPaymentRecorder")
+  workOrdersIssued         WorkOrder[]        @relation("WorkOrderIssuer")
+  yarnGivenRecorded        YarnGiven[]        @relation("YarnGivenRecorder")
+  fabricReturnsRecorded    FabricReturn[]     @relation("FabricReturnRecorder")
+  salesRecorded            Sale[]             @relation("SaleRecorder")
+  paymentsRecorded         Payment[]          @relation("PaymentRecorder")
+  merchantPaymentsRecorded MerchantPayment[]  @relation("MerchantPaymentRecorder")
+
+  @@map("users")
+}
+
+// --- Procurement ---
+
+model YarnPurchase {
+  purchaseId       Int      @id @default(autoincrement()) @map("purchase_id")
+  supplierId       Int      @map("supplier_id")
+  purchaseDate     DateTime @default(now()) @map("purchase_date") @db.Timestamptz
+  createdByUserId  Int      @map("created_by_user_id")
+  notes            String?
+
+  supplier  Supplier @relation(fields: [supplierId], references: [supplierId])
+  createdBy User     @relation("YarnPurchaseCreator", fields: [createdByUserId], references: [userId])
+  lines     YarnPurchaseLine[]
+
+  @@map("yarn_purchases")
+}
+
+model YarnPurchaseLine {
+  lineId         Int     @id @default(autoincrement()) @map("line_id")
+  purchaseId     Int     @map("purchase_id")
+  yarnVariantId  Int     @map("yarn_variant_id")
+  quantity       Decimal @db.Decimal(10, 2)
+  unitPrice      Decimal @map("unit_price") @db.Decimal(12, 2)
+
+  purchase    YarnPurchase @relation(fields: [purchaseId], references: [purchaseId])
+  yarnVariant YarnVariant  @relation(fields: [yarnVariantId], references: [yarnVariantId])
+
+  @@map("yarn_purchase_lines")
+}
+
+model SupplierPayment {
+  paymentId          Int      @id @default(autoincrement()) @map("payment_id")
+  supplierId         Int      @map("supplier_id")
+  amount             Decimal  @db.Decimal(12, 2)
+  paymentMethod      String?  @map("payment_method") @db.VarChar(30)
+  paymentDate        DateTime @default(now()) @map("payment_date") @db.Timestamptz
+  recordedByUserId   Int      @map("recorded_by_user_id")
+  notes              String?
+
+  supplier   Supplier @relation(fields: [supplierId], references: [supplierId])
+  recordedBy User     @relation("SupplierPaymentRecorder", fields: [recordedByUserId], references: [userId])
+
+  @@map("supplier_payments")
+}
+
+// --- Production ---
+
+model WorkOrder {
+  zigId            String          @id @map("zig_id") @db.VarChar(20)
+  weaverId         Int             @map("weaver_id")
+  fabricVariantId  Int             @map("fabric_variant_id")
+  status           WorkOrderStatus @default(assigned)
+  dateIssued       DateTime        @default(now()) @map("date_issued") @db.Timestamptz
+  issuedByUserId   Int             @map("issued_by_user_id")
+
+  weaver        Weaver        @relation(fields: [weaverId], references: [weaverId])
+  fabricVariant FabricVariant @relation(fields: [fabricVariantId], references: [fabricVariantId])
+  issuedBy      User          @relation("WorkOrderIssuer", fields: [issuedByUserId], references: [userId])
+  yarnGiven     YarnGiven[]
+  fabricReturns FabricReturn[]
+
+  @@map("work_orders")
+}
+
+model YarnGiven {
+  yarnGivenId      Int      @id @default(autoincrement()) @map("yarn_given_id")
+  zigId            String   @map("zig_id") @db.VarChar(20)
+  yarnVariantId    Int      @map("yarn_variant_id")
+  quantity         Decimal  @db.Decimal(10, 2)
+  unitPrice        Decimal  @map("unit_price") @db.Decimal(12, 2)
+  dateGiven        DateTime @default(now()) @map("date_given") @db.Timestamptz
+  recordedByUserId Int      @map("recorded_by_user_id")
+  paymentId        Int?     @map("payment_id")
+
+  workOrder   WorkOrder   @relation(fields: [zigId], references: [zigId])
+  yarnVariant YarnVariant @relation(fields: [yarnVariantId], references: [yarnVariantId])
+  recordedBy  User        @relation("YarnGivenRecorder", fields: [recordedByUserId], references: [userId])
+  payment     Payment?    @relation(fields: [paymentId], references: [paymentId])
+
+  @@map("yarn_given")
+}
+
+model FabricReturn {
+  returnId           Int      @id @default(autoincrement()) @map("return_id")
+  zigId              String   @map("zig_id") @db.VarChar(20)
+  fabricVariantId    Int      @map("fabric_variant_id")
+  quantityReturned   Int      @map("quantity_returned")
+  totalWeight        Decimal  @map("total_weight") @db.Decimal(10, 2)
+  lengthCm           Decimal? @map("length_cm") @db.Decimal(10, 2)
+  widthCm            Decimal? @map("width_cm") @db.Decimal(10, 2)
+  unitPrice          Decimal  @map("unit_price") @db.Decimal(12, 2)
+  dateReturned       DateTime @default(now()) @map("date_returned") @db.Timestamptz
+  recordedByUserId   Int      @map("recorded_by_user_id")
+  calculatedDeduction Decimal? @map("calculated_deduction") @db.Decimal(12, 2)
+  bonusAmount        Decimal  @default(0) @map("bonus_amount") @db.Decimal(12, 2)
+  netCreditValue     Decimal? @map("net_credit_value") @db.Decimal(12, 2)
+  remark             String?
+  paymentId          Int?     @map("payment_id")
+
+  workOrder     WorkOrder     @relation(fields: [zigId], references: [zigId])
+  fabricVariant FabricVariant @relation(fields: [fabricVariantId], references: [fabricVariantId])
+  recordedBy    User          @relation("FabricReturnRecorder", fields: [recordedByUserId], references: [userId])
+  payment       Payment?      @relation(fields: [paymentId], references: [paymentId])
+
+  @@map("fabric_returns")
+}
+
+// --- Sales ---
+
+model Sale {
+  saleId           Int              @id @default(autoincrement()) @map("sale_id")
+  fabricVariantId  Int?             @map("fabric_variant_id")
+  yarnVariantId    Int?             @map("yarn_variant_id")
+  merchantId       Int?             @map("merchant_id")
+  weaverId         Int?             @map("weaver_id")
+  movementType     SaleMovementType @map("movement_type")
+  quantity         Decimal          @db.Decimal(10, 2)
+  unitPrice        Decimal          @map("unit_price") @db.Decimal(12, 2)
+  saleDate         DateTime         @default(now()) @map("sale_date") @db.Timestamptz
+  recordedByUserId Int              @map("recorded_by_user_id")
+  paymentId        Int?             @map("payment_id")
+  notes            String?
+
+  fabricVariant FabricVariant? @relation(fields: [fabricVariantId], references: [fabricVariantId])
+  yarnVariant   YarnVariant?   @relation(fields: [yarnVariantId], references: [yarnVariantId])
+  merchant      Merchant?      @relation(fields: [merchantId], references: [merchantId])
+  weaver        Weaver?        @relation(fields: [weaverId], references: [weaverId])
+  recordedBy    User           @relation("SaleRecorder", fields: [recordedByUserId], references: [userId])
+  payment       Payment?       @relation(fields: [paymentId], references: [paymentId])
+
+  @@map("sales")
+}
+
+// --- Finance ---
+
+model Payment {
+  paymentId        Int      @id @default(autoincrement()) @map("payment_id")
+  weaverId         Int      @map("weaver_id")
+  amount           Decimal  @db.Decimal(12, 2)
+  paymentMethod    String?  @map("payment_method") @db.VarChar(30)
+  paymentDate      DateTime @default(now()) @map("payment_date") @db.Timestamptz
+  recordedByUserId Int      @map("recorded_by_user_id")
+  notes            String?
+
+  weaver        Weaver         @relation(fields: [weaverId], references: [weaverId])
+  recordedBy    User           @relation("PaymentRecorder", fields: [recordedByUserId], references: [userId])
+  fabricReturns FabricReturn[]
+  yarnGiven     YarnGiven[]
+  sales         Sale[]
+
+  @@map("payments")
+}
+
+model MerchantPayment {
+  paymentId        Int      @id @default(autoincrement()) @map("payment_id")
+  merchantId       Int      @map("merchant_id")
+  amount           Decimal  @db.Decimal(12, 2)
+  paymentMethod    String?  @map("payment_method") @db.VarChar(30)
+  paymentDate      DateTime @default(now()) @map("payment_date") @db.Timestamptz
+  recordedByUserId Int      @map("recorded_by_user_id")
+  notes            String?
+
+  merchant   Merchant @relation(fields: [merchantId], references: [merchantId])
+  recordedBy User   @relation("MerchantPaymentRecorder", fields: [recordedByUserId], references: [userId])
+
+  @@map("merchant_payments")
+}
