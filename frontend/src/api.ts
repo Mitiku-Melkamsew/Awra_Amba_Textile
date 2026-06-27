@@ -157,6 +157,28 @@ export interface SettlementPreview {
   amharicAmountInWords: string;
 }
 
+export const weaverPortalApi = {
+  profile: (weaverId: number) => api<Weaver>(`/weavers/${weaverId}`),
+  workOrders: () =>
+    api<
+      Array<
+        WorkOrder & {
+          _count?: { yarnGiven: number; fabricReturns: number };
+        }
+      >
+    >("/work-orders"),
+  workOrder: (zigId: string) => api<unknown>(`/work-orders/${zigId}`),
+  payments: () =>
+    api<
+      Array<{
+        paymentId: number;
+        amount: string;
+        paymentDate: string;
+        paymentMethod: string | null;
+      }>
+    >("/payments"),
+};
+
 export const paymentsApi = {
   list: (weaverId?: number) => {
     const suffix = weaverId ? `?weaverId=${weaverId}` : "";

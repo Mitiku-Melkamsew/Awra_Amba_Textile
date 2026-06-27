@@ -70,7 +70,11 @@ UI runs at `http://localhost:5173`.
 **Data migration**
 - `CSV_DIR="path/to/csv/folder" npm run import:csv` (expects `weavers.csv`, `zigs.csv`, `yarn_given.csv`, `fabric_returned.csv`)
 
-## Default admin (after seed)
+## Default logins (after seed)
 
-- Username: `admin`
-- Password: `admin123`
+| Role | Username | Password |
+|------|----------|----------|
+| Admin | `admin` | `admin123` |
+| Demo weaver | `demo` | `demo123` |
+
+Weavers use the **Weaver Portal** at `/weaver` (read-only: zigs, returns, payments).

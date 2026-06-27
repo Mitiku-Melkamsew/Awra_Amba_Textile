@@ -1,15 +1,28 @@
 import { Router } from "express";
-import { authenticate, requireAdmin } from "../middleware/auth.js";
+import { authenticate } from "../middleware/auth.js";
+import { prisma } from "../lib/prisma.js";
 import { buildHisabReport, hisabToCsv } from "../services/hisab-report.service.js";
 
 export const reportsRouter = Router();
 
-reportsRouter.use(authenticate, requireAdmin);
+reportsRouter.use(authenticate);
 
 reportsRouter.get("/hisab/:paymentId", async (req, res, next) => {
   try {
     const paymentId = Number(req.params.paymentId);
     const format = (req.query.format as string) ?? "json";
+
+    if (req.user?.role === "weaver") {
+      const payment = await prisma.payment.findUnique({ where: { paymentId } });
+      if (!payment || payment.weaverId !== req.user.weaverId) {
+        res.status(403).json({ error: "Insufficient permissions" });
+        return;
+      }
+    } else if (req.user?.role !== "admin") {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
+
     const report = await buildHisabReport(paymentId);
 
     if (format === "csv") {

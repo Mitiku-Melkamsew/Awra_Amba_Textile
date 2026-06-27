@@ -100,19 +100,105 @@ async function main() {
     }
   }
 
-  const passwordHash = await argon2.hash("admin123");
-  await prisma.user.upsert({
+  const adminHash = await argon2.hash("admin123");
+  const admin = await prisma.user.upsert({
     where: { username: "admin" },
-    update: { passwordHash },
+    update: { passwordHash: adminHash },
     create: {
       username: "admin",
-      passwordHash,
+      passwordHash: adminHash,
       role: UserRole.admin,
     },
   });
 
+  let demoWeaver = await prisma.weaver.findFirst({
+    where: { firstName: "Demo", lastName: "Weaver" },
+  });
+  if (!demoWeaver) {
+    demoWeaver = await prisma.weaver.create({
+      data: {
+        firstName: "Demo",
+        lastName: "Weaver",
+        phone: "0911000000",
+        email: "demo.weaver@awraamba.local",
+      },
+    });
+  }
+
+  const demoHash = await argon2.hash("demo123");
+  await prisma.user.upsert({
+    where: { username: "demo" },
+    update: { passwordHash: demoHash, weaverId: demoWeaver.weaverId, role: UserRole.weaver },
+    create: {
+      username: "demo",
+      passwordHash: demoHash,
+      role: UserRole.weaver,
+      weaverId: demoWeaver.weaverId,
+    },
+  });
+
+  const fabricVariant = await prisma.fabricVariant.findFirst({
+    where: { sku: { startsWith: "FAB-" } },
+    orderBy: { fabricVariantId: "asc" },
+  });
+
+  if (fabricVariant) {
+    await prisma.workOrder.upsert({
+      where: { zigId: "z-demo-001" },
+      update: { weaverId: demoWeaver.weaverId, status: "in_progress" },
+      create: {
+        zigId: "z-demo-001",
+        weaverId: demoWeaver.weaverId,
+        fabricVariantId: fabricVariant.fabricVariantId,
+        status: "in_progress",
+        issuedByUserId: admin.userId,
+      },
+    });
+
+    await prisma.workOrder.upsert({
+      where: { zigId: "z-demo-002" },
+      update: { weaverId: demoWeaver.weaverId, status: "returned" },
+      create: {
+        zigId: "z-demo-002",
+        weaverId: demoWeaver.weaverId,
+        fabricVariantId: fabricVariant.fabricVariantId,
+        status: "returned",
+        issuedByUserId: admin.userId,
+      },
+    });
+
+    const hasYarn = await prisma.yarnGiven.findFirst({ where: { zigId: "z-demo-001" } });
+    if (!hasYarn) {
+      await prisma.yarnGiven.create({
+        data: {
+          zigId: "z-demo-001",
+          yarnVariantId: yarnVariant.yarnVariantId,
+          quantity: 110,
+          unitPrice: 400,
+          recordedByUserId: admin.userId,
+        },
+      });
+    }
+
+    const hasReturn = await prisma.fabricReturn.findFirst({ where: { zigId: "z-demo-002" } });
+    if (!hasReturn) {
+      await prisma.fabricReturn.create({
+        data: {
+          zigId: "z-demo-002",
+          fabricVariantId: fabricVariant.fabricVariantId,
+          quantityReturned: 40,
+          totalWeight: 2560,
+          unitPrice: 1300,
+          recordedByUserId: admin.userId,
+        },
+      });
+    }
+  }
+
   console.log("Seed complete.");
   console.log("Admin login: admin / admin123");
+  console.log("Demo weaver login: demo / demo123");
+  console.log(`Demo weaver id: ${demoWeaver.weaverId}`);
   console.log(`Default yarn variant id: ${yarnVariant.yarnVariantId}`);
 }
 
