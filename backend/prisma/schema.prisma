@@ -36,12 +36,14 @@ enum SaleMovementType {
 // --- Catalog ---
 
 model Product {
-  productId   Int             @id @default(autoincrement()) @map("product_id")
-  name        String          @db.VarChar(120)
-  category    ProductCategory
-  basePrice   Decimal         @map("base_price") @db.Decimal(12, 2)
-  isActive    Boolean         @default(true) @map("is_active")
-  fabricVariants FabricVariant[]
+  productId          Int             @id @default(autoincrement()) @map("product_id")
+  name               String          @db.VarChar(120)
+  category           ProductCategory
+  basePrice          Decimal         @map("base_price") @db.Decimal(12, 2)
+  standardLengthCm   Decimal?        @map("standard_length_cm") @db.Decimal(10, 2)
+  standardWidthCm    Decimal?        @map("standard_width_cm") @db.Decimal(10, 2)
+  isActive           Boolean         @default(true) @map("is_active")
+  fabricVariants     FabricVariant[]
 
   @@map("products")
 }

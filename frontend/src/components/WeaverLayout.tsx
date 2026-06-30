@@ -2,9 +2,8 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const links = [
-  { to: "/weaver", label: "Home", end: true },
-  { to: "/weaver/zigs", label: "My Zigs" },
-  { to: "/weaver/payments", label: "Payments" },
+  { to: "/weaver", label: "የኔ ዝግ / My Zigs", end: true },
+  { to: "/weaver/payments", label: "ክፍያ / Payments" },
 ];
 
 export function WeaverLayout() {

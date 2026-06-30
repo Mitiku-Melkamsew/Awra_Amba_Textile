@@ -7,6 +7,10 @@ import {
   calculateBonus,
   calculateDeduction,
 } from "../services/calculation.service.js";
+import {
+  batchCommitSettlements,
+  discoverReturnedSettlementBundles,
+} from "../services/batch-settlement.service.js";
 import { commitSettlement } from "../services/settlement.service.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
 
@@ -117,6 +121,53 @@ calculationRouter.post("/bonus", async (req, res, next) => {
     next(error);
   }
 });
+
+calculationRouter.get(
+  "/settlements/batch-preview",
+  authenticate,
+  requireAdmin,
+  async (_req, res, next) => {
+    try {
+      const bundles = await discoverReturnedSettlementBundles();
+      const grandTotal = bundles.reduce((sum, b) => sum + b.preview.netSettlement, 0);
+      res.json({
+        weavers: bundles.map((b) => ({
+          weaverId: b.weaverId,
+          weaverName: b.weaverName,
+          zigIds: b.zigIds,
+          returnCount: b.returnIds.length,
+          yarnCount: b.yarnGivenIds.length,
+          netSettlement: b.preview.netSettlement,
+          lineItems: b.preview.lineItems,
+          yarnDebits: b.preview.yarnDebits,
+        })),
+        weaverCount: bundles.length,
+        grandTotal,
+        amharicAmountInWords: numberToAmharicWords(Math.round(grandTotal)),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+calculationRouter.post(
+  "/settlements/batch-commit",
+  authenticate,
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const paymentMethod = (req.body?.paymentMethod as string | undefined) ?? "Recorded";
+      const result = await batchCommitSettlements(req.user!.userId, paymentMethod);
+      res.status(201).json({
+        ...result,
+        amharicAmountInWords: numberToAmharicWords(Math.round(result.grandTotal)),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 calculationRouter.post("/settlements/preview", authenticate, requireAdmin, async (req, res, next) => {
   try {

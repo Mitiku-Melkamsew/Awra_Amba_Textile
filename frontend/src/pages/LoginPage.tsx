@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function LoginPage() {
@@ -12,7 +12,9 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (user) {
-    return <Navigate to={user.role === "weaver" ? "/weaver" : "/"} replace />;
+    return (
+      <Navigate to={user.role === "weaver" ? "/weaver" : "/admin/weavers"} replace />
+    );
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -21,7 +23,7 @@ export function LoginPage() {
     setError("");
     try {
       const result = await login(username, password);
-      navigate(result?.role === "weaver" ? "/weaver" : "/");
+      navigate(result?.role === "weaver" ? "/weaver" : "/admin/weavers");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -31,12 +33,9 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      <form className="card login-card" onSubmit={handleSubmit}>
+      <form className="card login-card auth-card" onSubmit={handleSubmit}>
         <p className="eyebrow">Awra Amba Textile</p>
-        <h1>Sign In</h1>
-        <p className="muted login-hint">
-          Admin: <code>admin</code> / <code>admin123</code> — Demo weaver: <code>demo</code> / <code>demo123</code>
-        </p>
+        <h1>ግባ / Sign In</h1>
         <label>
           Username
           <input value={username} onChange={(e) => setUsername(e.target.value)} required />
@@ -51,9 +50,12 @@ export function LoginPage() {
           />
         </label>
         {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? "Signing in..." : "Continue"}
         </button>
+        <p className="auth-footer">
+          New weaver? <Link to="/signup">Sign up</Link> · <Link to="/">Home</Link>
+        </p>
       </form>
     </div>
   );

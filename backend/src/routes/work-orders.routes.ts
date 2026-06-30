@@ -3,16 +3,51 @@ import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
+import { resolveFabricVariant, resolveYarnVariant } from "../services/variant.service.js";
 
 export const workOrdersRouter = Router();
 
 workOrdersRouter.use(authenticate);
 
-const createSchema = z.object({
-  zigId: z.string().regex(/^z-\d+$/),
-  weaverId: z.number().int().positive(),
-  fabricVariantId: z.number().int().positive(),
+const fabricInclude = {
+  product: true,
+  warpColor: true,
+  weftColor: true,
+  design: true,
+};
+
+const yarnLineSchema = z.object({
+  yarnTypeId: z.number().int().positive(),
+  colorId: z.number().int().positive(),
+  supplierId: z.number().int().positive(),
+  quantity: z.number().positive(),
+  unitPrice: z.number().positive(),
 });
+
+const createSchema = z.object({
+  zigId: z.string().regex(/^z-[\w-]+$/).optional(),
+  weaverId: z.number().int().positive(),
+  productId: z.number().int().positive(),
+  warpColorId: z.number().int().positive(),
+  weftColorId: z.number().int().positive(),
+  designId: z.number().int().positive().optional().nullable(),
+  unitPrice: z.number().positive().optional(),
+  yarnLines: z.array(yarnLineSchema).default([]),
+});
+
+async function generateNextZigId(): Promise<string> {
+  const orders = await prisma.workOrder.findMany({
+    select: { zigId: true },
+    orderBy: { dateIssued: "desc" },
+    take: 200,
+  });
+  let max = 0;
+  for (const order of orders) {
+    const match = order.zigId.match(/^z-(\d+)$/);
+    if (match) max = Math.max(max, Number(match[1]));
+  }
+  return `z-${max + 1}`;
+}
 
 const statusSchema = z.object({
   status: z.nativeEnum(WorkOrderStatus),
@@ -31,13 +66,22 @@ workOrdersRouter.get("/", async (req, res, next) => {
       },
       include: {
         weaver: true,
-        fabricVariant: { include: { product: true } },
+        fabricVariant: { include: fabricInclude },
         _count: { select: { yarnGiven: true, fabricReturns: true } },
       },
       orderBy: { dateIssued: "desc" },
     });
 
     res.json(workOrders);
+  } catch (error) {
+    next(error);
+  }
+});
+
+workOrdersRouter.get("/next-id", requireAdmin, async (_req, res, next) => {
+  try {
+    const zigId = await generateNextZigId();
+    res.json({ zigId });
   } catch (error) {
     next(error);
   }
@@ -50,9 +94,15 @@ workOrdersRouter.get("/:zigId", async (req, res, next) => {
       where: { zigId },
       include: {
         weaver: true,
-        fabricVariant: { include: { product: true } },
-        yarnGiven: { include: { yarnVariant: true } },
-        fabricReturns: { include: { fabricVariant: { include: { product: true } } } },
+        fabricVariant: { include: fabricInclude },
+        yarnGiven: {
+          include: { yarnVariant: { include: { yarnType: true, color: true, supplier: true } } },
+        },
+        fabricReturns: {
+          include: {
+            fabricVariant: { include: fabricInclude },
+          },
+        },
       },
     });
 
@@ -75,19 +125,86 @@ workOrdersRouter.get("/:zigId", async (req, res, next) => {
 workOrdersRouter.post("/", requireAdmin, async (req, res, next) => {
   try {
     const body = createSchema.parse(req.body);
-    const workOrder = await prisma.workOrder.create({
-      data: {
-        zigId: body.zigId,
-        weaverId: body.weaverId,
-        fabricVariantId: body.fabricVariantId,
-        issuedByUserId: req.user!.userId,
-      },
-      include: {
-        weaver: true,
-        fabricVariant: { include: { product: true } },
-      },
+    const zigId = body.zigId ?? (await generateNextZigId());
+
+    const result = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUniqueOrThrow({
+        where: { productId: body.productId },
+      });
+      const unitPrice = body.unitPrice ?? Number(product.basePrice);
+
+      const fabricResolved = await resolveFabricVariant(
+        {
+          productId: body.productId,
+          warpColorId: body.warpColorId,
+          weftColorId: body.weftColorId,
+          designId: body.designId ?? null,
+          basePrice: unitPrice,
+        },
+        tx,
+      );
+
+      const workOrder = await tx.workOrder.create({
+        data: {
+          zigId,
+          weaverId: body.weaverId,
+          fabricVariantId: fabricResolved.variantId,
+          issuedByUserId: req.user!.userId,
+        },
+        include: {
+          weaver: true,
+          fabricVariant: { include: fabricInclude },
+        },
+      });
+
+      const yarnGiven: Array<{
+        yarnGivenId: number;
+        quantity: unknown;
+        unitPrice: unknown;
+        yarnVariant: unknown;
+      }> = [];
+      const yarnResolved: Array<{ created: boolean; sku: string }> = [];
+
+      for (const line of body.yarnLines) {
+        const resolved = await resolveYarnVariant(
+          {
+            yarnTypeId: line.yarnTypeId,
+            colorId: line.colorId,
+            supplierId: line.supplierId,
+            basePrice: line.unitPrice,
+          },
+          tx,
+        );
+
+        const row = await tx.yarnGiven.create({
+          data: {
+            zigId,
+            yarnVariantId: resolved.variantId,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            recordedByUserId: req.user!.userId,
+          },
+          include: {
+            yarnVariant: { include: { yarnType: true, color: true, supplier: true } },
+          },
+        });
+
+        yarnGiven.push(row);
+        yarnResolved.push({ created: resolved.created, sku: resolved.sku });
+      }
+
+      return { workOrder, fabricResolved, yarnResolved, yarnGiven };
     });
-    res.status(201).json(workOrder);
+
+    res.status(201).json({
+      ...result.workOrder,
+      fabricResolved: {
+        created: result.fabricResolved.created,
+        sku: result.fabricResolved.sku,
+      },
+      yarnGiven: result.yarnGiven,
+      yarnResolved: result.yarnResolved,
+    });
   } catch (error) {
     next(error);
   }
@@ -102,7 +219,7 @@ workOrdersRouter.patch("/:zigId/status", requireAdmin, async (req, res, next) =>
       data: { status: body.status },
       include: {
         weaver: true,
-        fabricVariant: { include: { product: true } },
+        fabricVariant: { include: fabricInclude },
       },
     });
     res.json(workOrder);

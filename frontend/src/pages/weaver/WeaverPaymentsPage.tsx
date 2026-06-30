@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { reportsApi, weaverPortalApi } from "../../api";
+import { formatDateDDMMYY } from "../../utils/formatDate";
 
 interface PaymentRow {
   paymentId: number;
@@ -39,7 +40,7 @@ export function WeaverPaymentsPage() {
             {payments.map((payment) => (
               <tr key={payment.paymentId}>
                 <td>#{payment.paymentId}</td>
-                <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                <td>{formatDateDDMMYY(payment.paymentDate)}</td>
                 <td>{payment.paymentMethod ?? "—"}</td>
                 <td>{payment.amount}</td>
                 <td>

@@ -4,12 +4,16 @@ import argon2 from "argon2";
 const prisma = new PrismaClient();
 
 const FABRIC_PRODUCTS = [
-  { code: "f-01", name: "መደበኛ", basePrice: 1300, threshold: 64 },
-  { code: "f-02", name: "በ 2.50 ሜ", basePrice: 1436, threshold: 71 },
-  { code: "f-03", name: "በ 2.75 ሜ", basePrice: 1572, threshold: 78 },
-  { code: "f-04", name: "በ 3.00 ሜ", basePrice: 1707, threshold: 84 },
-  { code: "f-05", name: "ከ 60", basePrice: 1860, threshold: 90 },
-  { code: "f-06", name: "ከ 10", basePrice: 950, threshold: 0 },
+  { code: "f-01", name: "መደበኛ", basePrice: 1300, threshold: 64, width: 150, length: 225 },
+  { code: "f-02", name: "በ 2.50 ሜ", basePrice: 1436, threshold: 71, width: 150, length: 250 },
+  { code: "f-03", name: "በ 2.75 ሜ", basePrice: 1572, threshold: 78, width: 150, length: 275 },
+  { code: "f-04", name: "በ 3.00 ሜ", basePrice: 1707, threshold: 84, width: 150, length: 300 },
+  { code: "f-05", name: "ከ 60", basePrice: 1860, threshold: 90, width: 160, length: 300 },
+  { code: "f-06", name: "ከ 10", basePrice: 950, threshold: 0, width: 110, length: 200 },
+  { code: "f-07", name: "yalga libs", basePrice: 1500, threshold: 70, width: 180, length: 250 },
+  { code: "f-08", name: "sharp", basePrice: 800, threshold: 0, width: 25, length: 200 },
+  { code: "f-09", name: "gabi", basePrice: 1860, threshold: 90, width: 160, length: 300 },
+  { code: "f-10", name: "ferj", basePrice: 1200, threshold: 60, width: 75, length: 300 },
 ];
 
 async function main() {
@@ -52,6 +56,16 @@ async function main() {
           name: productName,
           category: ProductCategory.fabric,
           basePrice: fabric.basePrice,
+          standardWidthCm: fabric.width,
+          standardLengthCm: fabric.length,
+        },
+      });
+    } else {
+      product = await prisma.product.update({
+        where: { productId: product.productId },
+        data: {
+          standardWidthCm: fabric.width,
+          standardLengthCm: fabric.length,
         },
       });
     }
@@ -59,7 +73,7 @@ async function main() {
     const sku = `FAB-${product.productId}-${defaultColor.colorCode}-${defaultColor.colorCode}`;
     const variant = await prisma.fabricVariant.upsert({
       where: { sku },
-      update: {},
+      update: { basePrice: fabric.basePrice },
       create: {
         productId: product.productId,
         warpColorId: defaultColor.colorId,
@@ -180,6 +194,9 @@ async function main() {
       });
     }
 
+    const product = await prisma.product.findFirst({
+      where: { productId: fabricVariant.productId },
+    });
     const hasReturn = await prisma.fabricReturn.findFirst({ where: { zigId: "z-demo-002" } });
     if (!hasReturn) {
       await prisma.fabricReturn.create({
@@ -189,6 +206,8 @@ async function main() {
           quantityReturned: 40,
           totalWeight: 2560,
           unitPrice: 1300,
+          lengthCm: product?.standardLengthCm ?? 225,
+          widthCm: product?.standardWidthCm ?? 150,
           recordedByUserId: admin.userId,
         },
       });

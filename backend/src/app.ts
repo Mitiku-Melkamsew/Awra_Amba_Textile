@@ -10,6 +10,8 @@ import { paymentsRouter } from "./routes/payments.routes.js";
 import { reportsRouter } from "./routes/reports.routes.js";
 import { weaversRouter } from "./routes/weavers.routes.js";
 import { workOrdersRouter } from "./routes/work-orders.routes.js";
+import { procurementRouter } from "./routes/procurement.routes.js";
+import { stockRouter } from "./routes/stock.routes.js";
 import { yarnGivenRouter } from "./routes/yarn-given.routes.js";
 
 export function createApp() {
@@ -33,6 +35,8 @@ export function createApp() {
   app.use("/api/v1/calculations", calculationRouter);
   app.use("/api/v1/payments", paymentsRouter);
   app.use("/api/v1/reports", reportsRouter);
+  app.use("/api/v1/stock", stockRouter);
+  app.use("/api/v1/procurement", procurementRouter);
 
   app.use(errorHandler);
 

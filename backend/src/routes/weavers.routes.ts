@@ -15,11 +15,29 @@ const createWeaverSchema = z.object({
   bankAccountNumber: z.string().max(40).optional(),
 });
 
-weaversRouter.get("/", requireAdmin, async (_req, res, next) => {
+weaversRouter.get("/", requireAdmin, async (req, res, next) => {
   try {
+    const search = (req.query.search as string | undefined)?.trim();
+    const sort = (req.query.sort as string | undefined) ?? "id";
+    const activeOnly = req.query.active !== "false";
+
     const weavers = await prisma.weaver.findMany({
-      where: { isActive: true },
-      orderBy: [{ weaverId: "asc" }],
+      where: {
+        ...(activeOnly ? { isActive: true } : {}),
+        ...(search
+          ? {
+              OR: [
+                { firstName: { contains: search, mode: "insensitive" } },
+                { lastName: { contains: search, mode: "insensitive" } },
+                { phone: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      orderBy:
+        sort === "name"
+          ? [{ firstName: "asc" }, { lastName: "asc" }]
+          : [{ weaverId: "asc" }],
     });
     res.json(weavers);
   } catch (error) {

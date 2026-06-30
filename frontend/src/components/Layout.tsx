@@ -2,12 +2,12 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const links = [
-  { to: "/", label: "Dashboard" },
-  { to: "/weavers", label: "Weavers" },
-  { to: "/work-orders", label: "Work Orders" },
-  { to: "/settlement", label: "Settlement" },
-  { to: "/reports", label: "Reports" },
-  { to: "/calculator", label: "Calculator" },
+  { to: "/admin/weavers", label: "ዛሬ / Weavers" },
+  { to: "/admin/stock", label: "ስቶክ / Stock" },
+  { to: "/admin/procurement", label: "ግዛት / Procurement" },
+  { to: "/admin/catalog", label: "ካታሎግ / Catalog" },
+  { to: "/admin/settlement", label: "ሂሳብ / Settlement" },
+  { to: "/admin/reports", label: "ሪፖርት / Reports" },
 ];
 
 export function Layout() {
@@ -25,7 +25,6 @@ export function Layout() {
             <NavLink
               key={link.to}
               to={link.to}
-              end={link.to === "/"}
               className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
             >
               {link.label}

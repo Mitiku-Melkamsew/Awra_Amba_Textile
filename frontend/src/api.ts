@@ -39,6 +39,17 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ username, password }),
     }),
+  signup: (data: {
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    username: string;
+    password: string;
+  }) =>
+    api<{ token: string; user: AuthUser }>("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   me: () => api<{ user: AuthUser }>("/auth/me"),
 };
 
@@ -57,11 +68,24 @@ export interface Weaver {
   bankAccountNumber: string | null;
 }
 
+export interface Product {
+  productId: number;
+  name: string;
+  category: string;
+  basePrice: string;
+  standardLengthCm: string | null;
+  standardWidthCm: string | null;
+}
+
 export interface FabricVariant {
   fabricVariantId: number;
   sku: string;
   basePrice: string | null;
-  product: { name: string };
+  stockSnapshot: string;
+  product: Product;
+  warpColor?: { colorId: number; name: string; colorCode: string };
+  weftColor?: { colorId: number; name: string; colorCode: string };
+  design?: { designId: number; name: string } | null;
 }
 
 export interface WorkOrder {
@@ -69,12 +93,48 @@ export interface WorkOrder {
   weaverId: number;
   fabricVariantId: number;
   status: string;
+  dateIssued: string;
   weaver: Weaver;
   fabricVariant: FabricVariant;
+  _count?: { yarnGiven: number; fabricReturns: number };
+}
+
+export interface WorkOrderDetail extends WorkOrder {
+  yarnGiven: Array<{
+    yarnGivenId: number;
+    quantity: string;
+    unitPrice: string;
+    dateGiven: string;
+    yarnVariant: {
+      sku: string;
+      yarnType?: { materialName: string };
+      supplier?: { name: string };
+      color?: { name: string };
+    };
+  }>;
+  fabricReturns: Array<{
+    returnId: number;
+    quantityReturned: number;
+    totalWeight: string;
+    lengthCm: string | null;
+    widthCm: string | null;
+    unitPrice: string;
+    remark: string | null;
+    dateReturned: string;
+    fabricVariant: FabricVariant;
+  }>;
 }
 
 export const weaversApi = {
-  list: () => api<Weaver[]>("/weavers"),
+  list: (params?: { search?: string; sort?: "name" | "id"; active?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.set("search", params.search);
+    if (params?.sort) query.set("sort", params.sort);
+    if (params?.active === false) query.set("active", "false");
+    const suffix = query.toString() ? `?${query}` : "";
+    return api<Weaver[]>(`/weavers${suffix}`);
+  },
+  get: (id: number) => api<Weaver>(`/weavers/${id}`),
   create: (data: Partial<Weaver>) =>
     api<Weaver>("/weavers", { method: "POST", body: JSON.stringify(data) }),
   unsettled: (id: number) =>
@@ -84,8 +144,72 @@ export const weaversApi = {
 };
 
 export const catalogApi = {
+  lookup: () =>
+    api<{
+      colors: Array<{ colorId: number; colorCode: string; name: string }>;
+      designs: Array<{ designId: number; name: string }>;
+      products: Product[];
+      suppliers: Array<{ supplierId: number; name: string; contactPhone: string | null }>;
+      yarnTypes: Array<{ yarnTypeId: number; materialName: string }>;
+    }>("/catalog/lookup"),
   fabricVariants: () => api<FabricVariant[]>("/catalog/fabric-variants"),
-  yarnVariants: () => api<unknown[]>("/catalog/yarn-variants"),
+  yarnVariants: () =>
+    api<
+      Array<{
+        yarnVariantId: number;
+        sku: string;
+        stockSnapshot: string;
+        basePrice: string | null;
+        yarnType: { materialName: string };
+        color: { name: string };
+        supplier: { name: string };
+      }>
+    >("/catalog/yarn-variants"),
+  products: () => api<Product[]>("/catalog/products"),
+  colors: () => api<Array<{ colorId: number; colorCode: string; name: string }>>("/catalog/colors"),
+  designs: () => api<Array<{ designId: number; name: string }>>("/catalog/designs"),
+  suppliers: () =>
+    api<Array<{ supplierId: number; name: string; contactPhone: string | null }>>(
+      "/catalog/suppliers",
+    ),
+  yarnTypes: () => api<Array<{ yarnTypeId: number; materialName: string }>>("/catalog/yarn-types"),
+  createColor: (data: { colorCode: string; name: string }) =>
+    api<unknown>("/catalog/colors", { method: "POST", body: JSON.stringify(data) }),
+  createDesign: (data: { name: string }) =>
+    api<unknown>("/catalog/designs", { method: "POST", body: JSON.stringify(data) }),
+  createProduct: (data: {
+    name: string;
+    category: string;
+    basePrice: number;
+    standardLengthCm?: number;
+    standardWidthCm?: number;
+  }) => api<unknown>("/catalog/products", { method: "POST", body: JSON.stringify(data) }),
+  createSupplier: (data: { name: string; contactPhone?: string }) =>
+    api<unknown>("/catalog/suppliers", { method: "POST", body: JSON.stringify(data) }),
+  createYarnType: (data: { materialName: string }) =>
+    api<unknown>("/catalog/yarn-types", { method: "POST", body: JSON.stringify(data) }),
+  createFabricVariant: (data: Record<string, unknown>) =>
+    api<unknown>("/catalog/fabric-variants", { method: "POST", body: JSON.stringify(data) }),
+  createYarnVariant: (data: Record<string, unknown>) =>
+    api<unknown>("/catalog/yarn-variants", { method: "POST", body: JSON.stringify(data) }),
+};
+
+export const stockApi = {
+  get: () =>
+    api<{ yarnVariants: unknown[]; fabricVariants: FabricVariant[] }>("/stock"),
+};
+
+export const procurementApi = {
+  list: () => api<unknown[]>("/procurement/yarn-purchases"),
+  create: (data: {
+    supplierId: number;
+    notes?: string;
+    lines: Array<{ yarnVariantId: number; quantity: number; unitPrice: number }>;
+  }) =>
+    api<unknown>("/procurement/yarn-purchases", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 export const workOrdersApi = {
@@ -96,9 +220,24 @@ export const workOrdersApi = {
     const suffix = query.toString() ? `?${query}` : "";
     return api<WorkOrder[]>(`/work-orders${suffix}`);
   },
-  get: (zigId: string) => api<unknown>(`/work-orders/${zigId}`),
-  create: (data: { zigId: string; weaverId: number; fabricVariantId: number }) =>
-    api<WorkOrder>("/work-orders", { method: "POST", body: JSON.stringify(data) }),
+  get: (zigId: string) => api<WorkOrderDetail>(`/work-orders/${zigId}`),
+  nextId: () => api<{ zigId: string }>("/work-orders/next-id"),
+  create: (data: {
+    weaverId: number;
+    zigId?: string;
+    productId: number;
+    warpColorId: number;
+    weftColorId: number;
+    designId?: number | null;
+    unitPrice?: number;
+    yarnLines?: Array<{
+      yarnTypeId: number;
+      colorId: number;
+      supplierId: number;
+      quantity: number;
+      unitPrice: number;
+    }>;
+  }) => api<WorkOrder>("/work-orders", { method: "POST", body: JSON.stringify(data) }),
   updateStatus: (zigId: string, status: string) =>
     api<WorkOrder>(`/work-orders/${zigId}/status`, {
       method: "PATCH",
@@ -109,19 +248,32 @@ export const workOrdersApi = {
 export const yarnGivenApi = {
   create: (data: {
     zigId: string;
-    yarnVariantId: number;
-    quantity: number;
-    unitPrice: number;
-  }) => api<unknown>("/yarn-given", { method: "POST", body: JSON.stringify(data) }),
+    lines: Array<{
+      yarnTypeId: number;
+      colorId: number;
+      supplierId: number;
+      quantity: number;
+      unitPrice: number;
+    }>;
+  }) =>
+    api<{
+      rows: unknown[];
+      variantResolved: Array<{ created: boolean; sku: string }>;
+    }>("/yarn-given", { method: "POST", body: JSON.stringify(data) }),
 };
 
 export const fabricReturnsApi = {
   create: (data: {
     zigId: string;
-    fabricVariantId: number;
+    warpColorId: number;
+    weftColorId: number;
+    designId?: number | null;
     quantityReturned: number;
     totalWeight: number;
     unitPrice: number;
+    lengthCm?: number;
+    widthCm?: number;
+    remark?: string;
   }) =>
     api<unknown>("/fabric-returns", { method: "POST", body: JSON.stringify(data) }),
 };
@@ -142,6 +294,32 @@ export interface BonusResult {
   remark: string;
 }
 
+export interface HisabReport {
+  paymentId: number;
+  paymentDate: string;
+  weaver: Weaver;
+  amount: number;
+  amharicAmountInWords: string;
+  rows: Array<{
+    weaverId: string | number;
+    weaverName: string;
+    zigId: string;
+    fabricType: string;
+    fabricQty: string | number;
+    avgWeight: string | number;
+    basePrice: string | number;
+    deduction: string | number;
+    adjustedPrice: string | number;
+    lineSubtotal: string | number;
+    fabricTotalValue: string | number;
+    yarnQty: string | number;
+    yarnAvgPrice: string | number;
+    yarnTotal: string | number;
+    netProfit: string | number;
+    totalNetProfit: string | number;
+  }>;
+}
+
 export interface SettlementPreview {
   lineItems: Array<{
     returnId: number;
@@ -159,15 +337,8 @@ export interface SettlementPreview {
 
 export const weaverPortalApi = {
   profile: (weaverId: number) => api<Weaver>(`/weavers/${weaverId}`),
-  workOrders: () =>
-    api<
-      Array<
-        WorkOrder & {
-          _count?: { yarnGiven: number; fabricReturns: number };
-        }
-      >
-    >("/work-orders"),
-  workOrder: (zigId: string) => api<unknown>(`/work-orders/${zigId}`),
+  workOrders: () => api<WorkOrder[]>("/work-orders"),
+  workOrder: (zigId: string) => api<WorkOrderDetail>(`/work-orders/${zigId}`),
   payments: () =>
     api<
       Array<{
@@ -194,6 +365,7 @@ export const paymentsApi = {
 };
 
 export const reportsApi = {
+  getHisab: (paymentId: number) => api<HisabReport>("/reports/hisab/" + paymentId),
   async downloadHisabCsv(paymentId: number) {
     const token = getToken();
     const response = await fetch(
@@ -231,6 +403,37 @@ export const calculationsApi = {
     api<SettlementPreview>("/calculations/settlements/preview", {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+  batchPreview: () =>
+    api<{
+      weavers: Array<{
+        weaverId: number;
+        weaverName: string;
+        zigIds: string[];
+        returnCount: number;
+        yarnCount: number;
+        netSettlement: number;
+        lineItems: SettlementPreview["lineItems"];
+      }>;
+      weaverCount: number;
+      grandTotal: number;
+      amharicAmountInWords: string;
+    }>("/calculations/settlements/batch-preview"),
+  batchCommit: (paymentMethod?: string) =>
+    api<{
+      payments: Array<{
+        paymentId: number;
+        weaverId: number;
+        weaverName: string;
+        amount: number;
+        reconciledZigIds: string[];
+      }>;
+      grandTotal: number;
+      weaverCount: number;
+      amharicAmountInWords: string;
+    }>("/calculations/settlements/batch-commit", {
+      method: "POST",
+      body: JSON.stringify({ paymentMethod }),
     }),
   commitSettlement: (body: {
     weaverId: number;

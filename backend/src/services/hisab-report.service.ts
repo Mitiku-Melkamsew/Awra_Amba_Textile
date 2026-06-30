@@ -1,5 +1,19 @@
 import { prisma } from "../lib/prisma.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
+import { formatDateDDMMYY } from "../utils/format-date.js";
+
+function fabricTypeLabel(fabricVariant: {
+  product: { name: string };
+  warpColor: { name: string };
+  weftColor: { name: string };
+  design: { name: string } | null;
+}): string {
+  const parts = [fabricVariant.product.name];
+  parts.push(`warp:${fabricVariant.warpColor.name}`);
+  parts.push(`weft:${fabricVariant.weftColor.name}`);
+  if (fabricVariant.design) parts.push(fabricVariant.design.name);
+  return parts.join(" · ");
+}
 
 export interface HisabRow {
   weaverId: string | number;
@@ -32,7 +46,9 @@ export async function buildHisabReport(paymentId: number) {
       weaver: true,
       fabricReturns: {
         include: {
-          fabricVariant: { include: { product: true } },
+          fabricVariant: {
+            include: { product: true, warpColor: true, weftColor: true, design: true },
+          },
           workOrder: true,
         },
         orderBy: [{ zigId: "asc" }, { returnId: "asc" }],
@@ -115,7 +131,7 @@ export async function buildHisabReport(paymentId: number) {
         weaverId: firstWeaverRow ? payment.weaverId : "",
         weaverName: firstWeaverRow ? weaverName : "",
         zigId: firstZigRow ? zigId : "",
-        fabricType: fabricRow.fabricVariant.product.name,
+        fabricType: fabricTypeLabel(fabricRow.fabricVariant),
         fabricQty: fabricRow.quantityReturned,
         avgWeight,
         basePrice: unitPrice,
@@ -279,7 +295,7 @@ export function hisabToCsv(report: Awaited<ReturnType<typeof buildHisabReport>>)
   ];
 
   const lines = [
-    `ቀን: ${new Date(report.paymentDate).toLocaleDateString("en-GB")}`,
+    `ቀን: ${formatDateDDMMYY(report.paymentDate)}`,
     "",
     header.join(","),
     ...report.rows.map((row) =>
