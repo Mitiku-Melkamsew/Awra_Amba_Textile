@@ -14,13 +14,13 @@ export function Layout() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="layout">
-      <aside className="sidebar">
+    <div className="layout layout-top-nav">
+      <header className="topbar">
         <div className="brand">
           <p className="eyebrow">Awra Amba</p>
           <h1>Textile Admin</h1>
         </div>
-        <nav>
+        <nav className="top-nav">
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -31,13 +31,13 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <p>{user?.username}</p>
+        <div className="topbar-user">
+          <span>{user?.username}</span>
           <button type="button" onClick={logout}>
             Logout
           </button>
         </div>
-      </aside>
+      </header>
       <main className="content">
         <Outlet />
       </main>

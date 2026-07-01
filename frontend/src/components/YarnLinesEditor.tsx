@@ -7,6 +7,7 @@ interface YarnLinesEditorProps {
   lookup: YarnCatalogLookup;
   yarnVariants?: YarnVariantOption[];
   quantityHint?: string;
+  singleLine?: boolean;
 }
 
 function updateLine(
@@ -23,6 +24,7 @@ export function YarnLinesEditor({
   lookup,
   yarnVariants = [],
   quantityHint,
+  singleLine = false,
 }: YarnLinesEditorProps) {
   function addLine() {
     onChange([...lines, createYarnLineDraft(lookup)]);
@@ -41,7 +43,7 @@ export function YarnLinesEditor({
             <span className="muted" style={{ fontSize: "0.85rem" }}>
               Yarn variant {index + 1}
             </span>
-            {lines.length > 1 && (
+            {!singleLine && lines.length > 1 && (
               <button
                 type="button"
                 className="btn-link danger"
@@ -185,9 +187,11 @@ export function YarnLinesEditor({
           </div>
         </div>
       ))}
-      <button type="button" className="btn-secondary" onClick={addLine}>
-        + Add yarn variant
-      </button>
+      {!singleLine && (
+        <button type="button" className="btn-secondary" onClick={addLine}>
+          + Add yarn variant
+        </button>
+      )}
     </div>
   );
 }

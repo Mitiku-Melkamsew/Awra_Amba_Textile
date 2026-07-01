@@ -105,11 +105,16 @@ export interface WorkOrderDetail extends WorkOrder {
     quantity: string;
     unitPrice: string;
     dateGiven: string;
+    paymentId: number | null;
     yarnVariant: {
+      yarnVariantId: number;
       sku: string;
-      yarnType?: { materialName: string };
-      supplier?: { name: string };
-      color?: { name: string };
+      yarnTypeId?: number;
+      colorId?: number;
+      supplierId?: number;
+      yarnType?: { materialName: string; yarnTypeId?: number };
+      supplier?: { name: string; supplierId?: number };
+      color?: { name: string; colorId?: number };
     };
   }>;
   fabricReturns: Array<{
@@ -121,6 +126,7 @@ export interface WorkOrderDetail extends WorkOrder {
     unitPrice: string;
     remark: string | null;
     dateReturned: string;
+    paymentId: number | null;
     fabricVariant: FabricVariant;
   }>;
 }
@@ -398,6 +404,21 @@ export const yarnGivenApi = {
       rows: unknown[];
       variantResolved: Array<{ created: boolean; sku: string }>;
     }>("/yarn-given", { method: "POST", body: JSON.stringify(data) }),
+  update: (
+    yarnGivenId: number,
+    data: {
+      yarnVariantId?: number;
+      yarnTypeId?: number;
+      colorId?: number;
+      supplierId?: number;
+      quantity: number;
+      unitPrice: number;
+    },
+  ) =>
+    api<unknown>(`/yarn-given/${yarnGivenId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };
 
 export const fabricReturnsApi = {
@@ -415,6 +436,25 @@ export const fabricReturnsApi = {
     remark?: string;
   }) =>
     api<unknown>("/fabric-returns", { method: "POST", body: JSON.stringify(data) }),
+  update: (
+    returnId: number,
+    data: {
+      fabricVariantId?: number;
+      warpColorId?: number;
+      weftColorId?: number;
+      designId?: number | null;
+      quantityReturned: number;
+      totalWeight: number;
+      unitPrice: number;
+      lengthCm?: number;
+      widthCm?: number;
+      remark?: string;
+    },
+  ) =>
+    api<unknown>(`/fabric-returns/${returnId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };
 
 export interface DeductionResult {

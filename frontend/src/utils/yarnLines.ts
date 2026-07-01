@@ -72,6 +72,23 @@ export function applyYarnVariantToLine(
   };
 }
 
+export function yarnRowToLineDraft(
+  row: {
+    yarnGivenId: number;
+    quantity: string;
+    unitPrice: string;
+    yarnVariant: YarnVariantOption;
+  },
+  lookup?: YarnCatalogLookup,
+): YarnLineDraft {
+  const variant = row.yarnVariant;
+  return {
+    ...applyYarnVariantToLine(createYarnLineDraft(lookup, row.quantity, "variant"), variant),
+    id: `yarn-edit-${row.yarnGivenId}`,
+    unitPrice: row.unitPrice,
+  };
+}
+
 export function parseYarnLines(lines: YarnLineDraft[]): YarnLinePayload[] {
   return lines
     .filter(

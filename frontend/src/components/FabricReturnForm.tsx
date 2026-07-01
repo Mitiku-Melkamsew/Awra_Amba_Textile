@@ -11,12 +11,17 @@ import {
 } from "../utils/fabricLines";
 import type { LineEntryMode } from "../utils/yarnLines";
 
+type FabricReturnRow = WorkOrderDetail["fabricReturns"][number];
+
 interface FabricReturnFormProps {
   order: WorkOrderDetail;
   onSaved: (message?: string) => void;
+  editReturn?: FabricReturnRow;
+  onCancel?: () => void;
 }
 
-export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
+export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: FabricReturnFormProps) {
+  const isEdit = Boolean(editReturn);
   const product = order.fabricVariant.product;
   const fv = order.fabricVariant;
   const defaultLength = product.standardLengthCm ? Number(product.standardLengthCm) : "";
@@ -45,6 +50,20 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
     Promise.all([catalogApi.lookup(), catalogApi.fabricVariants()]).then(([data, variants]) => {
       setLookup(data);
       setFabricVariants(variants);
+
+      if (editReturn) {
+        const rv = editReturn.fabricVariant;
+        setEntryMode("variant");
+        setLine(applyFabricVariantToLine(createFabricLineDraft(data, "variant"), rv));
+        setQuantity(String(editReturn.quantityReturned));
+        setTotalWeight(String(editReturn.totalWeight));
+        setLengthCm(editReturn.lengthCm ? String(editReturn.lengthCm) : "");
+        setWidthCm(editReturn.widthCm ? String(editReturn.widthCm) : "");
+        setUnitPrice(String(editReturn.unitPrice));
+        setRemark(editReturn.remark ?? "");
+        return;
+      }
+
       const draft = createFabricLineDraft(data, "catalog");
       setLine({
         ...draft,
@@ -55,7 +74,7 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
         unitPrice: String(defaultPrice),
       });
     });
-  }, [product.productId, fv, defaultPrice]);
+  }, [product.productId, fv, defaultPrice, editReturn]);
 
   const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
 
@@ -89,6 +108,30 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
               remark: remark || undefined,
             };
 
+      if (isEdit && editReturn) {
+        const createPayload = payload as Parameters<typeof fabricReturnsApi.create>[0];
+        const updatePayload = {
+          fabricVariantId: createPayload.fabricVariantId,
+          warpColorId: createPayload.warpColorId,
+          weftColorId: createPayload.weftColorId,
+          designId: createPayload.designId,
+          quantityReturned: createPayload.quantityReturned,
+          totalWeight: createPayload.totalWeight,
+          unitPrice: createPayload.unitPrice,
+          lengthCm: createPayload.lengthCm,
+          widthCm: createPayload.widthCm,
+          remark: createPayload.remark,
+        };
+        const result = (await fabricReturnsApi.update(editReturn.returnId, updatePayload)) as {
+          variantResolved?: { created: boolean; sku: string };
+        };
+        const msg = result.variantResolved?.created
+          ? `Fabric return updated. New variant created: ${result.variantResolved.sku}`
+          : `Fabric return updated.`;
+        onSaved(msg);
+        return;
+      }
+
       const result = (await fabricReturnsApi.create(payload as Parameters<typeof fabricReturnsApi.create>[0])) as {
         variantResolved?: { created: boolean; sku: string };
       };
@@ -106,7 +149,9 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
 
   return (
     <form className="card form fabric-form" onSubmit={handleSubmit}>
-      <h3>ጨርቅ መመዝገብ / Record Fabric</h3>
+      <h3>
+        {isEdit ? "ጨርቅ ማስተካከል / Edit Fabric Return" : "ጨርቅ መመዝገብ / Record Fabric"}
+      </h3>
       <p className="muted">
         From zig: {product.name}
         {fv.warpColor && ` · warp: ${fv.warpColor.name}`}
@@ -258,9 +303,16 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
         <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Optional" />
       </label>
       {error && <p className="error">{error}</p>}
-      <button type="submit" className="btn-primary" disabled={saving}>
-        {saving ? "Saving..." : "Save Fabric Return"}
-      </button>
+      <div className="form-actions">
+        {onCancel && (
+          <button type="button" className="btn-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+        <button type="submit" className="btn-primary" disabled={saving}>
+          {saving ? "Saving..." : isEdit ? "Update Fabric Return" : "Save Fabric Return"}
+        </button>
+      </div>
     </form>
   );
 }

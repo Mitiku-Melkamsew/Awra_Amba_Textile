@@ -10,9 +10,60 @@
 }
 
 .layout {
-  display: grid;
-  grid-template-columns: 240px 1fr;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+}
+
+.layout-top-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: #3f2a1d;
+  color: #f8f4ef;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.topbar .brand {
+  flex-shrink: 0;
+}
+
+.topbar .brand h1 {
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.topbar-user span {
+  font-size: 0.9rem;
+  color: #d6b59b;
+}
+
+.topbar-user button {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
 }
 
 .sidebar {
@@ -39,11 +90,13 @@
 
 .nav-link {
   display: block;
-  padding: 0.65rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 8px;
   color: #f8f4ef;
   text-decoration: none;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0;
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .nav-link.active,
@@ -73,6 +126,14 @@ button {
 
 .content {
   padding: 2rem;
+  flex: 1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .card {
@@ -217,6 +278,19 @@ a {
 /* Weaver portal */
 .weaver-layout {
   background: linear-gradient(180deg, #f0f7f4 0%, #e8f0ec 100%);
+}
+
+.weaver-topbar {
+  background: #1f4d3a;
+}
+
+.weaver-topbar .eyebrow {
+  color: #9fd4b8;
+}
+
+.weaver-topbar .nav-link.active,
+.weaver-topbar .nav-link:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .weaver-sidebar {
@@ -645,6 +719,20 @@ a {
   border-bottom: 1px solid #eee7dd;
 }
 
+.record-list-item {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.record-list-main {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
 .collapse-toggle {
   background: none;
   border: none;
@@ -741,6 +829,7 @@ a {
 @media print {
   .no-print,
   .sidebar,
+  .topbar,
   .layout > aside {
     display: none !important;
   }
@@ -755,8 +844,21 @@ a {
 }
 
 @media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
+  .topbar {
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .top-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.25rem;
+  }
+
+  .topbar-user {
+    margin-left: 0;
   }
 
   .sidebar {

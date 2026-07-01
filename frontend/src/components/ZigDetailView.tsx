@@ -7,6 +7,7 @@ import { formatDateDDMMYY } from "../utils/formatDate";
 import {
   createYarnLineDraft,
   parseYarnLines,
+  yarnRowToLineDraft,
   type YarnCatalogLookup,
   type YarnLineDraft,
   type YarnVariantOption,
@@ -39,6 +40,9 @@ export function ZigDetailView({
   const [yarnVariants, setYarnVariants] = useState<YarnVariantOption[]>([]);
   const [yarnLines, setYarnLines] = useState<YarnLineDraft[]>([createYarnLineDraft()]);
   const [yarnOpen, setYarnOpen] = useState(false);
+  const [editingYarnId, setEditingYarnId] = useState<number | null>(null);
+  const [editingYarnLines, setEditingYarnLines] = useState<YarnLineDraft[]>([]);
+  const [editingFabricReturnId, setEditingFabricReturnId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -65,6 +69,41 @@ export function ZigDetailView({
       setYarnLines([createYarnLineDraft(data)]);
     });
   }, [canEdit]);
+
+  function startEditYarn(yarnGivenId: number) {
+    const row = order.yarnGiven.find((r) => r.yarnGivenId === yarnGivenId);
+    if (!row) return;
+    setEditingFabricReturnId(null);
+    setEditingYarnId(yarnGivenId);
+    setEditingYarnLines([yarnRowToLineDraft(row, yarnLookup)]);
+    setYarnOpen(false);
+    setError("");
+  }
+
+  function cancelEditYarn() {
+    setEditingYarnId(null);
+    setEditingYarnLines([]);
+  }
+
+  async function handleYarnEditSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (editingYarnId == null) return;
+    setError("");
+    setMessage("");
+    const lines = parseYarnLines(editingYarnLines);
+    if (lines.length === 0) {
+      setError("Enter quantity and unit price.");
+      return;
+    }
+    try {
+      await yarnGivenApi.update(editingYarnId, lines[0]);
+      setMessage("Yarn delivery updated.");
+      cancelEditYarn();
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update yarn delivery");
+    }
+  }
 
   async function handleYarnSubmit(event: FormEvent) {
     event.preventDefault();
@@ -130,7 +169,7 @@ export function ZigDetailView({
         </button>
       )}
 
-      {canRecordFabric && (
+      {canRecordFabric && editingFabricReturnId == null && (
         <FabricReturnForm
           order={order}
           onSaved={(msg) => {
@@ -140,7 +179,47 @@ export function ZigDetailView({
         />
       )}
 
-      {canEdit && (
+      {canRecordFabric &&
+        editingFabricReturnId != null &&
+        (() => {
+          const editReturn = order.fabricReturns.find((r) => r.returnId === editingFabricReturnId);
+          if (!editReturn) return null;
+          return (
+            <FabricReturnForm
+              order={order}
+              editReturn={editReturn}
+              onCancel={() => setEditingFabricReturnId(null)}
+              onSaved={(msg) => {
+                setMessage(msg ?? "Fabric return updated.");
+                setEditingFabricReturnId(null);
+                onRefresh();
+              }}
+            />
+          );
+        })()}
+
+      {canEdit && editingYarnId != null && (
+        <form className="card form" style={{ marginTop: "1rem" }} onSubmit={handleYarnEditSubmit}>
+          <h3>ጥጥ ማስተካከል / Edit Yarn Delivery</h3>
+          <YarnLinesEditor
+            lines={editingYarnLines}
+            onChange={setEditingYarnLines}
+            lookup={yarnLookup}
+            yarnVariants={yarnVariants}
+            singleLine
+          />
+          <div className="form-actions">
+            <button type="button" className="btn-secondary" onClick={cancelEditYarn}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              Update Yarn Delivery
+            </button>
+          </div>
+        </form>
+      )}
+
+      {canEdit && editingYarnId == null && (
         <div className="card" style={{ marginTop: "1rem" }}>
           <button
             type="button"
@@ -173,17 +252,31 @@ export function ZigDetailView({
           ) : (
             <ul className="record-list">
               {order.yarnGiven.map((row) => (
-                <li key={row.yarnGivenId}>
-                  <strong>
-                    {variantLabel([
-                      row.yarnVariant.yarnType?.materialName ?? row.yarnVariant.sku,
-                      row.yarnVariant.supplier?.name,
-                      row.yarnVariant.color?.name,
-                    ])}
-                  </strong>
-                  <span>
-                    {row.quantity} @ {row.unitPrice} · {formatDateDDMMYY(row.dateGiven)}
-                  </span>
+                <li key={row.yarnGivenId} className="record-list-item">
+                  <div className="record-list-main">
+                    <strong>
+                      {variantLabel([
+                        row.yarnVariant.yarnType?.materialName ?? row.yarnVariant.sku,
+                        row.yarnVariant.supplier?.name,
+                        row.yarnVariant.color?.name,
+                      ])}
+                    </strong>
+                    <span>
+                      {row.quantity} @ {row.unitPrice} · {formatDateDDMMYY(row.dateGiven)}
+                      {row.paymentId != null && (
+                        <span className="muted"> · settled</span>
+                      )}
+                    </span>
+                  </div>
+                  {canEdit && row.paymentId == null && editingYarnId !== row.yarnGivenId && (
+                    <button
+                      type="button"
+                      className="btn-link"
+                      onClick={() => startEditYarn(row.yarnGivenId)}
+                    >
+                      Edit
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -197,25 +290,45 @@ export function ZigDetailView({
           ) : (
             <ul className="record-list">
               {order.fabricReturns.map((row) => (
-                <li key={row.returnId}>
-                  <strong>
-                    {variantLabel([
-                      row.fabricVariant.product.name,
-                      row.fabricVariant.warpColor
-                        ? `warp:${row.fabricVariant.warpColor.name}`
-                        : "",
-                      row.fabricVariant.weftColor
-                        ? `weft:${row.fabricVariant.weftColor.name}`
-                        : "",
-                      row.fabricVariant.design?.name,
-                    ])}
-                  </strong>
-                  <span>
-                    {row.quantityReturned} pcs · {row.totalWeight}g
-                    {row.widthCm && row.lengthCm ? ` · ${row.widthCm}×${row.lengthCm}cm` : ""} @{" "}
-                    {row.unitPrice} · {formatDateDDMMYY(row.dateReturned)}
-                  </span>
-                  {row.remark && <em className="muted">{row.remark}</em>}
+                <li key={row.returnId} className="record-list-item">
+                  <div className="record-list-main">
+                    <strong>
+                      {variantLabel([
+                        row.fabricVariant.product.name,
+                        row.fabricVariant.warpColor
+                          ? `warp:${row.fabricVariant.warpColor.name}`
+                          : "",
+                        row.fabricVariant.weftColor
+                          ? `weft:${row.fabricVariant.weftColor.name}`
+                          : "",
+                        row.fabricVariant.design?.name,
+                      ])}
+                    </strong>
+                    <span>
+                      {row.quantityReturned} pcs · {row.totalWeight}g
+                      {row.widthCm && row.lengthCm ? ` · ${row.widthCm}×${row.lengthCm}cm` : ""} @{" "}
+                      {row.unitPrice} · {formatDateDDMMYY(row.dateReturned)}
+                      {row.paymentId != null && (
+                        <span className="muted"> · settled</span>
+                      )}
+                    </span>
+                    {row.remark && <em className="muted">{row.remark}</em>}
+                  </div>
+                  {canRecordFabric &&
+                    row.paymentId == null &&
+                    editingFabricReturnId !== row.returnId && (
+                      <button
+                        type="button"
+                        className="btn-link"
+                        onClick={() => {
+                          setEditingYarnId(null);
+                          setEditingFabricReturnId(row.returnId);
+                          setError("");
+                        }}
+                      >
+                        Edit
+                      </button>
+                    )}
                 </li>
               ))}
             </ul>

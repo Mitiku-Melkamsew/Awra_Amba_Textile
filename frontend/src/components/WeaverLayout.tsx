@@ -10,13 +10,13 @@ export function WeaverLayout() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="layout weaver-layout">
-      <aside className="sidebar weaver-sidebar">
+    <div className="layout layout-top-nav weaver-layout">
+      <header className="topbar weaver-topbar">
         <div className="brand">
           <p className="eyebrow">Awra Amba</p>
           <h1>Weaver Portal</h1>
         </div>
-        <nav>
+        <nav className="top-nav">
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -28,13 +28,13 @@ export function WeaverLayout() {
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <p className="weaver-user">{user?.username}</p>
+        <div className="topbar-user">
+          <span className="weaver-user">{user?.username}</span>
           <button type="button" onClick={logout}>
             Logout
           </button>
         </div>
-      </aside>
+      </header>
       <main className="content weaver-content">
         <Outlet />
       </main>

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
+import { adjustFabricReturnStock } from "../services/stock-adjustment.service.js";
 import { resolveFabricVariant } from "../services/variant.service.js";
 
 export const fabricReturnsRouter = Router();
@@ -113,6 +114,98 @@ fabricReturnsRouter.post("/", async (req, res, next) => {
     });
 
     res.status(201).json({
+      ...result.row,
+      variantResolved: {
+        created: result.variantResolved.created,
+        sku: result.variantResolved.sku,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const updateSchema = createSchema.omit({ zigId: true });
+
+fabricReturnsRouter.patch("/:returnId", async (req, res, next) => {
+  try {
+    const returnId = Number(req.params.returnId);
+    if (!Number.isInteger(returnId) || returnId <= 0) {
+      res.status(400).json({ error: "Invalid return id." });
+      return;
+    }
+
+    const body = updateSchema.parse(req.body);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.fabricReturn.findUnique({
+        where: { returnId },
+        include: { workOrder: { include: { fabricVariant: { include: { product: true } } } } },
+      });
+
+      if (!existing) {
+        throw new Error("NOT_FOUND:Fabric return not found.");
+      }
+      if (existing.paymentId != null) {
+        throw new Error("FORBIDDEN:This fabric return is already settled and cannot be edited.");
+      }
+
+      let variantId = body.fabricVariantId ?? null;
+      let resolved = null as Awaited<ReturnType<typeof resolveFabricVariant>> | null;
+
+      if (variantId) {
+        const variant = await tx.fabricVariant.findUnique({ where: { fabricVariantId: variantId } });
+        if (!variant) {
+          throw new Error("NOT_FOUND:Fabric variant not found.");
+        }
+        resolved = { variantId, created: false, sku: variant.sku };
+      } else {
+        if (!body.warpColorId || !body.weftColorId) {
+          throw new Error("VALIDATION:Provide fabric variant or warp/weft colors.");
+        }
+        const productId = existing.workOrder.fabricVariant.productId;
+        resolved = await resolveFabricVariant(
+          {
+            productId,
+            warpColorId: body.warpColorId,
+            weftColorId: body.weftColorId,
+            designId: body.designId ?? null,
+            basePrice: body.unitPrice,
+          },
+          tx,
+        );
+        variantId = resolved.variantId;
+      }
+
+      await adjustFabricReturnStock(
+        tx,
+        existing.fabricVariantId,
+        existing.quantityReturned,
+        variantId,
+        body.quantityReturned,
+      );
+
+      const row = await tx.fabricReturn.update({
+        where: { returnId },
+        data: {
+          fabricVariantId: variantId,
+          quantityReturned: body.quantityReturned,
+          totalWeight: body.totalWeight,
+          unitPrice: body.unitPrice,
+          lengthCm: body.lengthCm,
+          widthCm: body.widthCm,
+          remark: body.remark,
+        },
+        include: {
+          fabricVariant: { include: fabricInclude },
+          workOrder: { include: { weaver: true } },
+        },
+      });
+
+      return { row, variantResolved: resolved! };
+    });
+
+    res.json({
       ...result.row,
       variantResolved: {
         created: result.variantResolved.created,

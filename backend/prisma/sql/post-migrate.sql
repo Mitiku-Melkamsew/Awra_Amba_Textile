@@ -41,6 +41,23 @@ CREATE TRIGGER trg_fabric_return_immutable
   BEFORE UPDATE ON fabric_returns
   FOR EACH ROW EXECUTE FUNCTION prevent_settled_return_update();
 
+-- settled yarn_given immutability
+CREATE OR REPLACE FUNCTION prevent_settled_yarn_given_update()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF OLD.payment_id IS NOT NULL THEN
+    RAISE EXCEPTION 'yarn_given % is already settled (payment_id=%). Cannot modify.',
+      OLD.yarn_given_id, OLD.payment_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_yarn_given_immutable ON yarn_given;
+CREATE TRIGGER trg_yarn_given_immutable
+  BEFORE UPDATE ON yarn_given
+  FOR EACH ROW EXECUTE FUNCTION prevent_settled_yarn_given_update();
+
 -- stock snapshot: yarn purchase lines
 CREATE OR REPLACE FUNCTION trg_yarn_purchase_line_stock()
 RETURNS trigger LANGUAGE plpgsql AS $$
