@@ -433,6 +433,20 @@ a {
   color: #b91c1c;
 }
 
+.entry-mode-toggle {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+.entry-mode-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -643,6 +657,26 @@ a {
 
 .badge.assigned {
   background: #f3e8ff;
+}
+
+.badge.pending {
+  background: #f1f5f9;
+}
+
+.badge.awaiting_delivery {
+  background: #fef3c7;
+}
+
+.badge.awaiting_payment {
+  background: #ffedd5;
+}
+
+.badge.completed {
+  background: #dcfce7;
+}
+
+.badge.cancelled {
+  background: #fee2e2;
 }
 
 .empty-state {

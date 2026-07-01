@@ -83,8 +83,8 @@ async function main() {
 
   const workOrderAfterYarn = await prisma.workOrder.findUnique({ where: { zigId } });
   await assert(
-    workOrderAfterYarn?.status === "in_progress",
-    "first yarn_given moves work order assigned -> in_progress",
+    workOrderAfterYarn?.status === "assigned",
+    "yarn_given does not change work order status (stays assigned)",
   );
 
   await prisma.fabricReturn.create({
@@ -97,6 +97,12 @@ async function main() {
       recordedByUserId: admin.userId,
     },
   });
+
+  const workOrderAfterFabric = await prisma.workOrder.findUnique({ where: { zigId } });
+  await assert(
+    workOrderAfterFabric?.status === "in_progress",
+    "first fabric_return moves work order assigned -> in_progress",
+  );
 
   const fabricAfterReturn = await prisma.fabricVariant.findUnique({
     where: { fabricVariantId: fabricVariant.fabricVariantId },

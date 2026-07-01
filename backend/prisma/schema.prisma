@@ -33,6 +33,34 @@ enum SaleMovementType {
   adjustment
 }
 
+enum CommercialTxnType {
+  yarn_purchase
+  fabric_purchase
+  yarn_sale
+  fabric_sale
+  weaver_payout
+}
+
+enum CommercialTxnStatus {
+  pending
+  in_progress
+  awaiting_delivery
+  awaiting_payment
+  completed
+  cancelled
+}
+
+enum PaymentTerms {
+  prepaid
+  on_delivery
+  installment
+}
+
+enum SettlementPreviewStatus {
+  draft
+  committed
+}
+
 // --- Catalog ---
 
 model Product {
@@ -75,6 +103,7 @@ model Supplier {
   yarnVariants YarnVariant[]
   yarnPurchases YarnPurchase[]
   supplierPayments SupplierPayment[]
+  commercialTransactions CommercialTransaction[]
 
   @@map("suppliers")
 }
@@ -107,6 +136,7 @@ model FabricVariant {
   workOrders WorkOrder[]
   fabricReturns FabricReturn[]
   sales      Sale[]
+  commercialLines CommercialTransactionLine[]
   qualityRule QualityRule?
   bonusRule   BonusRule?
 
@@ -129,6 +159,7 @@ model YarnVariant {
   purchaseLines YarnPurchaseLine[]
   yarnGiven YarnGiven[]
   sales     Sale[]
+  commercialLines CommercialTransactionLine[]
 
   @@map("yarn_variants")
 }
@@ -175,6 +206,7 @@ model Weaver {
   workOrders WorkOrder[]
   sales      Sale[]
   payments   Payment[]
+  commercialTransactions CommercialTransaction[]
 
   @@map("weavers")
 }
@@ -189,6 +221,7 @@ model Merchant {
   user             User?
   sales            Sale[]
   merchantPayments MerchantPayment[]
+  commercialTransactions CommercialTransaction[]
 
   @@map("merchants")
 }
@@ -213,6 +246,9 @@ model User {
   salesRecorded            Sale[]             @relation("SaleRecorder")
   paymentsRecorded         Payment[]          @relation("PaymentRecorder")
   merchantPaymentsRecorded MerchantPayment[]  @relation("MerchantPaymentRecorder")
+  commercialTransactionsCreated CommercialTransaction[] @relation("CommercialTxnCreator")
+  commercialTxnPaymentsRecorded CommercialTransactionPayment[] @relation("CommercialTxnPaymentRecorder")
+  settlementPreviewsCreated SettlementPreview[] @relation("SettlementPreviewCreator")
 
   @@map("users")
 }
@@ -365,6 +401,9 @@ model Payment {
   fabricReturns FabricReturn[]
   yarnGiven     YarnGiven[]
   sales         Sale[]
+  commercialTransaction CommercialTransaction?
+  settlementPreviewId String? @map("settlement_preview_id") @db.VarChar(24)
+  settlementPreview   SettlementPreview? @relation(fields: [settlementPreviewId], references: [previewId])
 
   @@map("payments")
 }
@@ -382,4 +421,86 @@ model MerchantPayment {
   recordedBy User   @relation("MerchantPaymentRecorder", fields: [recordedByUserId], references: [userId])
 
   @@map("merchant_payments")
+}
+
+// --- Commercial transactions ---
+
+model CommercialTransaction {
+  transactionId    String              @id @map("transaction_id") @db.VarChar(24)
+  type             CommercialTxnType
+  status           CommercialTxnStatus @default(pending)
+  paymentTerms     PaymentTerms        @map("payment_terms")
+  supplierId       Int?                @map("supplier_id")
+  weaverId         Int?                @map("weaver_id")
+  merchantId       Int?                @map("merchant_id")
+  totalAmount      Decimal             @default(0) @map("total_amount") @db.Decimal(14, 2)
+  amountPaid       Decimal             @default(0) @map("amount_paid") @db.Decimal(14, 2)
+  deliveredAt      DateTime?           @map("delivered_at") @db.Timestamptz
+  notes            String?
+  linkedPaymentId  Int?                @unique @map("linked_payment_id")
+  createdByUserId  Int                 @map("created_by_user_id")
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  supplier      Supplier? @relation(fields: [supplierId], references: [supplierId])
+  weaver        Weaver?   @relation(fields: [weaverId], references: [weaverId])
+  merchant      Merchant? @relation(fields: [merchantId], references: [merchantId])
+  linkedPayment Payment?  @relation(fields: [linkedPaymentId], references: [paymentId])
+  createdBy     User      @relation("CommercialTxnCreator", fields: [createdByUserId], references: [userId])
+  lines         CommercialTransactionLine[]
+  payments      CommercialTransactionPayment[]
+
+  @@map("commercial_transactions")
+}
+
+model CommercialTransactionLine {
+  lineId            Int     @id @default(autoincrement()) @map("line_id")
+  transactionId     String  @map("transaction_id") @db.VarChar(24)
+  yarnVariantId     Int?    @map("yarn_variant_id")
+  fabricVariantId   Int?    @map("fabric_variant_id")
+  yarnTypeId        Int?    @map("yarn_type_id")
+  colorId           Int?    @map("color_id")
+  supplierId        Int?    @map("supplier_id")
+  productId         Int?    @map("product_id")
+  warpColorId       Int?    @map("warp_color_id")
+  weftColorId       Int?    @map("weft_color_id")
+  designId          Int?    @map("design_id")
+  quantity          Decimal @db.Decimal(10, 2)
+  unitPrice         Decimal @map("unit_price") @db.Decimal(12, 2)
+  deliveredQuantity Decimal @default(0) @map("delivered_quantity") @db.Decimal(10, 2)
+  description       String? @db.VarChar(200)
+
+  transaction   CommercialTransaction @relation(fields: [transactionId], references: [transactionId])
+  yarnVariant   YarnVariant?          @relation(fields: [yarnVariantId], references: [yarnVariantId])
+  fabricVariant FabricVariant?        @relation(fields: [fabricVariantId], references: [fabricVariantId])
+
+  @@map("commercial_transaction_lines")
+}
+
+model CommercialTransactionPayment {
+  installmentId    Int      @id @default(autoincrement()) @map("installment_id")
+  transactionId    String   @map("transaction_id") @db.VarChar(24)
+  amount           Decimal  @db.Decimal(12, 2)
+  paymentDate      DateTime @default(now()) @map("payment_date") @db.Timestamptz
+  paymentMethod    String?  @map("payment_method") @db.VarChar(30)
+  notes            String?
+  recordedByUserId Int      @map("recorded_by_user_id")
+
+  transaction CommercialTransaction @relation(fields: [transactionId], references: [transactionId])
+  recordedBy  User                  @relation("CommercialTxnPaymentRecorder", fields: [recordedByUserId], references: [userId])
+
+  @@map("commercial_transaction_payments")
+}
+
+model SettlementPreview {
+  previewId         String                  @id @map("preview_id") @db.VarChar(24)
+  status            SettlementPreviewStatus @default(draft)
+  snapshot          Json
+  createdByUserId   Int                     @map("created_by_user_id")
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  committedAt       DateTime?               @map("committed_at") @db.Timestamptz
+
+  createdBy User      @relation("SettlementPreviewCreator", fields: [createdByUserId], references: [userId])
+  payments  Payment[]
+
+  @@map("settlement_previews")
 }

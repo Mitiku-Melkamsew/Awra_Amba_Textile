@@ -10,11 +10,16 @@ import { LoginPage } from "./pages/LoginPage";
 import { PublicHomePage } from "./pages/PublicHomePage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettlementPage } from "./pages/SettlementPage";
+import { SettlementPreviewPage } from "./pages/admin/SettlementPreviewPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { CatalogPage } from "./pages/admin/CatalogPage";
 import { HisabPrintPage } from "./pages/admin/HisabPrintPage";
 import { IssueZigPage } from "./pages/admin/IssueZigPage";
-import { ProcurementPage } from "./pages/admin/ProcurementPage";
+import { TransactionDetailPage } from "./pages/admin/transactions/TransactionDetailPage";
+import { TransactionFormPage } from "./pages/admin/transactions/TransactionFormPage";
+import { TransactionNewPage } from "./pages/admin/transactions/TransactionNewPage";
+import { TransactionTypePage } from "./pages/admin/transactions/TransactionTypePage";
+import { TransactionsHubPage } from "./pages/admin/transactions/TransactionsHubPage";
 import { StockPage } from "./pages/admin/StockPage";
 import { WeaverProfilePage } from "./pages/admin/WeaverProfilePage";
 import { WeaversPage } from "./pages/admin/WeaversPage";
@@ -41,9 +46,30 @@ function App() {
                 <Route path="/admin/weavers/:weaverId/issue-zig" element={<IssueZigPage />} />
                 <Route path="/admin/zigs/:zigId" element={<ZigDetailPage />} />
                 <Route path="/admin/stock" element={<StockPage />} />
-                <Route path="/admin/procurement" element={<ProcurementPage />} />
+                <Route path="/admin/transactions" element={<TransactionsHubPage />} />
+                <Route path="/admin/transactions/new" element={<TransactionNewPage />} />
+                <Route
+                  path="/admin/transactions/new/:direction"
+                  element={<TransactionTypePage />}
+                />
+                <Route
+                  path="/admin/transactions/new/:direction/:goods"
+                  element={<TransactionFormPage />}
+                />
+                <Route
+                  path="/admin/transactions/:transactionId"
+                  element={<TransactionDetailPage />}
+                />
+                <Route
+                  path="/admin/procurement"
+                  element={<Navigate to="/admin/transactions/new/buy/yarn" replace />}
+                />
                 <Route path="/admin/catalog" element={<CatalogPage />} />
                 <Route path="/admin/settlement" element={<SettlementPage />} />
+                <Route
+                  path="/admin/settlement/preview/:previewId"
+                  element={<SettlementPreviewPage />}
+                />
                 <Route path="/admin/reports/hisab/:paymentId" element={<HisabPrintPage />} />
                 <Route path="/admin/reports" element={<ReportsPage />} />
                 <Route path="/admin/calculator" element={<CalculatorPage />} />

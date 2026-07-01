@@ -10,8 +10,9 @@ fabricReturnsRouter.use(authenticate, requireAdmin);
 
 const createSchema = z.object({
   zigId: z.string(),
-  warpColorId: z.number().int().positive(),
-  weftColorId: z.number().int().positive(),
+  fabricVariantId: z.number().int().positive().optional(),
+  warpColorId: z.number().int().positive().optional(),
+  weftColorId: z.number().int().positive().optional(),
   designId: z.number().int().positive().optional().nullable(),
   quantityReturned: z.number().int().positive(),
   totalWeight: z.number().positive(),
@@ -64,22 +65,36 @@ fabricReturnsRouter.post("/", async (req, res, next) => {
         throw new Error("NOT_FOUND:Work order not found.");
       }
 
-      const productId = workOrder.fabricVariant.productId;
-      const resolved = await resolveFabricVariant(
-        {
-          productId,
-          warpColorId: body.warpColorId,
-          weftColorId: body.weftColorId,
-          designId: body.designId ?? null,
-          basePrice: body.unitPrice,
-        },
-        tx,
-      );
+      let variantId = body.fabricVariantId ?? null;
+      let resolved = null as Awaited<ReturnType<typeof resolveFabricVariant>> | null;
+
+      if (variantId) {
+        await tx.fabricVariant.findUniqueOrThrow({ where: { fabricVariantId: variantId } });
+        resolved = { variantId, created: false, sku: "" };
+        const existing = await tx.fabricVariant.findUnique({ where: { fabricVariantId: variantId } });
+        if (existing) resolved.sku = existing.sku;
+      } else {
+        if (!body.warpColorId || !body.weftColorId) {
+          throw new Error("VALIDATION:Provide fabric variant or warp/weft colors.");
+        }
+        const productId = workOrder.fabricVariant.productId;
+        resolved = await resolveFabricVariant(
+          {
+            productId,
+            warpColorId: body.warpColorId,
+            weftColorId: body.weftColorId,
+            designId: body.designId ?? null,
+            basePrice: body.unitPrice,
+          },
+          tx,
+        );
+        variantId = resolved.variantId;
+      }
 
       const row = await tx.fabricReturn.create({
         data: {
           zigId: body.zigId,
-          fabricVariantId: resolved.variantId,
+          fabricVariantId: variantId,
           quantityReturned: body.quantityReturned,
           totalWeight: body.totalWeight,
           unitPrice: body.unitPrice,
@@ -94,7 +109,7 @@ fabricReturnsRouter.post("/", async (req, res, next) => {
         },
       });
 
-      return { row, variantResolved: resolved };
+      return { row, variantResolved: resolved! };
     });
 
     res.status(201).json({

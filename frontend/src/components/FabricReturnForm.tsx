@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { catalogApi, fabricReturnsApi } from "../api";
-import type { WorkOrderDetail } from "../api";
-import { findZigZagDesignId } from "../utils/defaultDesign";
-
-interface CatalogLookup {
-  colors: Array<{ colorId: number; colorCode: string; name: string }>;
-  designs: Array<{ designId: number; name: string }>;
-}
+import type { FabricVariant, WorkOrderDetail } from "../api";
+import {
+  applyFabricVariantToLine,
+  createFabricLineDraft,
+  type FabricCatalogLookup,
+  type FabricLineDraft,
+} from "../utils/fabricLines";
+import type { LineEntryMode } from "../utils/yarnLines";
 
 interface FabricReturnFormProps {
   order: WorkOrderDetail;
@@ -22,14 +23,15 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
   const defaultWidth = product.standardWidthCm ? Number(product.standardWidthCm) : "";
   const defaultPrice = fv.basePrice ? Number(fv.basePrice) : Number(product.basePrice);
 
-  const [lookup, setLookup] = useState<CatalogLookup>({ colors: [], designs: [] });
-  const [warpColorId, setWarpColorId] = useState(
-    fv.warpColor ? String(fv.warpColor.colorId) : "",
-  );
-  const [weftColorId, setWeftColorId] = useState(
-    fv.weftColor ? String(fv.weftColor.colorId) : "",
-  );
-  const [designId, setDesignId] = useState(fv.design ? String(fv.design.designId) : "");
+  const [lookup, setLookup] = useState<FabricCatalogLookup>({
+    colors: [],
+    designs: [],
+    products: [],
+  });
+  const [fabricVariants, setFabricVariants] = useState<FabricVariant[]>([]);
+  const [entryMode, setEntryMode] = useState<LineEntryMode>("catalog");
+  const [line, setLine] = useState<FabricLineDraft>(createFabricLineDraft());
+
   const [quantity, setQuantity] = useState("");
   const [totalWeight, setTotalWeight] = useState("");
   const [lengthCm, setLengthCm] = useState(String(defaultLength));
@@ -40,32 +42,56 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    catalogApi.lookup().then((data) => {
+    Promise.all([catalogApi.lookup(), catalogApi.fabricVariants()]).then(([data, variants]) => {
       setLookup(data);
-      if (!fv.design?.designId) {
-        const zigZagId = findZigZagDesignId(data.designs);
-        if (zigZagId) setDesignId(String(zigZagId));
-      }
+      setFabricVariants(variants);
+      const draft = createFabricLineDraft(data, "catalog");
+      setLine({
+        ...draft,
+        productId: String(product.productId),
+        warpColorId: fv.warpColor ? String(fv.warpColor.colorId) : draft.warpColorId,
+        weftColorId: fv.weftColor ? String(fv.weftColor.colorId) : draft.weftColorId,
+        designId: fv.design ? String(fv.design.designId) : draft.designId,
+        unitPrice: String(defaultPrice),
+      });
     });
-  }, [fv.design?.designId]);
+  }, [product.productId, fv, defaultPrice]);
+
+  const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
     setError("");
     try {
-      const result = (await fabricReturnsApi.create({
-        zigId: order.zigId,
-        warpColorId: Number(warpColorId),
-        weftColorId: Number(weftColorId),
-        designId: designId ? Number(designId) : null,
-        quantityReturned: Number(quantity),
-        totalWeight: Number(totalWeight),
-        unitPrice: Number(unitPrice),
-        lengthCm: lengthCm ? Number(lengthCm) : undefined,
-        widthCm: widthCm ? Number(widthCm) : undefined,
-        remark: remark || undefined,
-      })) as { variantResolved?: { created: boolean; sku: string } };
+      const payload =
+        entryMode === "variant" && line.fabricVariantId
+          ? {
+              zigId: order.zigId,
+              fabricVariantId: Number(line.fabricVariantId),
+              quantityReturned: Number(quantity),
+              totalWeight: Number(totalWeight),
+              unitPrice: Number(unitPrice),
+              lengthCm: lengthCm ? Number(lengthCm) : undefined,
+              widthCm: widthCm ? Number(widthCm) : undefined,
+              remark: remark || undefined,
+            }
+          : {
+              zigId: order.zigId,
+              warpColorId: Number(line.warpColorId),
+              weftColorId: Number(line.weftColorId),
+              designId: line.designId ? Number(line.designId) : null,
+              quantityReturned: Number(quantity),
+              totalWeight: Number(totalWeight),
+              unitPrice: Number(unitPrice),
+              lengthCm: lengthCm ? Number(lengthCm) : undefined,
+              widthCm: widthCm ? Number(widthCm) : undefined,
+              remark: remark || undefined,
+            };
+
+      const result = (await fabricReturnsApi.create(payload as Parameters<typeof fabricReturnsApi.create>[0])) as {
+        variantResolved?: { created: boolean; sku: string };
+      };
 
       const msg = result.variantResolved?.created
         ? `Fabric recorded. New variant created: ${result.variantResolved.sku}`
@@ -88,39 +114,116 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
         {fv.design && ` · ${fv.design.name}`}
       </p>
 
-      <label>
-        ዲዛይን / Design
-        <select value={designId} onChange={(e) => setDesignId(e.target.value)}>
-          <option value="">None</option>
-          {lookup.designs.map((d) => (
-            <option key={d.designId} value={d.designId}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="form-row">
+      <div className="entry-mode-toggle">
         <label>
-          ውርፍ ቀለም / Warp color
-          <select value={warpColorId} onChange={(e) => setWarpColorId(e.target.value)} required>
-            {lookup.colors.map((c) => (
-              <option key={c.colorId} value={c.colorId}>
-                {c.name} ({c.colorCode})
-              </option>
-            ))}
-          </select>
+          <input
+            type="radio"
+            checked={entryMode === "catalog"}
+            onChange={() => setEntryMode("catalog")}
+          />
+          Describe fabric
         </label>
         <label>
-          ስፍ warp ቀለም / Weft color
-          <select value={weftColorId} onChange={(e) => setWeftColorId(e.target.value)} required>
-            {lookup.colors.map((c) => (
-              <option key={c.colorId} value={c.colorId}>
-                {c.name} ({c.colorCode})
-              </option>
-            ))}
-          </select>
+          <input
+            type="radio"
+            checked={entryMode === "variant"}
+            onChange={() => setEntryMode("variant")}
+          />
+          Pick existing variant
         </label>
       </div>
+
+      {entryMode === "variant" ? (
+        <label>
+          Fabric variant
+          <select
+            value={line.fabricVariantId}
+            onChange={(e) => {
+              const variant = fabricVariants.find(
+                (v) => String(v.fabricVariantId) === e.target.value,
+              );
+              if (variant) {
+                setLine(applyFabricVariantToLine(line, variant));
+                if (variant.basePrice) setUnitPrice(String(variant.basePrice));
+              } else {
+                setLine({ ...line, fabricVariantId: e.target.value });
+              }
+            }}
+          >
+            <option value="">Select...</option>
+            {fabricVariants.map((v) => (
+              <option key={v.fabricVariantId} value={v.fabricVariantId}>
+                {v.product.name} · {v.sku}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <>
+          <label>
+            Product
+            <select
+              value={line.productId}
+              onChange={(e) => {
+                const p = fabricProducts.find((x) => String(x.productId) === e.target.value);
+                setLine({ ...line, productId: e.target.value });
+                if (p) setUnitPrice(String(p.basePrice));
+              }}
+            >
+              {fabricProducts.map((p) => (
+                <option key={p.productId} value={p.productId}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Design
+            <select
+              value={line.designId}
+              onChange={(e) => setLine({ ...line, designId: e.target.value })}
+            >
+              <option value="">None</option>
+              {lookup.designs.map((d) => (
+                <option key={d.designId} value={d.designId}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="form-row">
+            <label>
+              Warp color
+              <select
+                value={line.warpColorId}
+                onChange={(e) => setLine({ ...line, warpColorId: e.target.value })}
+                required
+              >
+                {lookup.colors.map((c) => (
+                  <option key={c.colorId} value={c.colorId}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Weft color
+              <select
+                value={line.weftColorId}
+                onChange={(e) => setLine({ ...line, weftColorId: e.target.value })}
+                required
+              >
+                {lookup.colors.map((c) => (
+                  <option key={c.colorId} value={c.colorId}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </>
+      )}
+
       <p className="muted" style={{ fontSize: "0.85rem" }}>
         Missing a color or design?{" "}
         <Link to="/admin/catalog" target="_blank">
@@ -129,30 +232,30 @@ export function FabricReturnForm({ order, onSaved }: FabricReturnFormProps) {
       </p>
 
       <label>
-        ብዛት (ቁጥር) / Quantity
+        Quantity
         <input value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
       </label>
       <label>
-        ጠቅላላ ክብደት (ግራም) / Total weight
+        Total weight (g)
         <input value={totalWeight} onChange={(e) => setTotalWeight(e.target.value)} required />
       </label>
       <div className="form-row">
         <label>
-          ርዝመት (ሴ.ሜ) / Length
+          Length (cm)
           <input value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} />
         </label>
         <label>
-          ስፋት (ሴ.ሜ) / Width
+          Width (cm)
           <input value={widthCm} onChange={(e) => setWidthCm(e.target.value)} />
         </label>
       </div>
       <label>
-        ዋጋ / Unit price
+        Unit price
         <input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} required />
       </label>
       <label>
-        ማስታወሻ / Remark
-        <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Optional note" />
+        Remark
+        <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Optional" />
       </label>
       {error && <p className="error">{error}</p>}
       <button type="submit" className="btn-primary" disabled={saving}>

@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { buildSettlementPreview } from "./calculation.service.js";
 import { commitSettlement } from "./settlement.service.js";
+import { createWeaverPayoutTransaction } from "./transaction.service.js";
 
 export interface WeaverSettlementBundle {
   weaverId: number;
@@ -112,7 +113,11 @@ export async function discoverReturnedSettlementBundles() {
   return [...byWeaver.values()];
 }
 
-export async function batchCommitSettlements(recordedByUserId: number, paymentMethod?: string) {
+export async function batchCommitSettlements(
+  recordedByUserId: number,
+  paymentMethod?: string,
+  settlementPreviewId?: string,
+) {
   const bundles = await discoverReturnedSettlementBundles();
   const payments: Array<{
     paymentId: number;
@@ -131,7 +136,26 @@ export async function batchCommitSettlements(recordedByUserId: number, paymentMe
       yarnGivenIds: bundle.yarnGivenIds,
       saleIds: [],
       paymentMethod: paymentMethod ?? "Recorded",
-      notes: "Batch settlement — returned zigs",
+      notes: settlementPreviewId
+        ? `Batch settlement — preview ${settlementPreviewId}`
+        : "Batch settlement — returned zigs",
+      recordedByUserId,
+    });
+
+    if (settlementPreviewId) {
+      await prisma.payment.update({
+        where: { paymentId: result.paymentId },
+        data: { settlementPreviewId },
+      });
+    }
+
+    await createWeaverPayoutTransaction({
+      linkedPaymentId: result.paymentId,
+      weaverId: bundle.weaverId,
+      amount: result.amount,
+      notes: settlementPreviewId
+        ? `Settlement preview ${settlementPreviewId}`
+        : undefined,
       recordedByUserId,
     });
 

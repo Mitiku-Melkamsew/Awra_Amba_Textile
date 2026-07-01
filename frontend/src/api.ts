@@ -212,6 +212,142 @@ export const procurementApi = {
     }),
 };
 
+export type CommercialTxnType =
+  | "yarn_purchase"
+  | "fabric_purchase"
+  | "yarn_sale"
+  | "fabric_sale"
+  | "weaver_payout";
+
+export type CommercialTxnStatus =
+  | "pending"
+  | "in_progress"
+  | "awaiting_delivery"
+  | "awaiting_payment"
+  | "completed"
+  | "cancelled";
+
+export type PaymentTerms = "prepaid" | "on_delivery" | "installment";
+
+export interface CommercialTransaction {
+  transactionId: string;
+  type: CommercialTxnType;
+  status: CommercialTxnStatus;
+  paymentTerms: PaymentTerms;
+  supplierId: number | null;
+  weaverId: number | null;
+  merchantId: number | null;
+  totalAmount: string;
+  amountPaid: string;
+  deliveredAt: string | null;
+  notes: string | null;
+  linkedPaymentId: number | null;
+  createdAt: string;
+  supplier?: { name: string } | null;
+  weaver?: { firstName: string; lastName: string } | null;
+  merchant?: { companyName: string | null; contactPhone: string } | null;
+  lines: Array<{
+    lineId: number;
+    yarnVariantId: number | null;
+    fabricVariantId: number | null;
+    quantity: string;
+    unitPrice: string;
+    deliveredQuantity: string;
+    description: string | null;
+    yarnVariant?: {
+      sku: string;
+      yarnType?: { materialName: string };
+      color?: { name: string };
+      supplier?: { name: string };
+    } | null;
+    fabricVariant?: FabricVariant | null;
+  }>;
+  payments: Array<{
+    installmentId: number;
+    amount: string;
+    paymentDate: string;
+    paymentMethod: string | null;
+    notes: string | null;
+  }>;
+}
+
+export const transactionsApi = {
+  nextId: () => api<{ transactionId: string }>("/transactions/next-id"),
+  list: (params?: { type?: string; status?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.type) query.set("type", params.type);
+    if (params?.status) query.set("status", params.status);
+    const suffix = query.toString() ? `?${query}` : "";
+    return api<CommercialTransaction[]>(`/transactions${suffix}`);
+  },
+  get: (transactionId: string) =>
+    api<CommercialTransaction>(`/transactions/${transactionId}`),
+  create: (data: {
+    transactionId?: string;
+    type: CommercialTxnType;
+    paymentTerms: PaymentTerms;
+    supplierId?: number;
+    weaverId?: number;
+    merchantId?: number;
+    notes?: string;
+    lines: Array<{
+      yarnVariantId?: number;
+      fabricVariantId?: number;
+      yarnTypeId?: number;
+      colorId?: number;
+      supplierId?: number;
+      productId?: number;
+      warpColorId?: number;
+      weftColorId?: number;
+      designId?: number | null;
+      quantity: number;
+      unitPrice: number;
+      description?: string;
+    }>;
+  }) =>
+    api<CommercialTransaction>("/transactions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deliver: (transactionId: string) =>
+    api<CommercialTransaction>(`/transactions/${transactionId}/deliver`, {
+      method: "POST",
+    }),
+  addPayment: (
+    transactionId: string,
+    data: { amount: number; paymentMethod?: string; notes?: string },
+  ) =>
+    api<CommercialTransaction>(`/transactions/${transactionId}/payments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  cancel: (transactionId: string) =>
+    api<CommercialTransaction>(`/transactions/${transactionId}/cancel`, {
+      method: "PATCH",
+    }),
+};
+
+export const merchantsApi = {
+  list: () =>
+    api<
+      Array<{
+        merchantId: number;
+        companyName: string | null;
+        contactPhone: string;
+        contactEmail: string | null;
+      }>
+    >("/merchants"),
+  create: (data: {
+    companyName?: string;
+    contactPhone: string;
+    contactEmail?: string;
+  }) =>
+    api<{ merchantId: number; companyName: string | null; contactPhone: string }>(
+      "/merchants",
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+};
+
 export const workOrdersApi = {
   list: (params?: { status?: string; weaverId?: number }) => {
     const query = new URLSearchParams();
@@ -231,9 +367,10 @@ export const workOrdersApi = {
     designId?: number | null;
     unitPrice?: number;
     yarnLines?: Array<{
-      yarnTypeId: number;
-      colorId: number;
-      supplierId: number;
+      yarnVariantId?: number;
+      yarnTypeId?: number;
+      colorId?: number;
+      supplierId?: number;
       quantity: number;
       unitPrice: number;
     }>;
@@ -249,9 +386,10 @@ export const yarnGivenApi = {
   create: (data: {
     zigId: string;
     lines: Array<{
-      yarnTypeId: number;
-      colorId: number;
-      supplierId: number;
+      yarnVariantId?: number;
+      yarnTypeId?: number;
+      colorId?: number;
+      supplierId?: number;
       quantity: number;
       unitPrice: number;
     }>;
@@ -265,8 +403,9 @@ export const yarnGivenApi = {
 export const fabricReturnsApi = {
   create: (data: {
     zigId: string;
-    warpColorId: number;
-    weftColorId: number;
+    fabricVariantId?: number;
+    warpColorId?: number;
+    weftColorId?: number;
     designId?: number | null;
     quantityReturned: number;
     totalWeight: number;
@@ -406,6 +545,7 @@ export const calculationsApi = {
     }),
   batchPreview: () =>
     api<{
+      previewId: string;
       weavers: Array<{
         weaverId: number;
         weaverName: string;
@@ -418,9 +558,54 @@ export const calculationsApi = {
       weaverCount: number;
       grandTotal: number;
       amharicAmountInWords: string;
-    }>("/calculations/settlements/batch-preview"),
-  batchCommit: (paymentMethod?: string) =>
+    }>("/calculations/settlements/batch-preview", { method: "POST" }),
+  getSettlementPreview: (previewId: string) =>
     api<{
+      previewId: string;
+      status: string;
+      weaverCount: number;
+      grandTotal: number;
+      amharicAmountInWords: string;
+      generatedAt: string;
+      weavers: Array<{
+        weaverId: number;
+        weaverName: string;
+        netSettlement: number;
+        zigIds: string[];
+        zigDetails: Array<{
+          zigId: string;
+          returns: Array<{
+            returnId: number;
+            fabricType: string;
+            quantityReturned: number;
+            avgWeight: number;
+            unitPrice: number;
+            netCredit: number;
+          }>;
+          yarnQty: number;
+          yarnTotal: number;
+          netProfit: number;
+        }>;
+      }>;
+    }>(`/calculations/settlements/preview/${previewId}`),
+  async downloadPreviewCsv(previewId: string) {
+    const token = localStorage.getItem("token");
+    const response = await fetch(
+      `${API_BASE}/calculations/settlements/preview/${previewId}/export?format=csv`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    );
+    if (!response.ok) throw new Error("CSV download failed");
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `settlement-preview-${previewId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+  batchCommit: (previewId: string, paymentMethod?: string) =>
+    api<{
+      previewId: string;
       payments: Array<{
         paymentId: number;
         weaverId: number;
@@ -433,7 +618,7 @@ export const calculationsApi = {
       amharicAmountInWords: string;
     }>("/calculations/settlements/batch-commit", {
       method: "POST",
-      body: JSON.stringify({ paymentMethod }),
+      body: JSON.stringify({ previewId, paymentMethod }),
     }),
   commitSettlement: (body: {
     weaverId: number;

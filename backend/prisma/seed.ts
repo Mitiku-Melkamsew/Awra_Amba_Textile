@@ -159,12 +159,12 @@ async function main() {
   if (fabricVariant) {
     await prisma.workOrder.upsert({
       where: { zigId: "z-demo-001" },
-      update: { weaverId: demoWeaver.weaverId, status: "in_progress" },
+      update: { weaverId: demoWeaver.weaverId, status: "assigned" },
       create: {
         zigId: "z-demo-001",
         weaverId: demoWeaver.weaverId,
         fabricVariantId: fabricVariant.fabricVariantId,
-        status: "in_progress",
+        status: "assigned",
         issuedByUserId: admin.userId,
       },
     });

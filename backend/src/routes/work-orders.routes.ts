@@ -3,7 +3,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
-import { resolveFabricVariant, resolveYarnVariant } from "../services/variant.service.js";
+import { resolveTransactionLine } from "../services/transaction-line-resolver.service.js";
+import { resolveFabricVariant } from "../services/variant.service.js";
 
 export const workOrdersRouter = Router();
 
@@ -17,9 +18,10 @@ const fabricInclude = {
 };
 
 const yarnLineSchema = z.object({
-  yarnTypeId: z.number().int().positive(),
-  colorId: z.number().int().positive(),
-  supplierId: z.number().int().positive(),
+  yarnVariantId: z.number().int().positive().optional(),
+  yarnTypeId: z.number().int().positive().optional(),
+  colorId: z.number().int().positive().optional(),
+  supplierId: z.number().int().positive().optional(),
   quantity: z.number().positive(),
   unitPrice: z.number().positive(),
 });
@@ -166,20 +168,12 @@ workOrdersRouter.post("/", requireAdmin, async (req, res, next) => {
       const yarnResolved: Array<{ created: boolean; sku: string }> = [];
 
       for (const line of body.yarnLines) {
-        const resolved = await resolveYarnVariant(
-          {
-            yarnTypeId: line.yarnTypeId,
-            colorId: line.colorId,
-            supplierId: line.supplierId,
-            basePrice: line.unitPrice,
-          },
-          tx,
-        );
+        const resolved = await resolveTransactionLine("yarn", line, tx);
 
         const row = await tx.yarnGiven.create({
           data: {
             zigId,
-            yarnVariantId: resolved.variantId,
+            yarnVariantId: resolved.yarnVariantId!,
             quantity: line.quantity,
             unitPrice: line.unitPrice,
             recordedByUserId: req.user!.userId,
@@ -190,7 +184,10 @@ workOrdersRouter.post("/", requireAdmin, async (req, res, next) => {
         });
 
         yarnGiven.push(row);
-        yarnResolved.push({ created: resolved.created, sku: resolved.sku });
+        yarnResolved.push({
+          created: resolved.variantCreated,
+          sku: resolved.sku ?? "",
+        });
       }
 
       return { workOrder, fabricResolved, yarnResolved, yarnGiven };

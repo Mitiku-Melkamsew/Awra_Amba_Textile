@@ -2,16 +2,17 @@ import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
-import { resolveYarnVariant } from "../services/variant.service.js";
+import { resolveTransactionLine } from "../services/transaction-line-resolver.service.js";
 
 export const yarnGivenRouter = Router();
 
 yarnGivenRouter.use(authenticate, requireAdmin);
 
 const yarnLineSchema = z.object({
-  yarnTypeId: z.number().int().positive(),
-  colorId: z.number().int().positive(),
-  supplierId: z.number().int().positive(),
+  yarnVariantId: z.number().int().positive().optional(),
+  yarnTypeId: z.number().int().positive().optional(),
+  colorId: z.number().int().positive().optional(),
+  supplierId: z.number().int().positive().optional(),
   quantity: z.number().positive(),
   unitPrice: z.number().positive(),
 });
@@ -53,20 +54,12 @@ yarnGivenRouter.post("/", async (req, res, next) => {
       const variantResolved = [];
 
       for (const line of body.lines) {
-        const resolved = await resolveYarnVariant(
-          {
-            yarnTypeId: line.yarnTypeId,
-            colorId: line.colorId,
-            supplierId: line.supplierId,
-            basePrice: line.unitPrice,
-          },
-          tx,
-        );
+        const resolved = await resolveTransactionLine("yarn", line, tx);
 
         const row = await tx.yarnGiven.create({
           data: {
             zigId: body.zigId,
-            yarnVariantId: resolved.variantId,
+            yarnVariantId: resolved.yarnVariantId!,
             quantity: line.quantity,
             unitPrice: line.unitPrice,
             recordedByUserId: req.user!.userId,
@@ -78,7 +71,10 @@ yarnGivenRouter.post("/", async (req, res, next) => {
         });
 
         rows.push(row);
-        variantResolved.push({ created: resolved.created, sku: resolved.sku });
+        variantResolved.push({
+          created: resolved.variantCreated,
+          sku: resolved.sku ?? "",
+        });
       }
 
       return { rows, variantResolved };

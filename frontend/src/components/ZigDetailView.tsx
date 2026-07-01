@@ -9,6 +9,7 @@ import {
   parseYarnLines,
   type YarnCatalogLookup,
   type YarnLineDraft,
+  type YarnVariantOption,
 } from "../utils/yarnLines";
 import { FabricReturnForm } from "./FabricReturnForm";
 import { YarnLinesEditor } from "./YarnLinesEditor";
@@ -35,6 +36,7 @@ export function ZigDetailView({
     suppliers: [],
     yarnTypes: [],
   });
+  const [yarnVariants, setYarnVariants] = useState<YarnVariantOption[]>([]);
   const [yarnLines, setYarnLines] = useState<YarnLineDraft[]>([createYarnLineDraft()]);
   const [yarnOpen, setYarnOpen] = useState(false);
   const [error, setError] = useState("");
@@ -46,16 +48,20 @@ export function ZigDetailView({
       order.status === "in_progress" ||
       order.status === "returned");
   const canRecordFabric =
-    !readOnly && (order.status === "in_progress" || order.status === "returned");
+    !readOnly &&
+    (order.status === "assigned" ||
+      order.status === "in_progress" ||
+      order.status === "returned");
 
   useEffect(() => {
     if (!canEdit) return;
-    catalogApi.lookup().then((data) => {
+    Promise.all([catalogApi.lookup(), catalogApi.yarnVariants()]).then(([data, variants]) => {
       setYarnLookup({
         colors: data.colors,
         suppliers: data.suppliers,
         yarnTypes: data.yarnTypes,
       });
+      setYarnVariants(variants as YarnVariantOption[]);
       setYarnLines([createYarnLineDraft(data)]);
     });
   }, [canEdit]);
@@ -99,17 +105,6 @@ export function ZigDetailView({
     }
   }
 
-  async function markInProgress() {
-    setError("");
-    try {
-      await workOrdersApi.updateStatus(order.zigId, "in_progress");
-      setMessage("Marked as in progress.");
-      onRefresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
-    }
-  }
-
   return (
     <section>
       <p>
@@ -128,12 +123,6 @@ export function ZigDetailView({
         </div>
         <span className={`badge ${order.status}`}>{order.status}</span>
       </header>
-
-      {!readOnly && order.status === "assigned" && (
-        <button type="button" className="btn-secondary" onClick={markInProgress}>
-          Start weaving (In Progress)
-        </button>
-      )}
 
       {!readOnly && order.status === "in_progress" && (
         <button type="button" className="btn-secondary" onClick={markReturned}>
@@ -166,6 +155,7 @@ export function ZigDetailView({
                 lines={yarnLines}
                 onChange={setYarnLines}
                 lookup={yarnLookup}
+                yarnVariants={yarnVariants}
               />
               <button type="submit" className="btn-primary">
                 Save Yarn Deliveries

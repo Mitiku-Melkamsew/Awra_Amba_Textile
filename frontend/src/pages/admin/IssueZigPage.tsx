@@ -26,6 +26,9 @@ export function IssueZigPage() {
     suppliers: [],
     yarnTypes: [],
   });
+  const [yarnVariants, setYarnVariants] = useState<
+    import("../../utils/yarnLines").YarnVariantOption[]
+  >([]);
   const [yarnLines, setYarnLines] = useState<YarnLineDraft[]>([createYarnLineDraft(undefined, "0")]);
 
   const [zigId, setZigId] = useState("");
@@ -39,8 +42,13 @@ export function IssueZigPage() {
 
   useEffect(() => {
     if (!weaverId) return;
-    Promise.all([weaversApi.get(Number(weaverId)), catalogApi.lookup(), workOrdersApi.nextId()])
-      .then(([w, lookup, next]) => {
+    Promise.all([
+      weaversApi.get(Number(weaverId)),
+      catalogApi.lookup(),
+      workOrdersApi.nextId(),
+      catalogApi.yarnVariants(),
+    ])
+      .then(([w, lookup, next, yv]) => {
         setWeaver(w);
         setZigId(next.zigId);
         const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
@@ -52,6 +60,7 @@ export function IssueZigPage() {
           suppliers: lookup.suppliers,
           yarnTypes: lookup.yarnTypes,
         });
+        setYarnVariants(yv as typeof yarnVariants);
         setYarnLines([createYarnLineDraft(lookup, "0")]);
 
         if (fabricProducts[0]) {
@@ -177,6 +186,7 @@ export function IssueZigPage() {
           lines={yarnLines}
           onChange={setYarnLines}
           lookup={yarnLookup}
+          yarnVariants={yarnVariants}
           quantityHint="0 = skip this line"
         />
 

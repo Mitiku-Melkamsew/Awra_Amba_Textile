@@ -73,8 +73,11 @@ CREATE TRIGGER trg_yarn_given_stock
   AFTER INSERT ON yarn_given
   FOR EACH ROW EXECUTE FUNCTION trg_yarn_given_stock();
 
--- work order status: assigned -> in_progress
-CREATE OR REPLACE FUNCTION trg_yarn_given_status()
+-- work order status: assigned -> in_progress on first fabric return (not yarn given)
+DROP TRIGGER IF EXISTS trg_yarn_given_insert ON yarn_given;
+DROP FUNCTION IF EXISTS trg_yarn_given_status();
+
+CREATE OR REPLACE FUNCTION trg_fabric_return_status()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   UPDATE work_orders
@@ -84,10 +87,10 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_yarn_given_insert ON yarn_given;
-CREATE TRIGGER trg_yarn_given_insert
-  AFTER INSERT ON yarn_given
-  FOR EACH ROW EXECUTE FUNCTION trg_yarn_given_status();
+DROP TRIGGER IF EXISTS trg_fabric_return_status ON fabric_returns;
+CREATE TRIGGER trg_fabric_return_status
+  AFTER INSERT ON fabric_returns
+  FOR EACH ROW EXECUTE FUNCTION trg_fabric_return_status();
 
 -- stock snapshot: fabric returns
 CREATE OR REPLACE FUNCTION trg_fabric_return_stock()
@@ -126,6 +129,58 @@ DROP TRIGGER IF EXISTS trg_sale_stock ON sales;
 CREATE TRIGGER trg_sale_stock
   AFTER INSERT ON sales
   FOR EACH ROW EXECUTE FUNCTION trg_sale_stock();
+
+-- commercial transaction lines: stock on delivery quantity increase
+CREATE OR REPLACE FUNCTION trg_commercial_line_delivery_stock()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  txn_type TEXT;
+  delta DECIMAL(10,2);
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    delta := NEW.delivered_quantity;
+  ELSE
+    delta := NEW.delivered_quantity - OLD.delivered_quantity;
+  END IF;
+
+  IF delta = 0 THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT type::text INTO txn_type
+    FROM commercial_transactions
+    WHERE transaction_id = NEW.transaction_id;
+
+  IF txn_type IN ('yarn_purchase', 'fabric_purchase') THEN
+    IF NEW.yarn_variant_id IS NOT NULL THEN
+      UPDATE yarn_variants
+        SET stock_snapshot = stock_snapshot + delta
+        WHERE yarn_variant_id = NEW.yarn_variant_id;
+    ELSIF NEW.fabric_variant_id IS NOT NULL THEN
+      UPDATE fabric_variants
+        SET stock_snapshot = stock_snapshot + delta
+        WHERE fabric_variant_id = NEW.fabric_variant_id;
+    END IF;
+  ELSIF txn_type IN ('yarn_sale', 'fabric_sale') THEN
+    IF NEW.yarn_variant_id IS NOT NULL THEN
+      UPDATE yarn_variants
+        SET stock_snapshot = stock_snapshot - delta
+        WHERE yarn_variant_id = NEW.yarn_variant_id;
+    ELSIF NEW.fabric_variant_id IS NOT NULL THEN
+      UPDATE fabric_variants
+        SET stock_snapshot = stock_snapshot - delta
+        WHERE fabric_variant_id = NEW.fabric_variant_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_commercial_line_delivery ON commercial_transaction_lines;
+CREATE TRIGGER trg_commercial_line_delivery
+  AFTER INSERT OR UPDATE OF delivered_quantity ON commercial_transaction_lines
+  FOR EACH ROW EXECUTE FUNCTION trg_commercial_line_delivery_stock();
 
 -- work order reconcile on settlement
 CREATE OR REPLACE FUNCTION trg_fabric_return_reconcile()

@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 const links = [
   { to: "/admin/weavers", label: "ዛሬ / Weavers" },
   { to: "/admin/stock", label: "ስቶክ / Stock" },
-  { to: "/admin/procurement", label: "ግዛት / Procurement" },
+  { to: "/admin/transactions", label: "ግብይት / Transactions" },
   { to: "/admin/catalog", label: "ካታሎግ / Catalog" },
   { to: "/admin/settlement", label: "ሂሳብ / Settlement" },
   { to: "/admin/reports", label: "ሪፖርት / Reports" },

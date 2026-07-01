@@ -4,6 +4,7 @@ import { calculationsApi, reportsApi } from "../api";
 import { formatDateDDMMYY } from "../utils/formatDate";
 
 interface BatchPreview {
+  previewId: string;
   weavers: Array<{
     weaverId: number;
     weaverName: string;
@@ -45,6 +46,9 @@ export function SettlementPage() {
     setMessage("");
     try {
       setPreview(await calculationsApi.batchPreview());
+      setMessage(
+        "Preview saved. Download CSV or open print view to confirm with weavers before recording.",
+      );
     } catch (err) {
       setPreview(null);
       setError(err instanceof Error ? err.message : "Preview failed");
@@ -54,15 +58,21 @@ export function SettlementPage() {
   }
 
   async function handleCommit() {
-    if (!preview || preview.weaverCount === 0) return;
-    if (!confirm(`Record settlements for ${preview.weaverCount} weavers?`)) return;
+    if (!preview?.previewId || preview.weaverCount === 0) return;
+    if (
+      !confirm(
+        `Record settlements for ${preview.weaverCount} weavers using preview ${preview.previewId}?`,
+      )
+    ) {
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const result = await calculationsApi.batchCommit("Recorded");
+      const result = await calculationsApi.batchCommit(preview.previewId, "Recorded");
       setPayments(result.payments);
       setMessage(
-        `Recorded ${result.weaverCount} payments. Grand total: ${result.grandTotal} ETB (${result.amharicAmountInWords})`,
+        `Recorded ${result.weaverCount} payments from ${preview.previewId}. Grand total: ${result.grandTotal} ETB`,
       );
       setPreview(null);
     } catch (err) {
@@ -79,32 +89,60 @@ export function SettlementPage() {
           <p className="eyebrow">ሂሳብ / Settlement</p>
           <h2>Settle All Returned Zigs</h2>
           <p className="muted">
-            Loops all returned work orders, calculates deductions, records one payment per weaver.
+            Step 1: Generate preview and share with weavers. Step 2: After confirmation, record
+            settlements (linked to preview and transactions).
           </p>
         </div>
       </header>
 
       <div className="card form">
+        <ol className="muted" style={{ marginBottom: "1rem", paddingLeft: "1.25rem" }}>
+          <li>Generate preview — saves reference ID</li>
+          <li>Download CSV or print PDF for weaver review</li>
+          <li>Record settlements only after weavers confirm</li>
+        </ol>
         <div className="button-row">
           <button type="button" className="btn-primary" onClick={handlePreview} disabled={loading}>
-            {loading ? "Loading..." : "Preview All Returned"}
+            {loading ? "Loading..." : "1. Generate Preview"}
           </button>
-          <button
-            type="button"
-            onClick={handleCommit}
-            disabled={!preview || preview.weaverCount === 0 || loading}
-          >
-            Record Settlements
-          </button>
+          {preview && (
+            <>
+              <button
+                type="button"
+                onClick={() => calculationsApi.downloadPreviewCsv(preview.previewId)}
+              >
+                Download CSV
+              </button>
+              <Link
+                to={`/admin/settlement/preview/${preview.previewId}`}
+                className="btn-secondary"
+                target="_blank"
+              >
+                Open Print / PDF
+              </Link>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleCommit}
+                disabled={loading}
+              >
+                2. Confirm & Record Settlements
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {preview && (
         <div className="card" style={{ marginTop: "1rem" }}>
           <h3>
-            Preview — {preview.weaverCount} weavers · {preview.grandTotal} ETB total
+            Preview {preview.previewId} — {preview.weaverCount} weavers · {preview.grandTotal}{" "}
+            ETB
           </h3>
           <p className="muted">{preview.amharicAmountInWords}</p>
+          <p className="muted">
+            Reference this ID when recording: <strong>{preview.previewId}</strong>
+          </p>
           {preview.weavers.map((weaver) => (
             <div key={weaver.weaverId} className="settlement-weaver-block">
               <h4>

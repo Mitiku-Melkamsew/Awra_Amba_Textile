@@ -8,9 +8,10 @@ import {
   calculateDeduction,
 } from "../services/calculation.service.js";
 import {
-  batchCommitSettlements,
-  discoverReturnedSettlementBundles,
-} from "../services/batch-settlement.service.js";
+  commitSettlementPreview,
+  createSettlementPreview,
+  snapshotToCsv,
+} from "../services/settlement-preview.service.js";
 import { commitSettlement } from "../services/settlement.service.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
 
@@ -122,28 +123,37 @@ calculationRouter.post("/bonus", async (req, res, next) => {
   }
 });
 
-calculationRouter.get(
+calculationRouter.post(
   "/settlements/batch-preview",
   authenticate,
   requireAdmin,
-  async (_req, res, next) => {
+  async (req, res, next) => {
     try {
-      const bundles = await discoverReturnedSettlementBundles();
-      const grandTotal = bundles.reduce((sum, b) => sum + b.preview.netSettlement, 0);
+      const result = await createSettlementPreview(req.user!.userId);
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+calculationRouter.get(
+  "/settlements/preview/:previewId",
+  authenticate,
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const previewId = String(req.params.previewId);
+      const row = await prisma.settlementPreview.findUnique({ where: { previewId } });
+      if (!row) {
+        res.status(404).json({ error: "Preview not found" });
+        return;
+      }
       res.json({
-        weavers: bundles.map((b) => ({
-          weaverId: b.weaverId,
-          weaverName: b.weaverName,
-          zigIds: b.zigIds,
-          returnCount: b.returnIds.length,
-          yarnCount: b.yarnGivenIds.length,
-          netSettlement: b.preview.netSettlement,
-          lineItems: b.preview.lineItems,
-          yarnDebits: b.preview.yarnDebits,
-        })),
-        weaverCount: bundles.length,
-        grandTotal,
-        amharicAmountInWords: numberToAmharicWords(Math.round(grandTotal)),
+        previewId: row.previewId,
+        status: row.status,
+        committedAt: row.committedAt,
+        ...(row.snapshot as object),
       });
     } catch (error) {
       next(error);
@@ -151,14 +161,54 @@ calculationRouter.get(
   },
 );
 
+calculationRouter.get(
+  "/settlements/preview/:previewId/export",
+  authenticate,
+  requireAdmin,
+  async (req, res, next) => {
+    try {
+      const previewId = String(req.params.previewId);
+      const format = (req.query.format as string | undefined) ?? "csv";
+      const row = await prisma.settlementPreview.findUnique({ where: { previewId } });
+      if (!row) {
+        res.status(404).json({ error: "Preview not found" });
+        return;
+      }
+      const snapshot = row.snapshot as unknown as Parameters<typeof snapshotToCsv>[0];
+      if (format === "csv") {
+        const csv = snapshotToCsv(snapshot);
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="settlement-preview-${previewId}.csv"`,
+        );
+        res.send(csv);
+        return;
+      }
+      res.status(400).json({ error: "Unsupported format. Use csv or open print view." });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+const batchCommitSchema = z.object({
+  previewId: z.string().regex(/^prev-[\w-]+$/),
+  paymentMethod: z.string().max(30).optional(),
+});
+
 calculationRouter.post(
   "/settlements/batch-commit",
   authenticate,
   requireAdmin,
   async (req, res, next) => {
     try {
-      const paymentMethod = (req.body?.paymentMethod as string | undefined) ?? "Recorded";
-      const result = await batchCommitSettlements(req.user!.userId, paymentMethod);
+      const body = batchCommitSchema.parse(req.body);
+      const result = await commitSettlementPreview(
+        body.previewId,
+        req.user!.userId,
+        body.paymentMethod ?? "Recorded",
+      );
       res.status(201).json({
         ...result,
         amharicAmountInWords: numberToAmharicWords(Math.round(result.grandTotal)),
