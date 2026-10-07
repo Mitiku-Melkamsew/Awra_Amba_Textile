@@ -115,18 +115,15 @@ export function ZigDetailView({
       return;
     }
     try {
-      const result = await yarnGivenApi.create({
-        zigId: order.zigId,
-        lines,
-      });
-
+      const result = await yarnGivenApi.create({ zigId: order.zigId, lines });
       const created = result.variantResolved.filter((v) => v.created).length;
-      const msg =
+      setMessage(
         created > 0
           ? `Recorded ${lines.length} yarn delivery(s). ${created} new variant(s) created.`
-          : `Recorded ${lines.length} yarn delivery(s).`;
-      setMessage(msg);
+          : `Recorded ${lines.length} yarn delivery(s).`,
+      );
       setYarnLines([createYarnLineDraft(yarnLookup)]);
+      setYarnOpen(false);
       onRefresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to record yarn");
@@ -145,199 +142,236 @@ export function ZigDetailView({
   }
 
   return (
-    <section>
-      <p>
-        <Link to={backLink}>← Back</Link>
-      </p>
-      <header className="zig-detail-header">
+    <div className="page" style={{ gap: "0.875rem" }}>
+      {/* Back link */}
+      <Link to={backLink} className="back-link">
+        ← Back
+      </Link>
+
+      {/* Zig header */}
+      <div className="zig-detail-header">
         <div>
-          <h2>{order.zigId}</h2>
-          <p className="muted">
-            {order.weaver.firstName} {order.weaver.lastName} · {order.fabricVariant.product.name}
+          <h2 className="zig-detail-id">{order.zigId}</h2>
+          <p className="zig-detail-info">
+            {order.weaver.firstName} {order.weaver.lastName}
+            &nbsp;·&nbsp;{order.fabricVariant.product.name}
             {order.fabricVariant.warpColor && ` · warp: ${order.fabricVariant.warpColor.name}`}
             {order.fabricVariant.weftColor && ` · weft: ${order.fabricVariant.weftColor.name}`}
             {order.fabricVariant.design && ` · ${order.fabricVariant.design.name}`}
           </p>
-          <p className="muted">Issued: {formatDateDDMMYY(order.dateIssued)}</p>
+          <p className="zig-detail-info" style={{ marginTop: 2 }}>
+            Issued: {formatDateDDMMYY(order.dateIssued)}
+          </p>
         </div>
-        <span className={`badge ${order.status}`}>{order.status}</span>
-      </header>
-
-      {!readOnly && order.status === "in_progress" && (
-        <button type="button" className="btn-secondary" onClick={markReturned}>
-          All fabric returned
-        </button>
-      )}
-
-      {canRecordFabric && editingFabricReturnId == null && (
-        <FabricReturnForm
-          order={order}
-          onSaved={(msg) => {
-            setMessage(msg ?? "Fabric return recorded.");
-            onRefresh();
-          }}
-        />
-      )}
-
-      {canRecordFabric &&
-        editingFabricReturnId != null &&
-        (() => {
-          const editReturn = order.fabricReturns.find((r) => r.returnId === editingFabricReturnId);
-          if (!editReturn) return null;
-          return (
-            <FabricReturnForm
-              order={order}
-              editReturn={editReturn}
-              onCancel={() => setEditingFabricReturnId(null)}
-              onSaved={(msg) => {
-                setMessage(msg ?? "Fabric return updated.");
-                setEditingFabricReturnId(null);
-                onRefresh();
-              }}
-            />
-          );
-        })()}
-
-      {canEdit && editingYarnId != null && (
-        <form className="card form" style={{ marginTop: "1rem" }} onSubmit={handleYarnEditSubmit}>
-          <h3>ጥጥ ማስተካከል / Edit Yarn Delivery</h3>
-          <YarnLinesEditor
-            lines={editingYarnLines}
-            onChange={setEditingYarnLines}
-            lookup={yarnLookup}
-            yarnVariants={yarnVariants}
-            singleLine
-          />
-          <div className="form-actions">
-            <button type="button" className="btn-secondary" onClick={cancelEditYarn}>
-              Cancel
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
+          <span className={`badge ${order.status}`}>{order.status.replace("_", " ")}</span>
+          {!readOnly && order.status === "in_progress" && (
+            <button type="button" className="btn-ghost" onClick={markReturned} style={{ fontSize: 12.5 }}>
+              ✓ Mark All Returned
             </button>
-            <button type="submit" className="btn-primary">
-              Update Yarn Delivery
-            </button>
-          </div>
-        </form>
-      )}
-
-      {canEdit && editingYarnId == null && (
-        <div className="card" style={{ marginTop: "1rem" }}>
-          <button
-            type="button"
-            className="collapse-toggle"
-            onClick={() => setYarnOpen(!yarnOpen)}
-          >
-            {yarnOpen ? "▼" : "▶"} ጥጥ መስጠት / Record Yarn
-          </button>
-          {yarnOpen && (
-            <form className="form" style={{ marginTop: "1rem" }} onSubmit={handleYarnSubmit}>
-              <YarnLinesEditor
-                lines={yarnLines}
-                onChange={setYarnLines}
-                lookup={yarnLookup}
-                yarnVariants={yarnVariants}
-              />
-              <button type="submit" className="btn-primary">
-                Save Yarn Deliveries
-              </button>
-            </form>
-          )}
-        </div>
-      )}
-
-      <div className="grid" style={{ marginTop: "1rem" }}>
-        <div className="card">
-          <h3>Yarn Deliveries ({order.yarnGiven.length})</h3>
-          {order.yarnGiven.length === 0 ? (
-            <p className="muted">None yet.</p>
-          ) : (
-            <ul className="record-list">
-              {order.yarnGiven.map((row) => (
-                <li key={row.yarnGivenId} className="record-list-item">
-                  <div className="record-list-main">
-                    <strong>
-                      {variantLabel([
-                        row.yarnVariant.yarnType?.materialName ?? row.yarnVariant.sku,
-                        row.yarnVariant.supplier?.name,
-                        row.yarnVariant.color?.name,
-                      ])}
-                    </strong>
-                    <span>
-                      {row.quantity} @ {row.unitPrice} · {formatDateDDMMYY(row.dateGiven)}
-                      {row.paymentId != null && (
-                        <span className="muted"> · settled</span>
-                      )}
-                    </span>
-                  </div>
-                  {canEdit && row.paymentId == null && editingYarnId !== row.yarnGivenId && (
-                    <button
-                      type="button"
-                      className="btn-link"
-                      onClick={() => startEditYarn(row.yarnGivenId)}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="card">
-          <h3>Fabric Returns ({order.fabricReturns.length})</h3>
-          {order.fabricReturns.length === 0 ? (
-            <p className="muted">None yet.</p>
-          ) : (
-            <ul className="record-list">
-              {order.fabricReturns.map((row) => (
-                <li key={row.returnId} className="record-list-item">
-                  <div className="record-list-main">
-                    <strong>
-                      {variantLabel([
-                        row.fabricVariant.product.name,
-                        row.fabricVariant.warpColor
-                          ? `warp:${row.fabricVariant.warpColor.name}`
-                          : "",
-                        row.fabricVariant.weftColor
-                          ? `weft:${row.fabricVariant.weftColor.name}`
-                          : "",
-                        row.fabricVariant.design?.name,
-                      ])}
-                    </strong>
-                    <span>
-                      {row.quantityReturned} pcs · {row.totalWeight}g
-                      {row.widthCm && row.lengthCm ? ` · ${row.widthCm}×${row.lengthCm}cm` : ""} @{" "}
-                      {row.unitPrice} · {formatDateDDMMYY(row.dateReturned)}
-                      {row.paymentId != null && (
-                        <span className="muted"> · settled</span>
-                      )}
-                    </span>
-                    {row.remark && <em className="muted">{row.remark}</em>}
-                  </div>
-                  {canRecordFabric &&
-                    row.paymentId == null &&
-                    editingFabricReturnId !== row.returnId && (
-                      <button
-                        type="button"
-                        className="btn-link"
-                        onClick={() => {
-                          setEditingYarnId(null);
-                          setEditingFabricReturnId(row.returnId);
-                          setError("");
-                        }}
-                      >
-                        Edit
-                      </button>
-                    )}
-                </li>
-              ))}
-            </ul>
           )}
         </div>
       </div>
 
-      {message && <p className="success">{message}</p>}
-      {error && <p className="error">{error}</p>}
-    </section>
+      {/* Notifications */}
+      {message && <div className="success-msg"><span>✅</span> {message}</div>}
+      {error && <div className="error-msg"><span>⚠️</span> {error}</div>}
+
+      {/* Two-column detail layout */}
+      <div className="zig-detail-layout">
+        {/* ── Left: forms / actions ── */}
+        <div className="zig-detail-left">
+          {/* Fabric return form */}
+          {canRecordFabric && editingFabricReturnId == null && (
+            <div className="card card-sm">
+              <p className="section-title">🪢 Record Fabric Return</p>
+              <FabricReturnForm
+                order={order}
+                onSaved={(msg) => {
+                  setMessage(msg ?? "Fabric return recorded.");
+                  onRefresh();
+                }}
+              />
+            </div>
+          )}
+
+          {/* Edit fabric return */}
+          {canRecordFabric && editingFabricReturnId != null && (() => {
+            const editReturn = order.fabricReturns.find((r) => r.returnId === editingFabricReturnId);
+            if (!editReturn) return null;
+            return (
+              <div className="card card-sm">
+                <p className="section-title">✏️ Edit Fabric Return #{editingFabricReturnId}</p>
+                <FabricReturnForm
+                  order={order}
+                  editReturn={editReturn}
+                  onCancel={() => setEditingFabricReturnId(null)}
+                  onSaved={(msg) => {
+                    setMessage(msg ?? "Fabric return updated.");
+                    setEditingFabricReturnId(null);
+                    onRefresh();
+                  }}
+                />
+              </div>
+            );
+          })()}
+
+          {/* Edit yarn */}
+          {canEdit && editingYarnId != null && (
+            <div className="card card-sm">
+              <p className="section-title">✏️ Edit Yarn Delivery</p>
+              <form className="form" onSubmit={handleYarnEditSubmit}>
+                <YarnLinesEditor
+                  lines={editingYarnLines}
+                  onChange={setEditingYarnLines}
+                  lookup={yarnLookup}
+                  yarnVariants={yarnVariants}
+                  singleLine
+                />
+                <div className="form-actions">
+                  <button type="submit" className="btn-primary">Update</button>
+                  <button type="button" className="btn-ghost" onClick={cancelEditYarn}>Cancel</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Record new yarn (collapsible) */}
+          {canEdit && editingYarnId == null && (
+            <div className="card card-sm">
+              <button
+                type="button"
+                className="collapse-toggle"
+                onClick={() => setYarnOpen(!yarnOpen)}
+              >
+                <span style={{ fontSize: 12 }}>{yarnOpen ? "▼" : "▶"}</span>
+                🧶 ጥጥ መስጠት / Record Yarn
+              </button>
+              {yarnOpen && (
+                <form className="form" style={{ marginTop: "0.875rem" }} onSubmit={handleYarnSubmit}>
+                  <YarnLinesEditor
+                    lines={yarnLines}
+                    onChange={setYarnLines}
+                    lookup={yarnLookup}
+                    yarnVariants={yarnVariants}
+                  />
+                  <div className="form-actions">
+                    <button type="submit" className="btn-primary">Save Yarn Deliveries</button>
+                    <button type="button" className="btn-ghost" onClick={() => setYarnOpen(false)}>Cancel</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Right: history records ── */}
+        <div className="zig-detail-right">
+          {/* Yarn deliveries */}
+          <div className="card card-sm">
+            <p className="section-title">
+              🧶 Yarn Deliveries
+              <span className="count">{order.yarnGiven.length}</span>
+            </p>
+            {order.yarnGiven.length === 0 ? (
+              <div className="empty-state" style={{ padding: "1rem" }}>
+                <span className="empty-icon" style={{ fontSize: "1.25rem" }}>📭</span>
+                None yet.
+              </div>
+            ) : (
+              <ul className="record-list">
+                {order.yarnGiven.map((row) => (
+                  <li key={row.yarnGivenId} className="record-item">
+                    <div className="record-main">
+                      <div className="record-title">
+                        {variantLabel([
+                          row.yarnVariant.yarnType?.materialName ?? row.yarnVariant.sku,
+                          row.yarnVariant.supplier?.name,
+                          row.yarnVariant.color?.name,
+                        ])}
+                      </div>
+                      <div className="record-meta">
+                        {row.quantity} kg @ {row.unitPrice} ETB
+                        &nbsp;·&nbsp;{formatDateDDMMYY(row.dateGiven)}
+                        {row.paymentId != null && (
+                          <span style={{ color: "var(--green)", marginLeft: 4 }}>· settled</span>
+                        )}
+                      </div>
+                    </div>
+                    {canEdit && row.paymentId == null && editingYarnId !== row.yarnGivenId && (
+                      <button
+                        type="button"
+                        className="btn-link"
+                        onClick={() => startEditYarn(row.yarnGivenId)}
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Fabric returns */}
+          <div className="card card-sm">
+            <p className="section-title">
+              🪢 Fabric Returns
+              <span className="count">{order.fabricReturns.length}</span>
+            </p>
+            {order.fabricReturns.length === 0 ? (
+              <div className="empty-state" style={{ padding: "1rem" }}>
+                <span className="empty-icon" style={{ fontSize: "1.25rem" }}>📭</span>
+                None yet.
+              </div>
+            ) : (
+              <ul className="record-list">
+                {order.fabricReturns.map((row) => (
+                  <li key={row.returnId} className="record-item">
+                    <div className="record-main">
+                      <div className="record-title">
+                        {variantLabel([
+                          row.fabricVariant.product.name,
+                          row.fabricVariant.warpColor ? `warp:${row.fabricVariant.warpColor.name}` : "",
+                          row.fabricVariant.weftColor ? `weft:${row.fabricVariant.weftColor.name}` : "",
+                          row.fabricVariant.design?.name,
+                        ])}
+                      </div>
+                      <div className="record-meta">
+                        {row.quantityReturned} pcs · {row.totalWeight}g
+                        {row.widthCm && row.lengthCm ? ` · ${row.widthCm}×${row.lengthCm}cm` : ""}
+                        &nbsp;@&nbsp;{row.unitPrice} ETB
+                        &nbsp;·&nbsp;{formatDateDDMMYY(row.dateReturned)}
+                        {row.paymentId != null && (
+                          <span style={{ color: "var(--green)", marginLeft: 4 }}>· settled</span>
+                        )}
+                      </div>
+                      {row.remark && (
+                        <div className="record-meta" style={{ fontStyle: "italic" }}>{row.remark}</div>
+                      )}
+                    </div>
+                    {canRecordFabric &&
+                      row.paymentId == null &&
+                      editingFabricReturnId !== row.returnId && (
+                        <button
+                          type="button"
+                          className="btn-link"
+                          onClick={() => {
+                            setEditingYarnId(null);
+                            setEditingFabricReturnId(row.returnId);
+                            setError("");
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

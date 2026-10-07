@@ -7,20 +7,21 @@ interface WeaverCardProps {
 }
 
 export function WeaverCard({ weaver, to }: WeaverCardProps) {
+  const initials = weaver.firstName.charAt(0) + weaver.lastName.charAt(0);
+
   return (
-    <Link to={to} className="weaver-card">
-      <div className="weaver-card-avatar">
-        {weaver.firstName.charAt(0)}
-        {weaver.lastName.charAt(0)}
-      </div>
-      <div className="weaver-card-body">
-        <strong>
+    <Link to={to} className="weaver-row">
+      <div className="weaver-avatar">{initials}</div>
+      <div className="weaver-row-body">
+        <div className="weaver-row-name">
           {weaver.firstName} {weaver.lastName}
-        </strong>
-        <span className="muted">#{weaver.weaverId}</span>
-        {weaver.phone && <span className="weaver-card-phone">{weaver.phone}</span>}
+        </div>
+        <div className="weaver-row-meta">
+          #{weaver.weaverId}
+          {weaver.phone && ` · ${weaver.phone}`}
+        </div>
       </div>
-      <span className="weaver-card-chevron">›</span>
+      <span className="weaver-row-chevron">›</span>
     </Link>
   );
 }

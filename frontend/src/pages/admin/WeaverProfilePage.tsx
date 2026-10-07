@@ -17,19 +17,26 @@ export function WeaverProfilePage() {
       .catch((err) => setError(err.message));
   }, [weaverId]);
 
-  if (!weaver && !error) return <p className="muted">Loading...</p>;
-  if (!weaver) return <p className="error">{error}</p>;
+  if (!weaver && !error) return (
+    <div className="page">
+      <p className="muted" style={{ fontSize: 13 }}>Loading weaver…</p>
+    </div>
+  );
+
+  if (!weaver) return (
+    <div className="page">
+      <div className="error-msg"><span>⚠️</span> {error}</div>
+    </div>
+  );
 
   return (
-    <section>
-      <p>
-        <Link to="/admin/weavers">← All weavers</Link>
-      </p>
+    <div className="page">
+      <Link to="/admin/weavers" className="back-link">← All Weavers</Link>
       <WeaverZigTabs
         weaver={weaver}
         zigLinkPrefix="/admin/zigs"
         issueZigLink={`/admin/weavers/${weaver.weaverId}/issue-zig`}
       />
-    </section>
+    </div>
   );
 }

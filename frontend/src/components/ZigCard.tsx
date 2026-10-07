@@ -8,32 +8,40 @@ interface ZigCardProps {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  assigned: "ተመድቧል",
-  in_progress: "በሂደት",
-  returned: "ተመለሰ",
-  reconciled: "ተሰማረ",
+  assigned:    "Assigned",
+  in_progress: "In Progress",
+  returned:    "Returned",
+  reconciled:  "Reconciled",
 };
 
 export function ZigCard({ order, to }: ZigCardProps) {
+  const variant = order.fabricVariant;
+  const variantDesc = [
+    variant.warpColor?.name && `warp: ${variant.warpColor.name}`,
+    variant.weftColor?.name && `weft: ${variant.weftColor.name}`,
+    variant.design?.name,
+  ].filter(Boolean).join(" · ");
+
   return (
     <Link to={to} className="zig-card">
       <div className="zig-card-top">
-        <strong>{order.zigId}</strong>
+        <span className="zig-card-id">{order.zigId}</span>
         <span className={`badge ${order.status}`}>
           {STATUS_LABELS[order.status] ?? order.status}
         </span>
       </div>
-      <p className="zig-card-product">{order.fabricVariant.product.name}</p>
-      <p className="muted zig-card-meta">
+      <p className="zig-card-product">{variant.product.name}</p>
+      {variantDesc && (
+        <p className="zig-card-meta" style={{ marginBottom: "0.2rem" }}>{variantDesc}</p>
+      )}
+      <p className="zig-card-meta">
         {formatDateDDMMYY(order.dateIssued)}
         {order._count && (
           <>
-            {" "}
-            · ጥጥ {order._count.yarnGiven} · ጨርቅ {order._count.fabricReturns}
+            {" "}· 🧶 {order._count.yarnGiven} · 🪢 {order._count.fabricReturns}
           </>
         )}
       </p>
-      <span className="zig-card-chevron">›</span>
     </Link>
   );
 }

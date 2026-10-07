@@ -5,10 +5,10 @@ import type { Weaver, WorkOrder } from "../api";
 import { ZigCard } from "./ZigCard";
 
 const TABS = [
-  { key: "assigned", label: "ተመድቧል", sub: "Assigned" },
-  { key: "in_progress", label: "በሂደት", sub: "In Progress" },
-  { key: "returned", label: "ተመለሰ", sub: "Returned" },
-  { key: "reconciled", label: "ተሰማረ", sub: "Reconciled" },
+  { key: "in_progress", label: "In Progress", amharic: "በሂደት" },
+  { key: "assigned",    label: "Assigned",    amharic: "ተመድቧል" },
+  { key: "returned",    label: "Returned",    amharic: "ተመለሰ" },
+  { key: "reconciled",  label: "Reconciled",  amharic: "ተሰማረ" },
 ] as const;
 
 interface WeaverZigTabsProps {
@@ -32,26 +32,31 @@ export function WeaverZigTabs({ weaver, zigLinkPrefix, issueZigLink }: WeaverZig
       .finally(() => setLoading(false));
   }, [weaver.weaverId, activeTab]);
 
+  const initials = weaver.firstName.charAt(0) + weaver.lastName.charAt(0);
+
   return (
-    <div className="weaver-profile">
-      <header className="profile-header">
-        <div>
-          <h2>
-            {weaver.firstName} {weaver.lastName}
-          </h2>
-          <p className="muted">
-            #{weaver.weaverId}
-            {weaver.phone && ` · ${weaver.phone}`}
-            {weaver.bankAccountNumber && ` · ${weaver.bankAccountNumber}`}
-          </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", flex: 1, minHeight: 0 }}>
+      {/* Profile banner */}
+      <div className="profile-header">
+        <div className="profile-identity">
+          <div className="profile-avatar">{initials}</div>
+          <div>
+            <p className="profile-name">{weaver.firstName} {weaver.lastName}</p>
+            <p className="profile-meta">
+              #{weaver.weaverId}
+              {weaver.phone && ` · ${weaver.phone}`}
+              {weaver.bankAccountNumber && ` · ${weaver.bankAccountNumber}`}
+            </p>
+          </div>
         </div>
         {issueZigLink && (
-          <Link to={issueZigLink} className="btn-sm">
-            + አዲስ ዝግ
+          <Link to={issueZigLink} className="btn-primary">
+            + Issue Zig
           </Link>
         )}
-      </header>
+      </div>
 
+      {/* Tab pills */}
       <div className="tab-bar" role="tablist">
         {TABS.map((tab) => (
           <button
@@ -59,25 +64,33 @@ export function WeaverZigTabs({ weaver, zigLinkPrefix, issueZigLink }: WeaverZig
             type="button"
             role="tab"
             aria-selected={activeTab === tab.key}
-            className={activeTab === tab.key ? "tab active" : "tab"}
+            className={activeTab === tab.key ? "tab-pill active" : "tab-pill"}
             onClick={() => setActiveTab(tab.key)}
           >
-            <span>{tab.label}</span>
-            <small>{tab.sub}</small>
+            <span>{tab.amharic}</span>
+            <span style={{ fontSize: 11.5, opacity: 0.8 }}>/ {tab.label}</span>
           </button>
         ))}
       </div>
 
-      {loading && <p className="muted">Loading...</p>}
-      {error && <p className="error">{error}</p>}
+      {/* Content */}
+      {loading && <p className="muted" style={{ fontSize: 13 }}>Loading…</p>}
+      {error && <div className="error-msg"><span>⚠️</span> {error}</div>}
+
       {!loading && !error && orders.length === 0 && (
-        <p className="muted empty-state">No work orders in this tab.</p>
+        <div className="empty-state">
+          <span className="empty-icon">📋</span>
+          No work orders in this status.
+        </div>
       )}
-      <div className="zig-grid">
-        {orders.map((order) => (
-          <ZigCard key={order.zigId} order={order} to={`${zigLinkPrefix}/${order.zigId}`} />
-        ))}
-      </div>
+
+      {!loading && !error && orders.length > 0 && (
+        <div className="zig-grid" style={{ flex: 1, alignContent: "start" }}>
+          {orders.map((order) => (
+            <ZigCard key={order.zigId} order={order} to={`${zigLinkPrefix}/${order.zigId}`} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

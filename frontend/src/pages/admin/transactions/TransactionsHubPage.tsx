@@ -14,6 +14,15 @@ function counterpartyLabel(txn: CommercialTransaction): string {
   return "—";
 }
 
+const balanceColor = (total: string, paid: string) => {
+  const t = parseFloat(total);
+  const p = parseFloat(paid);
+  if (isNaN(t) || isNaN(p)) return undefined;
+  if (p >= t) return "var(--green)";
+  if (p > 0) return "var(--accent)";
+  return undefined;
+};
+
 export function TransactionsHubPage() {
   const [transactions, setTransactions] = useState<CommercialTransaction[]>([]);
   const [error, setError] = useState("");
@@ -26,73 +35,96 @@ export function TransactionsHubPage() {
   }, []);
 
   return (
-    <section>
-      <header className="page-header">
+    <div className="page">
+      <div className="page-header">
         <div>
           <p className="eyebrow">ግብይት / Transactions</p>
-          <h2>Commercial Transactions</h2>
-          <p className="muted">
-            Record buys, sales, and track payments. Stock updates when delivery is confirmed.
-          </p>
+          <h1 className="page-title">Commercial Transactions</h1>
+          <p className="page-subtitle">Buy, sell, track payments. Stock updates on delivery confirmation.</p>
         </div>
         <Link to="/admin/transactions/new" className="btn-primary">
-          + Record transaction
-        </Link>
-      </header>
-
-      <div className="weaver-grid" style={{ marginBottom: "1.5rem" }}>
-        <Link to="/admin/transactions/new/buy" className="weaver-card">
-          <h3>Buy / ግዛት</h3>
-          <p className="muted">Yarn from supplier, fabric from weaver</p>
-        </Link>
-        <Link to="/admin/transactions/new/sell" className="weaver-card">
-          <h3>Sell / ሽያጭ</h3>
-          <p className="muted">Yarn or fabric to merchant</p>
+          + New Transaction
         </Link>
       </div>
 
-      <div className="card table-card">
-        <h3>Recent transactions</h3>
+      {/* Quick action cards */}
+      <div className="txn-action-cards">
+        <Link to="/admin/transactions/new/buy" className="txn-action-card">
+          <div className="txn-action-icon">⬇️</div>
+          <p className="txn-action-title">Buy / ግዛት</p>
+          <p className="txn-action-desc">Yarn from supplier · Fabric from weaver</p>
+        </Link>
+        <Link to="/admin/transactions/new/sell" className="txn-action-card">
+          <div className="txn-action-icon">⬆️</div>
+          <p className="txn-action-title">Sell / ሽያጭ</p>
+          <p className="txn-action-desc">Yarn or fabric to merchant</p>
+        </Link>
+      </div>
+
+      {error && <div className="error-msg" style={{ marginBottom: "1rem" }}><span>⚠️</span> {error}</div>}
+
+      {/* Transactions table */}
+      <div className="table-wrap" style={{ flex: 1 }}>
         <table>
           <thead>
             <tr>
               <th>ID</th>
               <th>Type</th>
               <th>Counterparty</th>
-              <th>Total</th>
-              <th>Paid</th>
+              <th style={{ textAlign: "right" }}>Total</th>
+              <th style={{ textAlign: "right" }}>Paid</th>
               <th>Status</th>
               <th>Date</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((txn) => (
-              <tr key={txn.transactionId}>
-                <td>
-                  <Link to={`/admin/transactions/${txn.transactionId}`}>
-                    {txn.transactionId}
-                  </Link>
+            {transactions.length === 0 ? (
+              <tr>
+                <td colSpan={7}>
+                  <div className="empty-state">
+                    <span className="empty-icon">🔄</span>
+                    No transactions yet. Use the action cards above to record one.
+                  </div>
                 </td>
-                <td>{TXN_TYPE_LABELS[txn.type]}</td>
-                <td>{counterpartyLabel(txn)}</td>
-                <td>{txn.totalAmount}</td>
-                <td>{txn.amountPaid}</td>
-                <td>
-                  <span className={`badge ${txn.status}`}>
-                    {TXN_STATUS_LABELS[txn.status] ?? txn.status}
-                  </span>
-                </td>
-                <td>{formatDateDDMMYY(txn.createdAt)}</td>
               </tr>
-            ))}
+            ) : (
+              transactions.map((txn) => (
+                <tr key={txn.transactionId}>
+                  <td>
+                    <Link
+                      to={`/admin/transactions/${txn.transactionId}`}
+                      style={{ fontFamily: "monospace", fontSize: 12.5 }}
+                    >
+                      {txn.transactionId}
+                    </Link>
+                  </td>
+                  <td style={{ fontWeight: 500 }}>{TXN_TYPE_LABELS[txn.type]}</td>
+                  <td>{counterpartyLabel(txn)}</td>
+                  <td style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                    {txn.totalAmount}
+                  </td>
+                  <td style={{
+                    textAlign: "right",
+                    fontVariantNumeric: "tabular-nums",
+                    fontWeight: 600,
+                    color: balanceColor(txn.totalAmount, txn.amountPaid),
+                  }}>
+                    {txn.amountPaid}
+                  </td>
+                  <td>
+                    <span className={`badge ${txn.status}`}>
+                      {TXN_STATUS_LABELS[txn.status] ?? txn.status}
+                    </span>
+                  </td>
+                  <td className="muted" style={{ fontSize: 12.5 }}>
+                    {formatDateDDMMYY(txn.createdAt)}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-        {transactions.length === 0 && (
-          <p className="muted">No transactions yet. Start with “Record transaction”.</p>
-        )}
       </div>
-
-      {error && <p className="error">{error}</p>}
-    </section>
+    </div>
   );
 }
