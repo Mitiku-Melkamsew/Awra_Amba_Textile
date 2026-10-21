@@ -1,7 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import {
   buildSettlementPreview,
-  calculateBonus,
   calculateDeduction,
   calculateNetCredit,
 } from "./calculation.service.js";
@@ -33,7 +32,7 @@ export async function commitSettlement(input: CommitSettlementInput) {
         workOrder: { weaverId: input.weaverId },
       },
       include: {
-        fabricVariant: { include: { qualityRule: true, bonusRule: true } },
+        fabricVariant: { include: { qualityRule: true } },
       },
     });
 
@@ -81,15 +80,7 @@ export async function commitSettlement(input: CommitSettlementInput) {
               deductionRatePerUnit: Number(row.fabricVariant.qualityRule.deductionRatePerUnit),
             }
           : null,
-        bonusRule: row.fabricVariant.bonusRule
-          ? {
-              minWeightThreshold: Number(row.fabricVariant.bonusRule.minWeightThreshold),
-              bonusRatePerUnit: Number(row.fabricVariant.bonusRule.bonusRatePerUnit),
-              maxBonusPerPiece: row.fabricVariant.bonusRule.maxBonusPerPiece
-                ? Number(row.fabricVariant.bonusRule.maxBonusPerPiece)
-                : null,
-            }
-          : null,
+        bonusRule: null,
       })),
       yarnGiven: yarnGiven.map((row) => ({
         yarnGivenId: row.yarnGivenId,
@@ -126,31 +117,15 @@ export async function commitSettlement(input: CommitSettlementInput) {
         unitPrice: Number(row.unitPrice),
         quantity: row.quantityReturned,
         minWeightThreshold: Number(row.fabricVariant.qualityRule?.minWeightThreshold ?? 0),
-        deductionRatePerUnit: row.fabricVariant.qualityRule
-          ? Number(row.fabricVariant.qualityRule.deductionRatePerUnit)
-          : undefined,
-      });
-
-      const bonusResult = calculateBonus({
-        avgWeight,
-        unitPrice: Number(row.unitPrice),
-        quantity: row.quantityReturned,
-        minWeightThreshold: Number(row.fabricVariant.bonusRule?.minWeightThreshold ?? 0),
-        bonusRatePerUnit: row.fabricVariant.bonusRule
-          ? Number(row.fabricVariant.bonusRule.bonusRatePerUnit)
-          : undefined,
-        maxBonusPerPiece: row.fabricVariant.bonusRule?.maxBonusPerPiece
-          ? Number(row.fabricVariant.bonusRule.maxBonusPerPiece)
-          : null,
+        deductionRatePerUnit: 10,
       });
 
       const calculatedDeduction = override?.calculatedDeduction ?? deductionResult.deductionPerPiece;
-      const bonusAmount = override?.bonusAmount ?? bonusResult.totalBonus;
+      const bonusAmount = 0; // Bonus is disabled
       const netCreditValue = calculateNetCredit(
         Number(row.unitPrice),
         calculatedDeduction,
         row.quantityReturned,
-        bonusAmount,
       );
 
       await tx.fabricReturn.update({

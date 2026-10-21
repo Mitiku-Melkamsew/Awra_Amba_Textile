@@ -90,20 +90,24 @@ export async function buildHisabReport(paymentId: number) {
     const zigReturns = returnsByZig.get(zigId) ?? [];
     const zigYarn = yarnByZig.get(zigId) ?? [];
     const yarnQty = zigYarn.reduce((sum, row) => sum + Number(row.quantity), 0);
-    const yarnTotal = zigYarn.reduce(
-      (sum, row) => sum + Number(row.quantity) * Number(row.unitPrice),
-      0,
+    const yarnTotal = Math.round(
+      zigYarn.reduce(
+        (sum, row) => sum + Number(row.quantity) * Number(row.unitPrice),
+        0,
+      ),
     );
-    const fabricTotalValue = zigReturns.reduce(
-      (sum, row) => sum + Number(row.netCreditValue ?? 0),
-      0,
+    const fabricTotalValue = Math.round(
+      zigReturns.reduce(
+        (sum, row) => sum + Number(row.netCreditValue ?? 0),
+        0,
+      ),
     );
     return {
       zigId,
       zigReturns,
       yarnQty,
       yarnTotal,
-      yarnAvgPrice: yarnQty > 0 ? yarnTotal / yarnQty : 0,
+      yarnAvgPrice: yarnQty > 0 ? Math.round(yarnTotal / yarnQty) : 0,
       fabricTotalValue,
       netProfit: fabricTotalValue - yarnTotal,
     };
@@ -124,8 +128,7 @@ export async function buildHisabReport(paymentId: number) {
       const deduction = Number(fabricRow.calculatedDeduction ?? 0);
       const unitPrice = Number(fabricRow.unitPrice);
       const adjustedPrice = unitPrice - deduction;
-      const lineSubtotal =
-        Number(fabricRow.netCreditValue ?? 0) - Number(fabricRow.bonusAmount ?? 0);
+      const lineSubtotal = Math.round(adjustedPrice * fabricRow.quantityReturned);
 
       rows.push({
         weaverId: firstWeaverRow ? payment.weaverId : "",

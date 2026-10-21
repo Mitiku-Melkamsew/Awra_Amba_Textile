@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { calculationsApi } from "../api";
-import type { BonusResult, DeductionResult } from "../api";
+import type { DeductionResult } from "../api";
 
 const FABRIC_THRESHOLDS: Record<string, number> = {
   "f-01": 64,
@@ -9,6 +9,7 @@ const FABRIC_THRESHOLDS: Record<string, number> = {
   "f-03": 78,
   "f-04": 84,
   "f-05": 90,
+  "f-06": 42,
 };
 
 export function CalculatorPage() {
@@ -17,7 +18,6 @@ export function CalculatorPage() {
   const [unitPrice, setUnitPrice] = useState("1707");
   const [quantity, setQuantity] = useState("33");
   const [deduction, setDeduction] = useState<DeductionResult | null>(null);
-  const [bonus, setBonus] = useState<BonusResult | null>(null);
   const [error, setError] = useState("");
 
   async function handleCalculate(event: FormEvent) {
@@ -32,21 +32,15 @@ export function CalculatorPage() {
     };
 
     try {
-      const [deductionResult, bonusResult] = await Promise.all([
-        calculationsApi.deduction(payload),
-        calculationsApi.bonus(payload),
-      ]);
+      const deductionResult = await calculationsApi.deduction(payload);
       setDeduction(deductionResult);
-      setBonus(bonusResult);
     } catch (err) {
       setDeduction(null);
-      setBonus(null);
       setError(err instanceof Error ? err.message : "Calculation failed");
     }
   }
 
-  const netLine =
-    deduction && bonus ? deduction.lineCredit + bonus.totalBonus : null;
+  const netLine = deduction ? deduction.lineCredit : null;
 
   return (
     <section>
@@ -89,13 +83,6 @@ export function CalculatorPage() {
             </>
           ) : (
             <p className="muted">Run a calculation to see deduction output.</p>
-          )}
-          {bonus && (
-            <>
-              <p>Bonus / piece: {bonus.bonusPerPiece} ETB</p>
-              <p>Total bonus: {bonus.totalBonus} ETB</p>
-              <p className="muted">{bonus.remark}</p>
-            </>
           )}
           {netLine != null && (
             <p className="net">

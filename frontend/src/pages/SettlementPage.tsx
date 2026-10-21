@@ -23,6 +23,7 @@ interface BatchPreview {
   weaverCount: number;
   grandTotal: number;
   amharicAmountInWords: string;
+  cutoffDate?: string | null;
 }
 
 interface CommittedPayment {
@@ -37,7 +38,9 @@ type Step = "idle" | "previewed" | "committed";
 
 export function SettlementPage() {
   const [step, setStep] = useState<Step>("idle");
+  const [cutoffDate, setCutoffDate] = useState("");
   const [preview, setPreview] = useState<BatchPreview | null>(null);
+  const [committedPreviewId, setCommittedPreviewId] = useState("");
   const [payments, setPayments] = useState<CommittedPayment[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -48,10 +51,12 @@ export function SettlementPage() {
     setError("");
     setMessage("");
     try {
-      const p = await calculationsApi.batchPreview();
+      const p = await calculationsApi.batchPreview({
+        cutoffDate: cutoffDate || undefined,
+      });
       setPreview(p);
       setStep("previewed");
-      setMessage("Preview ready. Share with weavers before recording.");
+      setMessage("Preview ready. Review the consolidated payroll document below before recording.");
     } catch (err) {
       setPreview(null);
       setError(err instanceof Error ? err.message : "Preview failed");
@@ -64,18 +69,24 @@ export function SettlementPage() {
     if (!preview?.previewId || preview.weaverCount === 0) return;
     if (
       !confirm(
-        `Record settlements for ${preview.weaverCount} weavers using preview ${preview.previewId}?`,
+        `Record settlements for ${preview.weaverCount} weavers totaling ${Math.round(preview.grandTotal)} ETB using preview ${preview.previewId}?`,
       )
     ) return;
 
     setLoading(true);
     setError("");
+    const currentPreviewId = preview.previewId;
     try {
-      const result = await calculationsApi.batchCommit(preview.previewId, "Recorded");
+      const result = await calculationsApi.batchCommit(
+        currentPreviewId,
+        "Recorded",
+        cutoffDate || undefined,
+      );
       setPayments(result.payments);
+      setCommittedPreviewId(currentPreviewId);
       setStep("committed");
       setMessage(
-        `Recorded ${result.weaverCount} payments. Grand total: ${result.grandTotal} ETB`,
+        `Successfully recorded ${result.weaverCount} payments. Grand total: ${Math.round(result.grandTotal)} ETB`,
       );
       setPreview(null);
     } catch (err) {
@@ -90,8 +101,8 @@ export function SettlementPage() {
       <div className="page-header">
         <div>
           <p className="eyebrow">ሂሳብ / Settlement</p>
-          <h1 className="page-title">Settle All Returned Zigs</h1>
-          <p className="page-subtitle">Generate, review, then record settlements for all outstanding returns.</p>
+          <h1 className="page-title">Weaver Payroll & Settlement</h1>
+          <p className="page-subtitle">Generate, review, and record the master payroll for all returned zigs.</p>
         </div>
       </div>
 
@@ -99,83 +110,122 @@ export function SettlementPage() {
       <div className="settlement-steps">
         <div className={`step-item ${step === "idle" ? "active" : "done"}`}>
           <span className="step-number">{step === "idle" ? "1" : "✓"}</span>
-          <span className="step-label">Generate Preview</span>
+          <span className="step-label">Generate Payroll</span>
         </div>
         <div className="step-divider" />
         <div className={`step-item ${step === "previewed" ? "active" : step === "committed" ? "done" : ""}`}>
           <span className="step-number">{step === "committed" ? "✓" : "2"}</span>
-          <span className="step-label">Review & Share</span>
+          <span className="step-label">Review Master Document</span>
         </div>
         <div className="step-divider" />
         <div className={`step-item ${step === "committed" ? "done" : ""}`}>
           <span className="step-number">{step === "committed" ? "✓" : "3"}</span>
-          <span className="step-label">Record Settlements</span>
+          <span className="step-label">Record & Final Report</span>
         </div>
       </div>
 
-      {/* Actions card */}
+      {/* Control Card */}
       <div className="card" style={{ marginBottom: "1rem" }}>
-        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 0, marginBottom: "0.875rem" }}>
-          Step 1: Generate preview and save reference ID · Step 2: Download CSV or open print PDF for weaver review · Step 3: Record only after weavers confirm.
-        </p>
-        <div className="button-row">
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handlePreview}
-            disabled={loading || step === "committed"}
-          >
-            {loading && step === "idle" ? "Generating…" : "1. Generate Preview"}
-          </button>
+        <div style={{ display: "flex", gap: "1.25rem", alignItems: "flex-end", flexWrap: "wrap", marginBottom: "0.875rem" }}>
+          <div>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: "0.3rem" }}>
+              Cutoff Date (የማጣሪያ ቀን) <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>— optional</span>
+            </label>
+            <input
+              type="date"
+              value={cutoffDate}
+              onChange={(e) => setCutoffDate(e.target.value)}
+              disabled={loading || step === "committed"}
+              style={{ minHeight: 38, padding: "0.4rem 0.6rem", fontSize: 13.5 }}
+            />
+            <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: "0.25rem" }}>
+              Only zigs returned on or before this date are included. Leave empty for all completed zigs.
+            </span>
+          </div>
 
-          {preview && (
-            <>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => calculationsApi.downloadPreviewCsv(preview.previewId)}
-              >
-                ⬇ Download CSV
-              </button>
-              <Link
-                to={`/admin/settlement/preview/${preview.previewId}`}
-                className="btn-ghost"
-                target="_blank"
-              >
-                🖨 Open Print / PDF
-              </Link>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleCommit}
-                disabled={loading}
-              >
-                {loading && step === "previewed" ? "Recording…" : "2. Confirm & Record"}
-              </button>
-            </>
-          )}
+          <div className="button-row" style={{ alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handlePreview}
+              disabled={loading || step === "committed"}
+            >
+              {loading && step === "idle" ? "Generating Payroll…" : "1. Generate Preview"}
+            </button>
+
+            {preview && (
+              <>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => calculationsApi.downloadPreviewCsv(preview.previewId)}
+                >
+                  ⬇ Download Master CSV
+                </button>
+                <Link
+                  to={`/admin/settlement/preview/${preview.previewId}`}
+                  className="btn-ghost"
+                  target="_blank"
+                >
+                  🖨 Open Master Document
+                </Link>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleCommit}
+                  disabled={loading}
+                >
+                  {loading && step === "previewed" ? "Recording…" : "2. Confirm & Record Payroll"}
+                </button>
+              </>
+            )}
+
+            {step === "committed" && committedPreviewId && (
+              <>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => reportsApi.downloadBatchHisabCsv(committedPreviewId)}
+                >
+                  ⬇ Download Final Master CSV
+                </button>
+                <Link
+                  to={`/admin/settlement/preview/${committedPreviewId}`}
+                  className="btn-ghost"
+                  target="_blank"
+                >
+                  🖨 Open Final Master Report
+                </Link>
+              </>
+            )}
+          </div>
         </div>
 
         {message && <div className="success-msg" style={{ marginTop: "0.875rem" }}><span>✅</span> {message}</div>}
         {error && <div className="error-msg" style={{ marginTop: "0.875rem" }}><span>⚠️</span> {error}</div>}
       </div>
 
-      {/* Preview detail */}
+      {/* Preview Summary & Table */}
       {preview && (
         <div className="card" style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.75rem" }}>
             <div>
               <p className="section-title">
-                Preview
-                <code style={{ fontSize: 11.5, background: "var(--bg)", padding: "0.1rem 0.4rem", borderRadius: 4 }}>
+                Payroll Preview
+                <code style={{ fontSize: 11.5, background: "var(--bg)", padding: "0.1rem 0.4rem", borderRadius: 4, marginLeft: "0.5rem" }}>
                   {preview.previewId}
                 </code>
+                {preview.cutoffDate && (
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "0.5rem" }}>
+                    · Cutoff: {formatDateDDMMYY(preview.cutoffDate)}
+                  </span>
+                )}
               </p>
               <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{preview.amharicAmountInWords}</p>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div className="net-amount">{preview.grandTotal} ETB</div>
-              <div className="muted" style={{ fontSize: 12 }}>{preview.weaverCount} weavers</div>
+              <div className="net-amount">{Math.round(preview.grandTotal)} ETB</div>
+              <div className="muted" style={{ fontSize: 12 }}>{preview.weaverCount} weavers covered</div>
             </div>
           </div>
 
@@ -184,10 +234,10 @@ export function SettlementPage() {
               <div key={weaver.weaverId} className="settlement-weaver-block">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                   <p className="settlement-weaver-name">{weaver.weaverName}</p>
-                  <span className="settlement-net">{weaver.netSettlement} ETB</span>
+                  <span className="settlement-net">{Math.round(weaver.netSettlement)} ETB</span>
                 </div>
                 <p className="settlement-weaver-meta">
-                  Zigs: {weaver.zigIds.join(", ")} · Returns: {weaver.returnCount} · Yarn: {weaver.yarnCount}
+                  Zigs: {weaver.zigIds.join(", ")} &middot; Returns: {weaver.returnCount} &middot; Yarn records: {weaver.yarnCount}
                 </p>
                 <table style={{ marginTop: "0.5rem" }}>
                   <thead>
@@ -195,7 +245,6 @@ export function SettlementPage() {
                       <th>Return #</th>
                       <th>Zig</th>
                       <th style={{ textAlign: "right" }}>Deduction</th>
-                      <th style={{ textAlign: "right" }}>Bonus</th>
                       <th style={{ textAlign: "right" }}>Net Credit</th>
                     </tr>
                   </thead>
@@ -207,10 +256,7 @@ export function SettlementPage() {
                         <td style={{ textAlign: "right", color: line.deductionPerPiece > 0 ? "var(--red)" : undefined }}>
                           {line.deductionPerPiece > 0 ? `-${line.deductionPerPiece}` : "—"}
                         </td>
-                        <td style={{ textAlign: "right", color: line.bonusAmount > 0 ? "var(--green)" : undefined }}>
-                          {line.bonusAmount > 0 ? `+${line.bonusAmount}` : "—"}
-                        </td>
-                        <td style={{ textAlign: "right", fontWeight: 600 }}>{line.netCredit}</td>
+                        <td style={{ textAlign: "right", fontWeight: 600 }}>{Math.round(line.netCredit)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -221,39 +267,57 @@ export function SettlementPage() {
         </div>
       )}
 
-      {/* Committed payments */}
+      {/* Committed Payments list */}
       {payments.length > 0 && (
         <div className="card" style={{ marginTop: "1rem" }}>
-          <p className="section-title">
-            Generated Payments
-            <span className="count">{payments.length}</span>
-            <span className="muted" style={{ fontSize: 12, marginLeft: "0.5rem" }}>
-              {formatDateDDMMYY(new Date())}
-            </span>
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.875rem" }}>
+            <p className="section-title" style={{ margin: 0 }}>
+              Committed Payments
+              <span className="count">{payments.length}</span>
+              <span className="muted" style={{ fontSize: 12, marginLeft: "0.5rem" }}>
+                {formatDateDDMMYY(new Date())}
+              </span>
+            </p>
+            {committedPreviewId && (
+              <div className="button-row">
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => reportsApi.downloadBatchHisabCsv(committedPreviewId)}
+                >
+                  ⬇ Master CSV
+                </button>
+                <Link to={`/admin/settlement/preview/${committedPreviewId}`} className="btn-ghost" target="_blank">
+                  🖨 Master Document
+                </Link>
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "350px", overflowY: "auto" }}>
             {payments.map((p) => (
               <div key={p.paymentId} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "0.625rem", background: "var(--bg)", borderRadius: "var(--radius-sm)",
-                gap: "1rem", flexWrap: "wrap"
+                padding: "0.5rem 0.75rem", background: "var(--bg)", borderRadius: "var(--radius-sm)",
+                gap: "1rem", flexWrap: "wrap", fontSize: 13
               }}>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{p.weaverName}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    {p.amount} ETB · Zigs: {p.reconciledZigIds.join(", ")}
-                  </div>
+                  <span style={{ fontWeight: 600 }}>{p.weaverName}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "0.75rem" }}>
+                    Zigs: {p.reconciledZigIds.join(", ")}
+                  </span>
                 </div>
-                <div className="button-row">
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <span style={{ fontWeight: 600 }}>{Math.round(p.amount)} ETB</span>
                   <button
                     type="button"
                     className="btn-ghost"
+                    style={{ fontSize: 12, padding: "0.2rem 0.5rem" }}
                     onClick={() => reportsApi.downloadHisabCsv(p.paymentId)}
                   >
-                    ⬇ CSV
+                    CSV
                   </button>
-                  <Link to={`/admin/reports/hisab/${p.paymentId}`} className="btn-sm primary">
-                    🖨 HISAB
+                  <Link to={`/admin/reports/hisab/${p.paymentId}`} className="btn-ghost" style={{ fontSize: 12, padding: "0.2rem 0.5rem" }} target="_blank">
+                    Receipt
                   </Link>
                 </div>
               </div>

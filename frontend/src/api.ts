@@ -560,6 +560,21 @@ export const reportsApi = {
     anchor.click();
     URL.revokeObjectURL(url);
   },
+  async downloadBatchHisabCsv(previewId: string) {
+    const token = getToken();
+    const response = await fetch(
+      `${API_BASE}/reports/hisab/batch/${previewId}?format=csv`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    );
+    if (!response.ok) throw new Error("Failed to download batch HISAB report");
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `HISAB-batch-${previewId}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  },
 };
 
 export const calculationsApi = {
@@ -583,7 +598,7 @@ export const calculationsApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  batchPreview: () =>
+  batchPreview: (params?: { cutoffDate?: string }) =>
     api<{
       previewId: string;
       weavers: Array<{
@@ -598,7 +613,11 @@ export const calculationsApi = {
       weaverCount: number;
       grandTotal: number;
       amharicAmountInWords: string;
-    }>("/calculations/settlements/batch-preview", { method: "POST" }),
+      cutoffDate?: string | null;
+    }>("/calculations/settlements/batch-preview", {
+      method: "POST",
+      body: JSON.stringify(params ?? {}),
+    }),
   getSettlementPreview: (previewId: string) =>
     api<{
       previewId: string;
@@ -607,6 +626,7 @@ export const calculationsApi = {
       grandTotal: number;
       amharicAmountInWords: string;
       generatedAt: string;
+      cutoffDate?: string | null;
       weavers: Array<{
         weaverId: number;
         weaverName: string;
@@ -629,7 +649,7 @@ export const calculationsApi = {
       }>;
     }>(`/calculations/settlements/preview/${previewId}`),
   async downloadPreviewCsv(previewId: string) {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const response = await fetch(
       `${API_BASE}/calculations/settlements/preview/${previewId}/export?format=csv`,
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
@@ -643,7 +663,7 @@ export const calculationsApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
-  batchCommit: (previewId: string, paymentMethod?: string) =>
+  batchCommit: (previewId: string, paymentMethod?: string, cutoffDate?: string) =>
     api<{
       previewId: string;
       payments: Array<{
@@ -658,7 +678,7 @@ export const calculationsApi = {
       amharicAmountInWords: string;
     }>("/calculations/settlements/batch-commit", {
       method: "POST",
-      body: JSON.stringify({ previewId, paymentMethod }),
+      body: JSON.stringify({ previewId, paymentMethod, cutoffDate }),
     }),
   commitSettlement: (body: {
     weaverId: number;

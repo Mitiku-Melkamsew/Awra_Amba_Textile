@@ -123,13 +123,38 @@ calculationRouter.post("/bonus", async (req, res, next) => {
   }
 });
 
+const batchPreviewSchema = z.object({
+  cutoffDate: z.string().optional(),
+});
+
+function parseCutoff(str?: string): Date | null {
+  if (!str || !str.trim()) return null;
+  // Handle DD/MM/YYYY or YYYY-MM-DD
+  const parts = str.trim().split(/[\/\-]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return isNaN(d.getTime()) ? null : d;
+    } else {
+      // DD/MM/YYYY
+      const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+  const d = new Date(str.trim());
+  return isNaN(d.getTime()) ? null : d;
+}
+
 calculationRouter.post(
   "/settlements/batch-preview",
   authenticate,
   requireAdmin,
   async (req, res, next) => {
     try {
-      const result = await createSettlementPreview(req.user!.userId);
+      const body = batchPreviewSchema.parse(req.body ?? {});
+      const cutoffDate = parseCutoff(body.cutoffDate);
+      const result = await createSettlementPreview(req.user!.userId, cutoffDate);
       res.status(201).json(result);
     } catch (error) {
       next(error);
@@ -195,6 +220,7 @@ calculationRouter.get(
 const batchCommitSchema = z.object({
   previewId: z.string().regex(/^prev-[\w-]+$/),
   paymentMethod: z.string().max(30).optional(),
+  cutoffDate: z.string().optional(),
 });
 
 calculationRouter.post(
@@ -204,10 +230,12 @@ calculationRouter.post(
   async (req, res, next) => {
     try {
       const body = batchCommitSchema.parse(req.body);
+      const cutoffDate = parseCutoff(body.cutoffDate);
       const result = await commitSettlementPreview(
         body.previewId,
         req.user!.userId,
         body.paymentMethod ?? "Recorded",
+        cutoffDate,
       );
       res.status(201).json({
         ...result,

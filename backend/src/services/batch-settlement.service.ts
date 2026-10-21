@@ -13,7 +13,8 @@ export interface WeaverSettlementBundle {
   preview: ReturnType<typeof buildSettlementPreview>;
 }
 
-export async function discoverReturnedSettlementBundles() {
+export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null) {
+  // Get all returned work orders
   const returnedOrders = await prisma.workOrder.findMany({
     where: { status: "returned" },
     include: { weaver: true },
@@ -38,9 +39,36 @@ export async function discoverReturnedSettlementBundles() {
     }),
   ]);
 
+  // Build map of zigId -> first fabric return date
+  const firstReturnDateByZig = new Map<string, Date>();
+  for (const ret of returns) {
+    const existing = firstReturnDateByZig.get(ret.zigId);
+    const retDate = new Date(ret.dateReturned);
+    if (!existing || retDate < existing) {
+      firstReturnDateByZig.set(ret.zigId, retDate);
+    }
+  }
+
+  // Filter by cutoff date: include zig only if its first return date <= cutoffDate
+  const eligibleZigIds = new Set(
+    returnedOrders
+      .filter((o) => {
+        if (!cutoffDate) return true;
+        const firstReturn = firstReturnDateByZig.get(o.zigId);
+        if (!firstReturn) return false; // no returns yet, exclude
+        // Normalize cutoff to end of day for inclusive comparison
+        const cutoffEnd = new Date(cutoffDate);
+        cutoffEnd.setHours(23, 59, 59, 999);
+        return firstReturn <= cutoffEnd;
+      })
+      .map((o) => o.zigId),
+  );
+
+  const eligibleOrders = returnedOrders.filter((o) => eligibleZigIds.has(o.zigId));
+
   const byWeaver = new Map<number, WeaverSettlementBundle>();
 
-  for (const order of returnedOrders) {
+  for (const order of eligibleOrders) {
     if (!byWeaver.has(order.weaverId)) {
       byWeaver.set(order.weaverId, {
         weaverId: order.weaverId,
@@ -64,7 +92,9 @@ export async function discoverReturnedSettlementBundles() {
   }
 
   for (const [weaverId, bundle] of byWeaver) {
-    const weaverReturns = returns.filter((r) => r.workOrder.weaverId === weaverId);
+    const weaverReturns = returns.filter(
+      (r) => r.workOrder.weaverId === weaverId && eligibleZigIds.has(r.zigId),
+    );
     const weaverZigSet = new Set(bundle.zigIds);
     const weaverYarn = yarnGiven.filter((y) => weaverZigSet.has(y.zigId));
 
@@ -90,15 +120,7 @@ export async function discoverReturnedSettlementBundles() {
               deductionRatePerUnit: Number(row.fabricVariant.qualityRule.deductionRatePerUnit),
             }
           : null,
-        bonusRule: row.fabricVariant.bonusRule
-          ? {
-              minWeightThreshold: Number(row.fabricVariant.bonusRule.minWeightThreshold),
-              bonusRatePerUnit: Number(row.fabricVariant.bonusRule.bonusRatePerUnit),
-              maxBonusPerPiece: row.fabricVariant.bonusRule.maxBonusPerPiece
-                ? Number(row.fabricVariant.bonusRule.maxBonusPerPiece)
-                : null,
-            }
-          : null,
+        bonusRule: null,
       })),
       yarnGiven: weaverYarn.map((row) => ({
         yarnGivenId: row.yarnGivenId,
@@ -117,8 +139,9 @@ export async function batchCommitSettlements(
   recordedByUserId: number,
   paymentMethod?: string,
   settlementPreviewId?: string,
+  cutoffDate?: Date | null,
 ) {
-  const bundles = await discoverReturnedSettlementBundles();
+  const bundles = await discoverReturnedSettlementBundles(cutoffDate);
   const payments: Array<{
     paymentId: number;
     weaverId: number;

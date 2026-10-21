@@ -28,14 +28,18 @@ function fabricTypeLabel(fabricVariant: {
   design: { name: string } | null;
 }): string {
   const parts = [fabricVariant.product.name];
-  parts.push(`warp:${fabricVariant.warpColor.name}`);
-  parts.push(`weft:${fabricVariant.weftColor.name}`);
+  if (fabricVariant.warpColor?.name && fabricVariant.warpColor.name !== "Default") {
+    parts.push(`warp:${fabricVariant.warpColor.name}`);
+  }
+  if (fabricVariant.weftColor?.name && fabricVariant.weftColor.name !== "Default") {
+    parts.push(`weft:${fabricVariant.weftColor.name}`);
+  }
   if (fabricVariant.design) parts.push(fabricVariant.design.name);
   return parts.join(" · ");
 }
 
-export async function buildDetailedBatchSnapshot() {
-  const bundles = await discoverReturnedSettlementBundles();
+export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
+  const bundles = await discoverReturnedSettlementBundles(cutoffDate);
   const returnIds = bundles.flatMap((b) => b.returnIds);
   const yarnIds = bundles.flatMap((b) => b.yarnGivenIds);
 
@@ -71,36 +75,42 @@ export async function buildDetailedBatchSnapshot() {
         .filter((y) => y && y.zigId === zigId);
 
       const yarnQty = zigYarn.reduce((sum, y) => sum + Number(y!.quantity), 0);
-      const yarnTotal = zigYarn.reduce(
-        (sum, y) => sum + Number(y!.quantity) * Number(y!.unitPrice),
-        0,
+      const yarnTotal = Math.round(
+        zigYarn.reduce((sum, y) => sum + Number(y!.quantity) * Number(y!.unitPrice), 0),
       );
-      const fabricTotal = bundle.preview.lineItems
-        .filter((li) => li.zigId === zigId)
-        .reduce((sum, li) => sum + li.netCredit, 0);
+      const fabricTotal = Math.round(
+        bundle.preview.lineItems
+          .filter((li) => li.zigId === zigId)
+          .reduce((sum, li) => sum + li.netCredit, 0),
+      );
+      const netProfit = fabricTotal - yarnTotal;
 
       return {
         zigId,
-        returns: zigReturns.map((row) => ({
-          returnId: row!.returnId,
-          fabricType: fabricTypeLabel(row!.fabricVariant),
-          quantityReturned: row!.quantityReturned,
-          totalWeight: Number(row!.totalWeight),
-          avgWeight: Number(row!.totalWeight) / row!.quantityReturned,
-          unitPrice: Number(row!.unitPrice),
-          netCredit:
-            bundle.preview.lineItems.find((li) => li.returnId === row!.returnId)?.netCredit ?? 0,
-          deductionPerPiece:
-            bundle.preview.lineItems.find((li) => li.returnId === row!.returnId)
-              ?.deductionPerPiece ?? 0,
-          bonusAmount:
-            bundle.preview.lineItems.find((li) => li.returnId === row!.returnId)?.bonusAmount ?? 0,
-        })),
+        returns: zigReturns.map((row) => {
+          const li = bundle.preview.lineItems.find((item) => item.returnId === row!.returnId);
+          const deduction = li?.deductionPerPiece ?? 0;
+          const adjustedPrice = Math.round(Number(row!.unitPrice) - deduction);
+          const avgWeight = row!.quantityReturned > 0 ? Number(row!.totalWeight) / row!.quantityReturned : 0;
+          return {
+            returnId: row!.returnId,
+            fabricType: fabricTypeLabel(row!.fabricVariant),
+            quantityReturned: row!.quantityReturned,
+            totalWeight: Number(row!.totalWeight),
+            avgWeight: Math.floor(avgWeight),
+            unitPrice: Number(row!.unitPrice),
+            deductionPerPiece: deduction,
+            adjustedPrice,
+            lineSubtotal: li?.netCredit ?? Math.round(adjustedPrice * row!.quantityReturned),
+            bonusAmount: 0,
+            netCredit: li?.netCredit ?? 0,
+          };
+        }),
         yarnQty,
         yarnTotal,
-        yarnAvgPrice: yarnQty > 0 ? yarnTotal / yarnQty : 0,
+        yarnAvgPrice: yarnQty > 0 ? Math.round(yarnTotal / yarnQty) : 0,
         fabricTotal,
-        netProfit: fabricTotal - yarnTotal,
+        netProfit,
       };
     });
 
@@ -113,26 +123,27 @@ export async function buildDetailedBatchSnapshot() {
       saleIds: bundle.saleIds,
       returnCount: bundle.returnIds.length,
       yarnCount: bundle.yarnGivenIds.length,
-      netSettlement: bundle.preview.netSettlement,
+      netSettlement: Math.round(bundle.preview.netSettlement),
       lineItems: bundle.preview.lineItems,
       yarnDebits: bundle.preview.yarnDebits,
       zigDetails,
     };
   });
 
-  const grandTotal = weavers.reduce((sum, w) => sum + w.netSettlement, 0);
+  const grandTotal = Math.round(weavers.reduce((sum, w) => sum + w.netSettlement, 0));
 
   return {
     weavers,
     weaverCount: weavers.length,
     grandTotal,
-    amharicAmountInWords: numberToAmharicWords(Math.round(grandTotal)),
+    amharicAmountInWords: numberToAmharicWords(grandTotal),
     generatedAt: new Date().toISOString(),
+    cutoffDate: cutoffDate ? cutoffDate.toISOString() : null,
   };
 }
 
-export async function createSettlementPreview(createdByUserId: number) {
-  const snapshot = await buildDetailedBatchSnapshot();
+export async function createSettlementPreview(createdByUserId: number, cutoffDate?: Date | null) {
+  const snapshot = await buildDetailedBatchSnapshot(cutoffDate);
   const previewId = await generateNextPreviewId();
 
   const row = await prisma.settlementPreview.create({
@@ -151,78 +162,151 @@ export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedB
     "weaver_id",
     "weaver_name",
     "zig_id",
-    "return_id",
     "fabric_type",
     "fabric_qty",
     "avg_weight",
     "base_price",
     "deduction",
-    "bonus",
-    "line_net",
-    "zig_yarn_qty",
-    "zig_yarn_total",
-    "zig_net_profit",
-    "weaver_total_net",
+    "adjusted_price",
+    "line_subtotal",
+    "fabric_total_value",
+    "yarn_qty",
+    "yarn_avg_price",
+    "yarn_total",
+    "net_profit",
+    "total_net_profit",
   ];
 
+  const rows: Array<Record<string, string | number>> = [];
+
+  let grandFabricQty = 0;
+  let grandFabricValue = 0;
+  let grandYarnQty = 0;
+  let grandYarnTotal = 0;
+  let grandNetProfit = 0;
+
+  for (const weaver of snapshot.weavers) {
+    const weaverTotal = Math.round(weaver.netSettlement);
+    let firstRowForWeaver = true;
+
+    for (const zig of weaver.zigDetails) {
+      const zigFabricTotal = Math.round(zig.fabricTotal);
+      const zigYarnQty = zig.yarnQty;
+      const zigYarnTotal = Math.round(zig.yarnTotal);
+      const zigYarnAvgPrice = zig.yarnAvgPrice;
+      const zigNetProfit = Math.round(zig.netProfit);
+
+      grandFabricValue += zigFabricTotal;
+      grandYarnQty += zigYarnQty;
+      grandYarnTotal += zigYarnTotal;
+      grandNetProfit += zigNetProfit;
+
+      const lines = zig.returns.length > 0 ? zig.returns : [null];
+      let firstRowForZig = true;
+
+      for (const line of lines) {
+        if (line) {
+          grandFabricQty += line.quantityReturned;
+        }
+
+        rows.push({
+          weaver_id: firstRowForWeaver ? weaver.weaverId : "",
+          weaver_name: firstRowForWeaver ? weaver.weaverName : "",
+          zig_id: firstRowForZig ? zig.zigId : "",
+          fabric_type: line ? line.fabricType : "",
+          fabric_qty: line ? line.quantityReturned : "",
+          avg_weight: line ? line.avgWeight : "",
+          base_price: line ? line.unitPrice : "",
+          deduction: line ? line.deductionPerPiece : "",
+          adjusted_price: line ? line.adjustedPrice : "",
+          line_subtotal: line ? line.lineSubtotal : "",
+          fabric_total_value: firstRowForZig ? zigFabricTotal : "",
+          yarn_qty: firstRowForZig ? zigYarnQty : "",
+          yarn_avg_price: firstRowForZig ? zigYarnAvgPrice : "",
+          yarn_total: firstRowForZig ? zigYarnTotal : "",
+          net_profit: firstRowForZig ? zigNetProfit : "",
+          total_net_profit: firstRowForWeaver ? weaverTotal : "",
+        });
+
+        firstRowForWeaver = false;
+        firstRowForZig = false;
+      }
+    }
+  }
+
+  // Empty spacer row
+  const emptyRow: Record<string, string> = {};
+  header.forEach((h) => {
+    emptyRow[h] = "";
+  });
+
   const lines: string[] = [
-    `Preview date: ${formatDateDDMMYY(snapshot.generatedAt)}`,
-    `Grand total: ${snapshot.grandTotal}`,
+    `ቀን: ${snapshot.cutoffDate ? formatDateDDMMYY(snapshot.cutoffDate) : "____________________"}`,
     "",
     header.join(","),
   ];
 
-  for (const weaver of snapshot.weavers) {
-    for (const zig of weaver.zigDetails) {
-      for (const ret of zig.returns) {
-        lines.push(
-          [
-            weaver.weaverId,
-            weaver.weaverName,
-            zig.zigId,
-            ret.returnId,
-            ret.fabricType,
-            ret.quantityReturned,
-            ret.avgWeight.toFixed(2),
-            ret.unitPrice,
-            ret.deductionPerPiece,
-            ret.bonusAmount,
-            ret.netCredit,
-            zig.yarnQty,
-            zig.yarnTotal.toFixed(2),
-            zig.netProfit.toFixed(2),
-            weaver.netSettlement,
-          ]
-            .map((value) => {
-              const text = String(value ?? "");
-              return text.includes(",") ? `"${text}"` : text;
-            })
-            .join(","),
-        );
-      }
-      if (zig.returns.length === 0) {
-        lines.push(
-          [
-            weaver.weaverId,
-            weaver.weaverName,
-            zig.zigId,
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            zig.yarnQty,
-            zig.yarnTotal.toFixed(2),
-            zig.netProfit.toFixed(2),
-            weaver.netSettlement,
-          ].join(","),
-        );
-      }
-    }
+  for (const row of rows) {
+    lines.push(
+      header
+        .map((k) => {
+          const text = String(row[k] ?? "");
+          return text.includes(",") ? `"${text}"` : text;
+        })
+        .join(","),
+    );
   }
+
+  // Empty spacer row
+  lines.push(header.map(() => "").join(","));
+
+  // Grand Totals row
+  lines.push(
+    [
+      "",
+      "ድምር",
+      "",
+      "",
+      grandFabricQty,
+      "",
+      "",
+      "",
+      "",
+      "",
+      grandFabricValue,
+      grandYarnQty,
+      "",
+      grandYarnTotal,
+      grandNetProfit,
+      grandNetProfit,
+    ].join(","),
+  );
+
+  // Amharic Amount Text row
+  const amharicAmount = numberToAmharicWords(Math.round(grandNetProfit));
+  lines.push(
+    [
+      `"ጠቅላላ ተከፋይ ${amharicAmount}"`,
+      ...new Array(15).fill(""),
+    ].join(","),
+  );
+
+  // 2 spacer rows
+  lines.push(header.map(() => "").join(","));
+  lines.push(header.map(() => "").join(","));
+
+  // Signature Block
+  lines.push(
+    [
+      "",
+      "ክፍያውን ያዘጋጀው",
+      "የገንዘብ ከፋይ",
+      "ክፍያውን ያጸደቀው",
+      ...new Array(12).fill(""),
+    ].join(","),
+  );
+  lines.push(["ስም", ...new Array(15).fill("")].join(","));
+  lines.push(["ፊርማ", ...new Array(15).fill("")].join(","));
 
   return `\uFEFF${lines.join("\n")}`;
 }
@@ -243,6 +327,7 @@ export async function commitSettlementPreview(
   previewId: string,
   recordedByUserId: number,
   paymentMethod?: string,
+  cutoffDate?: Date | null,
 ) {
   const preview = await prisma.settlementPreview.findUnique({
     where: { previewId },
@@ -257,7 +342,10 @@ export async function commitSettlementPreview(
   const snapshot = preview.snapshot as unknown as Awaited<
     ReturnType<typeof buildDetailedBatchSnapshot>
   >;
-  const current = await buildDetailedBatchSnapshot();
+
+  // Use stored cutoff date if not provided
+  const effectiveCutoff = cutoffDate ?? (snapshot.cutoffDate ? new Date(snapshot.cutoffDate) : null);
+  const current = await buildDetailedBatchSnapshot(effectiveCutoff);
 
   if (current.weaverCount !== snapshot.weaverCount) {
     throw new Error("CONFLICT:Settlement data changed since preview. Generate a new preview.");
@@ -279,7 +367,12 @@ export async function commitSettlementPreview(
     }
   }
 
-  const result = await batchCommitSettlements(recordedByUserId, paymentMethod, previewId);
+  const result = await batchCommitSettlements(
+    recordedByUserId,
+    paymentMethod,
+    previewId,
+    effectiveCutoff,
+  );
 
   await prisma.settlementPreview.update({
     where: { previewId },

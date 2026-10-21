@@ -1,7 +1,36 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { calculationsApi } from "../../api";
+import { calculationsApi, reportsApi } from "../../api";
 import { formatDateDDMMYY } from "../../utils/formatDate";
+
+interface ReturnLine {
+  returnId: number;
+  fabricType: string;
+  quantityReturned: number;
+  avgWeight: number;
+  unitPrice: number;
+  netCredit: number;
+  deductionPerPiece: number;
+  bonusAmount: number;
+}
+
+interface ZigDetail {
+  zigId: string;
+  returns: ReturnLine[];
+  yarnQty: number;
+  yarnTotal: number;
+  yarnAvgPrice: number;
+  fabricTotal: number;
+  netProfit: number;
+}
+
+interface WeaverDetail {
+  weaverId: number;
+  weaverName: string;
+  netSettlement: number;
+  zigIds: string[];
+  zigDetails: ZigDetail[];
+}
 
 interface PreviewData {
   previewId: string;
@@ -10,26 +39,8 @@ interface PreviewData {
   grandTotal: number;
   amharicAmountInWords: string;
   generatedAt: string;
-  weavers: Array<{
-    weaverId: number;
-    weaverName: string;
-    netSettlement: number;
-    zigIds: string[];
-    zigDetails: Array<{
-      zigId: string;
-      returns: Array<{
-        returnId: number;
-        fabricType: string;
-        quantityReturned: number;
-        avgWeight: number;
-        unitPrice: number;
-        netCredit: number;
-      }>;
-      yarnQty: number;
-      yarnTotal: number;
-      netProfit: number;
-    }>;
-  }>;
+  cutoffDate?: string | null;
+  weavers: WeaverDetail[];
 }
 
 export function SettlementPreviewPage() {
@@ -41,93 +52,213 @@ export function SettlementPreviewPage() {
     if (!previewId) return;
     calculationsApi
       .getSettlementPreview(previewId)
-      .then(setData)
+      .then((d) => setData(d as unknown as PreviewData))
       .catch((err) => setError(err.message));
   }, [previewId]);
 
-  if (!data && !error) return <p className="muted">Loading...</p>;
-  if (!data) return <p className="error">{error}</p>;
+  if (!data && !error) return <div className="page"><p className="muted">Loading master payroll document…</p></div>;
+  if (!data) return <div className="page"><div className="error-msg"><span>⚠️</span> {error}</div></div>;
+
+  let grandFabricQty = 0;
+  let grandFabricValue = 0;
+  let grandYarnQty = 0;
+  let grandYarnTotal = 0;
+  let grandNetProfit = 0;
+
+  for (const w of data.weavers) {
+    for (const z of w.zigDetails) {
+      for (const r of z.returns) {
+        grandFabricQty += r.quantityReturned;
+      }
+      grandFabricValue += Math.round(z.fabricTotal);
+      grandYarnQty += z.yarnQty;
+      grandYarnTotal += Math.round(z.yarnTotal);
+      grandNetProfit += Math.round(z.netProfit);
+    }
+  }
 
   return (
-    <div className="hisab-print">
+    <div className="hisab-print" style={{ maxWidth: 1200, margin: "0 auto", padding: "1.5rem" }}>
+      {/* Toolbar (hidden on print) */}
       <div className="no-print hisab-print-toolbar">
         <Link to="/admin/settlement">← Settlement</Link>
-        <button type="button" onClick={() => window.print()}>
-          Print / PDF
+        <button type="button" onClick={() => window.print()}>Print / PDF</button>
+        <button
+          type="button"
+          onClick={() => calculationsApi.downloadPreviewCsv(data.previewId)}
+        >
+          Download Master CSV
         </button>
-        <button type="button" onClick={() => calculationsApi.downloadPreviewCsv(data.previewId)}>
-          Download CSV
-        </button>
+        {data.status === "committed" && (
+          <button
+            type="button"
+            onClick={() => reportsApi.downloadBatchHisabCsv(data.previewId)}
+          >
+            Download Final CSV
+          </button>
+        )}
       </div>
 
-      <header className="hisab-print-header">
-        <h2>Settlement Preview — {data.previewId}</h2>
-        <p className="muted">
-          Generated {formatDateDDMMYY(data.generatedAt)} · Status: {data.status}
-        </p>
-        <p>
-          <strong>{data.weaverCount}</strong> weavers · <strong>{data.grandTotal}</strong> ETB
-        </p>
-        <p className="hisab-amharic">{data.amharicAmountInWords}</p>
-        <p className="muted">
-          Share this with weavers to confirm before recording settlements.
+      {/* Header */}
+      <header className="hisab-print-header" style={{ borderBottom: "2px solid var(--border-strong)", paddingBottom: "1rem", marginBottom: "1rem" }}>
+        <p className="eyebrow">የአውራ አምባ ማህበረሰብ የሸማ ክፍያ ዝርዝር</p>
+        <h1 style={{ fontSize: 24, margin: "0.25rem 0" }}>Awra Amba Textile — Master Weaver Payroll</h1>
+        <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", fontSize: 13.5, marginTop: "0.5rem" }}>
+          <p style={{ margin: 0 }}>ቀን / Date: <strong>{formatDateDDMMYY(data.generatedAt)}</strong></p>
+          {data.cutoffDate && (
+            <p style={{ margin: 0 }}>Cutoff (የማጣሪያ ቀን): <strong>{formatDateDDMMYY(data.cutoffDate)}</strong></p>
+          )}
+          <p style={{ margin: 0 }}>Reference: <code>{data.previewId}</code> ({data.status})</p>
+          <p style={{ margin: 0 }}>አሸጋዮች / Weavers: <strong>{data.weaverCount}</strong></p>
+          <p style={{ margin: 0 }}>ጠቅላላ ክፍያ / Grand Total: <strong>{Math.round(data.grandTotal)} ETB</strong></p>
+        </div>
+        <p className="hisab-amharic" style={{ fontSize: 15, fontWeight: 600, color: "var(--accent)", marginTop: "0.5rem" }}>
+          {data.amharicAmountInWords}
         </p>
       </header>
 
-      {data.weavers.map((weaver) => (
-        <section key={weaver.weaverId} style={{ marginBottom: "2rem" }}>
-          <h3>
-            {weaver.weaverName} — {weaver.netSettlement} ETB
-          </h3>
-          <p className="muted">Zigs: {weaver.zigIds.join(", ")}</p>
-          <table className="hisab-table">
-            <thead>
-              <tr>
-                <th>Zig</th>
-                <th>Return</th>
-                <th>Fabric</th>
-                <th>Qty</th>
-                <th>Avg wt</th>
-                <th>Price</th>
-                <th>Net</th>
-                <th>Yarn qty</th>
-                <th>Yarn total</th>
-                <th>Zig profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {weaver.zigDetails.flatMap((zig) =>
-                zig.returns.length > 0
-                  ? zig.returns.map((ret) => (
-                      <tr key={`${zig.zigId}-${ret.returnId}`}>
-                        <td>{zig.zigId}</td>
-                        <td>{ret.returnId}</td>
-                        <td>{ret.fabricType}</td>
-                        <td>{ret.quantityReturned}</td>
-                        <td>{ret.avgWeight.toFixed(2)}</td>
-                        <td>{ret.unitPrice}</td>
-                        <td>{ret.netCredit}</td>
-                        <td>{zig.yarnQty}</td>
-                        <td>{zig.yarnTotal.toFixed(2)}</td>
-                        <td>{zig.netProfit.toFixed(2)}</td>
-                      </tr>
-                    ))
-                  : [
-                      <tr key={zig.zigId}>
-                        <td>{zig.zigId}</td>
-                        <td colSpan={6} className="muted">
-                          No returns
-                        </td>
-                        <td>{zig.yarnQty}</td>
-                        <td>{zig.yarnTotal.toFixed(2)}</td>
-                        <td>{zig.netProfit.toFixed(2)}</td>
-                      </tr>,
-                    ],
-              )}
-            </tbody>
-          </table>
-        </section>
-      ))}
+      {/* Unified Master Table */}
+      <div style={{ overflowX: "auto" }}>
+        <table className="hisab-table" style={{ fontSize: 12, width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "var(--bg)", borderBottom: "2px solid var(--border-strong)" }}>
+              <th>ID</th>
+              <th>አሸጋይ / Weaver</th>
+              <th>Zig</th>
+              <th>ጨርቅ / Fabric</th>
+              <th style={{ textAlign: "right" }}>Qty</th>
+              <th style={{ textAlign: "right" }}>Avg Wt</th>
+              <th style={{ textAlign: "right" }}>Price</th>
+              <th style={{ textAlign: "right" }}>Deduct</th>
+              <th style={{ textAlign: "right" }}>Adj Price</th>
+              <th style={{ textAlign: "right" }}>Subtotal</th>
+              <th style={{ textAlign: "right" }}>Fabric Total</th>
+              <th style={{ textAlign: "right" }}>Yarn Qty</th>
+              <th style={{ textAlign: "right" }}>Yarn Avg</th>
+              <th style={{ textAlign: "right" }}>Yarn Total</th>
+              <th style={{ textAlign: "right" }}>Net Profit</th>
+              <th style={{ textAlign: "right" }}>Weaver Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.weavers.flatMap((weaver) => {
+              const weaverTotal = Math.round(weaver.netSettlement);
+              let firstWeaverRow = true;
+
+              return weaver.zigDetails.flatMap((zig) => {
+                const zigFabricTotal = Math.round(zig.fabricTotal);
+                const zigYarnQty = zig.yarnQty;
+                const zigYarnTotal = Math.round(zig.yarnTotal);
+                const zigYarnAvg = zig.yarnQty > 0 ? Math.round(zig.yarnTotal / zig.yarnQty) : 0;
+                const zigNetProfit = Math.round(zig.netProfit);
+
+                const lines = zig.returns.length > 0 ? zig.returns : [null];
+                let firstZigRow = true;
+
+                return lines.map((ret, idx) => {
+                  const deduction = ret ? ret.deductionPerPiece : 0;
+                  const adjustedPrice = ret ? Math.round(ret.unitPrice - deduction) : "";
+                  const lineSubtotal = ret ? Math.round(ret.netCredit) : "";
+                  const avgWt = ret ? Math.floor(ret.avgWeight) : "";
+
+                  const showWeaver = firstWeaverRow;
+                  const showZig = firstZigRow;
+                  firstWeaverRow = false;
+                  firstZigRow = false;
+
+                  return (
+                    <tr
+                      key={`${weaver.weaverId}-${zig.zigId}-${ret ? ret.returnId : `empty-${idx}`}`}
+                      style={{ borderBottom: "1px solid var(--border)" }}
+                    >
+                      <td>{showWeaver ? weaver.weaverId : ""}</td>
+                      <td style={{ fontWeight: showWeaver ? 600 : 400 }}>{showWeaver ? weaver.weaverName : ""}</td>
+                      <td>{showZig ? zig.zigId : ""}</td>
+                      <td>{ret ? ret.fabricType : ""}</td>
+                      <td style={{ textAlign: "right" }}>{ret ? ret.quantityReturned : ""}</td>
+                      <td style={{ textAlign: "right" }}>{avgWt}</td>
+                      <td style={{ textAlign: "right" }}>{ret ? ret.unitPrice : ""}</td>
+                      <td style={{ textAlign: "right", color: ret && ret.deductionPerPiece > 0 ? "var(--red)" : undefined }}>
+                        {ret && ret.deductionPerPiece > 0 ? ret.deductionPerPiece : (ret ? "—" : "")}
+                      </td>
+                      <td style={{ textAlign: "right" }}>{ret ? adjustedPrice : ""}</td>
+                      <td style={{ textAlign: "right" }}>{ret ? lineSubtotal : ""}</td>
+                      <td style={{ textAlign: "right", fontWeight: showZig ? 600 : 400 }}>{showZig ? zigFabricTotal : ""}</td>
+                      <td style={{ textAlign: "right" }}>{showZig ? zigYarnQty : ""}</td>
+                      <td style={{ textAlign: "right" }}>{showZig ? zigYarnAvg : ""}</td>
+                      <td style={{ textAlign: "right" }}>{showZig ? zigYarnTotal : ""}</td>
+                      <td style={{ textAlign: "right", fontWeight: showZig ? 600 : 400 }}>{showZig ? zigNetProfit : ""}</td>
+                      <td style={{ textAlign: "right", fontWeight: showWeaver ? 700 : 400, color: showWeaver ? "var(--accent)" : undefined }}>
+                        {showWeaver ? weaverTotal : ""}
+                      </td>
+                    </tr>
+                  );
+                });
+              });
+            })}
+
+            {/* Spacer */}
+            <tr><td colSpan={16} style={{ height: "1rem" }}></td></tr>
+
+            {/* Grand Totals */}
+            <tr style={{ fontWeight: 700, borderTop: "2px solid var(--border-strong)", borderBottom: "2px solid var(--border-strong)", background: "var(--bg)" }}>
+              <td></td>
+              <td>ድምር / Grand Total</td>
+              <td></td>
+              <td></td>
+              <td style={{ textAlign: "right" }}>{grandFabricQty}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td style={{ textAlign: "right" }}>{grandFabricValue}</td>
+              <td style={{ textAlign: "right" }}>{grandYarnQty}</td>
+              <td></td>
+              <td style={{ textAlign: "right" }}>{grandYarnTotal}</td>
+              <td style={{ textAlign: "right" }}>{grandNetProfit}</td>
+              <td style={{ textAlign: "right" }}>{grandNetProfit}</td>
+            </tr>
+
+            {/* Amharic Text Row */}
+            <tr>
+              <td colSpan={16} style={{ padding: "0.875rem 0.5rem", fontWeight: 700, fontSize: 13.5 }}>
+                ጠቅላላ ተከፋይ {data.amharicAmountInWords} ብር
+              </td>
+            </tr>
+
+            {/* Spacers for signature */}
+            <tr><td colSpan={16} style={{ height: "1.5rem" }}></td></tr>
+
+            {/* Signature Block */}
+            <tr style={{ fontWeight: 600 }}>
+              <td></td>
+              <td>ክፍያውን ያዘጋጀው</td>
+              <td colSpan={2}>የገንዘብ ከፋይ</td>
+              <td colSpan={3}>ክፍያውን ያጸደቀው</td>
+              <td colSpan={9}></td>
+            </tr>
+            <tr style={{ height: "2.5rem" }}>
+              <td>ስም</td>
+              <td style={{ borderBottom: "1px dashed var(--border-strong)" }}></td>
+              <td colSpan={2} style={{ borderBottom: "1px dashed var(--border-strong)" }}></td>
+              <td colSpan={3} style={{ borderBottom: "1px dashed var(--border-strong)" }}></td>
+              <td colSpan={9}></td>
+            </tr>
+            <tr style={{ height: "2.5rem" }}>
+              <td>ፊርማ</td>
+              <td style={{ borderBottom: "1px dashed var(--border-strong)" }}></td>
+              <td colSpan={2} style={{ borderBottom: "1px dashed var(--border-strong)" }}></td>
+              <td colSpan={3} style={{ borderBottom: "1px dashed var(--border-strong)" }}></td>
+              <td colSpan={9}></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer className="hisab-print-footer" style={{ marginTop: "2rem", borderTop: "1px solid var(--border)", paddingTop: "0.5rem", fontSize: 11, color: "var(--text-muted)" }}>
+        <p>Awra Amba Textile Community &middot; Consolidated Payroll Document &middot; {data.previewId}</p>
+      </footer>
     </div>
   );
 }

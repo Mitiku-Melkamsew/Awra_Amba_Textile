@@ -9,7 +9,7 @@ const FABRIC_PRODUCTS = [
   { code: "f-03", name: "በ 2.75 ሜ", basePrice: 1572, threshold: 78, width: 150, length: 275 },
   { code: "f-04", name: "በ 3.00 ሜ", basePrice: 1707, threshold: 84, width: 150, length: 300 },
   { code: "f-05", name: "ከ 60", basePrice: 1860, threshold: 90, width: 160, length: 300 },
-  { code: "f-06", name: "ከ 10", basePrice: 950, threshold: 0, width: 110, length: 200 },
+  { code: "f-06", name: "ከ 10", basePrice: 950, threshold: 42, width: 110, length: 200 },
   { code: "f-07", name: "yalga libs", basePrice: 1500, threshold: 70, width: 180, length: 250 },
   { code: "f-08", name: "sharp", basePrice: 800, threshold: 0, width: 25, length: 200 },
   { code: "f-09", name: "gabi", basePrice: 1860, threshold: 90, width: 160, length: 300 },
@@ -94,21 +94,6 @@ async function main() {
           fabricVariantId: variant.fabricVariantId,
           minWeightThreshold: fabric.threshold,
           deductionRatePerUnit: 10,
-        },
-      });
-
-      await prisma.bonusRule.upsert({
-        where: { fabricVariantId: variant.fabricVariantId },
-        update: {
-          minWeightThreshold: fabric.threshold,
-          bonusRatePerUnit: 10,
-          maxBonusPerPiece: 100,
-        },
-        create: {
-          fabricVariantId: variant.fabricVariantId,
-          minWeightThreshold: fabric.threshold,
-          bonusRatePerUnit: 10,
-          maxBonusPerPiece: 100,
         },
       });
     }

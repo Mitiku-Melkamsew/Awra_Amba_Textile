@@ -15,15 +15,6 @@ export interface DeductionResult {
   remark: string;
 }
 
-export interface BonusInput {
-  avgWeight: number;
-  unitPrice: number;
-  quantity: number;
-  minWeightThreshold: number;
-  bonusRatePerUnit?: number;
-  maxBonusPerPiece?: number | null;
-}
-
 export interface BonusResult {
   bonusPerPiece: number;
   totalBonus: number;
@@ -52,7 +43,6 @@ export interface SettlementPreview {
 }
 
 export function calculateDeduction(input: DeductionInput): DeductionResult {
-  const rate = input.deductionRatePerUnit ?? 10;
   const threshold = input.minWeightThreshold;
   const flooredWeight = Math.floor(input.avgWeight);
 
@@ -61,7 +51,7 @@ export function calculateDeduction(input: DeductionInput): DeductionResult {
       threshold,
       deductionPerPiece: 0,
       adjustedUnitPrice: input.unitPrice,
-      lineCredit: input.unitPrice * input.quantity,
+      lineCredit: Math.round(input.unitPrice * input.quantity),
       ruleApplied: "no_weight",
       remark: "No weight recorded; no deduction applied.",
     };
@@ -72,15 +62,15 @@ export function calculateDeduction(input: DeductionInput): DeductionResult {
       threshold,
       deductionPerPiece: 0,
       adjustedUnitPrice: input.unitPrice,
-      lineCredit: input.unitPrice * input.quantity,
+      lineCredit: Math.round(input.unitPrice * input.quantity),
       ruleApplied: "meets_threshold",
       remark: `Weight ${flooredWeight} meets minimum ${threshold}.`,
     };
   }
 
-  const deductionPerPiece = (threshold - flooredWeight) * rate;
+  const deductionPerPiece = (threshold - flooredWeight) * 10;
   const adjustedUnitPrice = input.unitPrice - deductionPerPiece;
-  const lineCredit = adjustedUnitPrice * input.quantity;
+  const lineCredit = Math.round(adjustedUnitPrice * input.quantity);
 
   return {
     threshold,
@@ -92,41 +82,20 @@ export function calculateDeduction(input: DeductionInput): DeductionResult {
   };
 }
 
-export function calculateBonus(input: BonusInput): BonusResult {
-  const rate = input.bonusRatePerUnit ?? 10;
-  const threshold = input.minWeightThreshold;
-  const flooredWeight = Math.floor(input.avgWeight);
-
-  if (!input.avgWeight || input.avgWeight <= 0) {
-    return {
-      bonusPerPiece: 0,
-      totalBonus: 0,
-      ruleApplied: "no_weight",
-      remark: "No weight recorded; no bonus applied.",
-    };
-  }
-
-  if (flooredWeight <= threshold) {
-    return {
-      bonusPerPiece: 0,
-      totalBonus: 0,
-      ruleApplied: "at_or_below_threshold",
-      remark: `Weight ${flooredWeight} at or below bonus threshold ${threshold}.`,
-    };
-  }
-
-  let bonusPerPiece = (flooredWeight - threshold) * rate;
-  if (input.maxBonusPerPiece != null) {
-    bonusPerPiece = Math.min(bonusPerPiece, input.maxBonusPerPiece);
-  }
-
-  const totalBonus = bonusPerPiece * input.quantity;
-
+// Bonus is disabled — always returns zero.
+export function calculateBonus(_input?: {
+  avgWeight?: number;
+  unitPrice?: number;
+  quantity?: number;
+  minWeightThreshold?: number;
+  bonusRatePerUnit?: number;
+  maxBonusPerPiece?: number | null;
+}): BonusResult {
   return {
-    bonusPerPiece,
-    totalBonus,
-    ruleApplied: "above_threshold",
-    remark: `Weight ${flooredWeight} above ${threshold}; bonus ${bonusPerPiece} per piece.`,
+    bonusPerPiece: 0,
+    totalBonus: 0,
+    ruleApplied: "bonus_disabled",
+    remark: "Bonus calculation is disabled.",
   };
 }
 
@@ -134,9 +103,8 @@ export function calculateNetCredit(
   unitPrice: number,
   deductionPerPiece: number,
   quantity: number,
-  bonusAmount: number,
 ): number {
-  return (unitPrice - deductionPerPiece) * quantity + bonusAmount;
+  return Math.round((unitPrice - deductionPerPiece) * quantity);
 }
 
 export function buildSettlementPreview(params: {
@@ -148,11 +116,7 @@ export function buildSettlementPreview(params: {
     totalWeight: number;
     unitPrice: number;
     qualityRule?: { minWeightThreshold: number; deductionRatePerUnit: number } | null;
-    bonusRule?: {
-      minWeightThreshold: number;
-      bonusRatePerUnit: number;
-      maxBonusPerPiece: number | null;
-    } | null;
+    bonusRule?: unknown;
   }>;
   yarnGiven: Array<{ yarnGivenId: number; zigId: string; quantity: number; unitPrice: number }>;
   sales: Array<{ saleId: number; movementType: string; quantity: number; unitPrice: number }>;
@@ -166,27 +130,13 @@ export function buildSettlementPreview(params: {
       unitPrice,
       quantity: row.quantityReturned,
       minWeightThreshold: Number(row.qualityRule?.minWeightThreshold ?? 0),
-      deductionRatePerUnit: row.qualityRule
-        ? Number(row.qualityRule.deductionRatePerUnit)
-        : undefined,
-    });
-
-    const bonus = calculateBonus({
-      avgWeight,
-      unitPrice,
-      quantity: row.quantityReturned,
-      minWeightThreshold: Number(row.bonusRule?.minWeightThreshold ?? 0),
-      bonusRatePerUnit: row.bonusRule ? Number(row.bonusRule.bonusRatePerUnit) : undefined,
-      maxBonusPerPiece: row.bonusRule?.maxBonusPerPiece
-        ? Number(row.bonusRule.maxBonusPerPiece)
-        : null,
+      deductionRatePerUnit: 10,
     });
 
     const netCredit = calculateNetCredit(
       unitPrice,
       deduction.deductionPerPiece,
       row.quantityReturned,
-      bonus.totalBonus,
     );
 
     return {
@@ -197,20 +147,20 @@ export function buildSettlementPreview(params: {
       avgWeight,
       unitPrice,
       deductionPerPiece: deduction.deductionPerPiece,
-      bonusAmount: bonus.totalBonus,
+      bonusAmount: 0,
       netCredit,
-      remark: `${deduction.remark} ${bonus.remark}`.trim(),
+      remark: deduction.remark,
     };
   });
 
   const yarnDebits = params.yarnGiven.map((row) => ({
     yarnGivenId: row.yarnGivenId,
     zigId: row.zigId,
-    cost: Number(row.quantity) * Number(row.unitPrice),
+    cost: Math.round(Number(row.quantity) * Number(row.unitPrice)),
   }));
 
   const saleAdjustments = params.sales.map((row) => {
-    const amount = Number(row.quantity) * Number(row.unitPrice);
+    const amount = Math.round(Number(row.quantity) * Number(row.unitPrice));
     let signedAmount = amount;
     if (row.movementType === "weaver_yarn_sale") {
       signedAmount = -Math.abs(amount);
