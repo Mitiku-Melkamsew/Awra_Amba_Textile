@@ -12,6 +12,8 @@ fabricReturnsRouter.use(authenticate, requireAdmin);
 const createSchema = z.object({
   zigId: z.string(),
   fabricVariantId: z.number().int().positive().optional(),
+  /** Fabric type of the return when described by details; defaults to the zig's own product. */
+  productId: z.number().int().positive().optional(),
   warpColorId: z.number().int().positive().optional(),
   weftColorId: z.number().int().positive().optional(),
   designId: z.number().int().positive().optional().nullable(),
@@ -78,7 +80,7 @@ fabricReturnsRouter.post("/", async (req, res, next) => {
         if (!body.warpColorId || !body.weftColorId) {
           throw new Error("VALIDATION:Provide fabric variant or warp/weft colors.");
         }
-        const productId = workOrder.fabricVariant.productId;
+        const productId = body.productId ?? workOrder.fabricVariant.productId;
         resolved = await resolveFabricVariant(
           {
             productId,
@@ -163,7 +165,7 @@ fabricReturnsRouter.patch("/:returnId", async (req, res, next) => {
         if (!body.warpColorId || !body.weftColorId) {
           throw new Error("VALIDATION:Provide fabric variant or warp/weft colors.");
         }
-        const productId = existing.workOrder.fabricVariant.productId;
+        const productId = body.productId ?? existing.workOrder.fabricVariant.productId;
         resolved = await resolveFabricVariant(
           {
             productId,

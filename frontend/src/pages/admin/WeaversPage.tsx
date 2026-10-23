@@ -7,7 +7,9 @@ import { WeaverCard } from "../../components/WeaverCard";
 export function WeaversPage() {
   const [weavers, setWeavers] = useState<Weaver[]>([]);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<"name" | "id">("name");
+  const [sort, setSort] = useState<"name" | "id">(() =>
+    localStorage.getItem("weavers.sort") === "id" ? "id" : "name",
+  );
   const [showAdd, setShowAdd] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -23,9 +25,11 @@ export function WeaversPage() {
       load().catch((err) => setError(err.message));
     }, 250);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, sort]);
-
+  useEffect(() => {
+    localStorage.setItem("weavers.sort", sort);
+  }, [sort]);
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     setAddError("");
@@ -36,7 +40,9 @@ export function WeaversPage() {
       setShowAdd(false);
       await load();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to create weaver");
+      setAddError(
+        err instanceof Error ? err.message : "Failed to create weaver",
+      );
     }
   }
 
@@ -47,12 +53,17 @@ export function WeaversPage() {
         <div>
           <p className="eyebrow">ዛሬ / Weavers</p>
           <h1 className="page-title">አሸጋዮች / Weavers</h1>
-          <p className="page-subtitle">Tap a weaver to see their work orders.</p>
+          <p className="page-subtitle">
+            Tap a weaver to see their work orders.
+          </p>
         </div>
         <button
           type="button"
           className={showAdd ? "btn-ghost" : "btn-primary"}
-          onClick={() => { setShowAdd(!showAdd); setAddError(""); }}
+          onClick={() => {
+            setShowAdd(!showAdd);
+            setAddError("");
+          }}
         >
           {showAdd ? "Cancel" : "+ አዲስ አሸጋይ"}
         </button>
@@ -84,10 +95,22 @@ export function WeaversPage() {
                 />
               </label>
             </div>
-            {addError && <div className="error-msg"><span>⚠️</span> {addError}</div>}
+            {addError && (
+              <div className="error-msg">
+                <span>⚠️</span> {addError}
+              </div>
+            )}
             <div className="form-actions">
-              <button type="submit" className="btn-primary">Create Weaver</button>
-              <button type="button" className="btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+              <button type="submit" className="btn-primary">
+                Create Weaver
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowAdd(false)}
+              >
+                Cancel
+              </button>
             </div>
           </form>
         </div>
@@ -112,13 +135,19 @@ export function WeaversPage() {
       </div>
 
       {/* Weaver list */}
-      {error && <div className="error-msg" style={{ marginBottom: "0.75rem" }}><span>⚠️</span> {error}</div>}
+      {error && (
+        <div className="error-msg" style={{ marginBottom: "0.75rem" }}>
+          <span>⚠️</span> {error}
+        </div>
+      )}
 
       <div className="weaver-list">
         {weavers.length === 0 && !error ? (
           <div className="empty-state">
             <span className="empty-icon">👤</span>
-            {search ? "No weavers match your search." : "No weavers yet. Add the first one."}
+            {search
+              ? "No weavers match your search."
+              : "No weavers yet. Add the first one."}
           </div>
         ) : (
           weavers.map((weaver) => (

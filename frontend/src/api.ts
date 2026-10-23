@@ -425,6 +425,7 @@ export const fabricReturnsApi = {
   create: (data: {
     zigId: string;
     fabricVariantId?: number;
+    productId?: number;
     warpColorId?: number;
     weftColorId?: number;
     designId?: number | null;
@@ -440,6 +441,7 @@ export const fabricReturnsApi = {
     returnId: number,
     data: {
       fabricVariantId?: number;
+      productId?: number;
       warpColorId?: number;
       weftColorId?: number;
       designId?: number | null;

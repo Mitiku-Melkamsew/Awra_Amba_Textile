@@ -79,6 +79,8 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
     });
   }, [product.productId, fv, defaultPrice, editReturn]);
 
+  const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
+
   /** Readable name of what is being saved: the chosen variant, or the typed details on the zig's product. */
   function savedFabricName(): string {
     const chosen =
@@ -88,7 +90,9 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
     if (chosen) return fabricVariantName(chosen);
     const colorName = (id: string) => lookup.colors.find((c) => String(c.colorId) === id)?.name;
     const designName = lookup.designs.find((d) => String(d.designId) === line.designId)?.name;
-    return fabricNameFromParts(product.name, colorName(line.warpColorId), colorName(line.weftColorId), designName);
+    const chosenProduct =
+      lookup.products.find((p) => String(p.productId) === line.productId)?.name ?? product.name;
+    return fabricNameFromParts(chosenProduct, colorName(line.warpColorId), colorName(line.weftColorId), designName);
   }
 
   function editDetails(patch: Partial<FabricLineDraft>) {
@@ -115,6 +119,7 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
             }
           : {
               zigId: order.zigId,
+              productId: Number(line.productId),
               warpColorId: Number(line.warpColorId),
               weftColorId: Number(line.weftColorId),
               designId: line.designId ? Number(line.designId) : null,
@@ -130,6 +135,7 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
         const createPayload = payload as Parameters<typeof fabricReturnsApi.create>[0];
         const updatePayload = {
           fabricVariantId: createPayload.fabricVariantId,
+          productId: createPayload.productId,
           warpColorId: createPayload.warpColorId,
           weftColorId: createPayload.weftColorId,
           designId: createPayload.designId,
@@ -193,10 +199,26 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
         onClear={() => editDetails({})}
       />
       <p className="muted" style={{ fontSize: "0.85rem", margin: "0.25rem 0" }}>
-        Not in the list? Fill in the details below. The product is always the zig's product
-        ({product.name}).
+        Not in the list? Fill in the details below.
       </p>
 
+      <label>
+        Fabric type / ዓይነት
+        <select
+          value={line.productId}
+          onChange={(e) => {
+            const chosen = fabricProducts.find((p) => String(p.productId) === e.target.value);
+            editDetails({ productId: e.target.value });
+            if (chosen) setUnitPrice(String(chosen.basePrice));
+          }}
+        >
+          {fabricProducts.map((p) => (
+            <option key={p.productId} value={p.productId}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <label>
         Design
         <select value={line.designId} onChange={(e) => editDetails({ designId: e.target.value })}>
