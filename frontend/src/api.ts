@@ -577,7 +577,36 @@ export const reportsApi = {
   },
 };
 
+/** One line per fabric type in a zig, with the returns merged. */
+export interface GroupedFabricLine {
+  returnIds: number[];
+  returnCount: number;
+  fabricType: string;
+  quantityReturned: number;
+  avgWeight: number;
+  unitPrice: number;
+  deductionPerPiece: number;
+  adjustedPrice: number;
+  lineSubtotal: number;
+  netCredit: number;
+}
+
+export interface CommittedSettlementSummary {
+  previewId: string;
+  createdAt: string;
+  committedAt: string | null;
+  cutoffDate: string | null;
+  weaverCount: number;
+  grandTotal: number;
+  paymentCount: number;
+  paidTotal: number;
+  paymentMethod: string | null;
+  confirmedBy: string;
+}
+
 export const calculationsApi = {
+  settlementHistory: () =>
+    api<CommittedSettlementSummary[]>("/calculations/settlements/history"),
   deduction: (body: Record<string, unknown>) =>
     api<DeductionResult>("/calculations/deduction", {
       method: "POST",
@@ -642,6 +671,8 @@ export const calculationsApi = {
             unitPrice: number;
             netCredit: number;
           }>;
+          /** Same fabric type merged into one line (added by the server). */
+          groupedReturns?: GroupedFabricLine[];
           yarnQty: number;
           yarnTotal: number;
           netProfit: number;

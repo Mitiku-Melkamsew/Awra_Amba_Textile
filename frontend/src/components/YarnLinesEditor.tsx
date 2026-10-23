@@ -1,5 +1,12 @@
+import { useMemo } from "react";
 import type { YarnCatalogLookup, YarnLineDraft, YarnVariantOption } from "../utils/yarnLines";
-import { applyYarnVariantToLine, createYarnLineDraft } from "../utils/yarnLines";
+import {
+  applyYarnVariantToLine,
+  createYarnLineDraft,
+  YARN_DETAILS_EDITED,
+} from "../utils/yarnLines";
+import { yarnVariantLabels } from "../utils/variantNames";
+import { VariantSearch } from "./VariantSearch";
 
 interface YarnLinesEditorProps {
   lines: YarnLineDraft[];
@@ -26,6 +33,8 @@ export function YarnLinesEditor({
   quantityHint,
   singleLine = false,
 }: YarnLinesEditorProps) {
+  const labels = useMemo(() => yarnVariantLabels(yarnVariants), [yarnVariants]);
+
   function addLine() {
     onChange([...lines, createYarnLineDraft(lookup)]);
   }
@@ -54,114 +63,70 @@ export function YarnLinesEditor({
             )}
           </div>
 
-          <div className="entry-mode-toggle">
-            <label>
-              <input
-                type="radio"
-                checked={line.entryMode === "catalog"}
-                onChange={() =>
-                  onChange(updateLine(lines, line.id, { entryMode: "catalog", yarnVariantId: "" }))
-                }
-              />
-              Build from type / color
-            </label>
-            <label>
-              <input
-                type="radio"
-                checked={line.entryMode === "variant"}
-                onChange={() => onChange(updateLine(lines, line.id, { entryMode: "variant" }))}
-              />
-              Pick existing variant
-            </label>
-          </div>
+          <VariantSearch
+            label="Find existing yarn / ክር ፈልግ"
+            placeholder="Type a name, e.g. cotton-white"
+            items={yarnVariants}
+            getId={(v) => String(v.yarnVariantId)}
+            getLabel={(v) => labels.get(v.yarnVariantId) ?? v.sku}
+            getSearchText={(v) => v.sku}
+            selectedId={line.entryMode === "variant" ? line.yarnVariantId : ""}
+            onSelect={(variant) =>
+              onChange(lines.map((l) => (l.id === line.id ? applyYarnVariantToLine(l, variant) : l)))
+            }
+            onClear={() => onChange(updateLine(lines, line.id, { ...YARN_DETAILS_EDITED }))}
+          />
+          <p className="muted" style={{ fontSize: "0.85rem", margin: "0.25rem 0" }}>
+            Not in the list? Fill in the details below.
+          </p>
 
-          {line.entryMode === "variant" ? (
+          <div className="form-row form-row-3">
             <label>
-              Yarn variant / SKU
+              Type / ዓይነት
               <select
-                value={line.yarnVariantId}
-                onChange={(e) => {
-                  const variant = yarnVariants.find(
-                    (v) => String(v.yarnVariantId) === e.target.value,
-                  );
-                  if (variant) {
-                    onChange(
-                      lines.map((l) =>
-                        l.id === line.id ? applyYarnVariantToLine(l, variant) : l,
-                      ),
-                    );
-                  } else {
-                    onChange(updateLine(lines, line.id, { yarnVariantId: e.target.value }));
-                  }
-                }}
+                value={line.yarnTypeId}
+                onChange={(e) =>
+                  onChange(updateLine(lines, line.id, { ...YARN_DETAILS_EDITED, yarnTypeId: e.target.value }))
+                }
               >
-                <option value="">Select variant...</option>
-                {yarnVariants.map((v) => (
-                  <option key={v.yarnVariantId} value={v.yarnVariantId}>
-                    {v.sku} · {v.yarnType?.materialName} · {v.color?.name}
+                {lookup.yarnTypes.map((t) => (
+                  <option key={t.yarnTypeId} value={t.yarnTypeId}>
+                    {t.materialName}
                   </option>
                 ))}
               </select>
             </label>
-          ) : (
-            <div className="form-row form-row-3">
-              <label>
-                Type / ዓይነት
-                <select
-                  value={line.yarnTypeId}
-                  onChange={(e) =>
-                    onChange(updateLine(lines, line.id, { yarnTypeId: e.target.value }))
-                  }
-                >
-                  {lookup.yarnTypes.map((t) => (
-                    <option key={t.yarnTypeId} value={t.yarnTypeId}>
-                      {t.materialName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Supplier
-                <select
-                  value={line.supplierId}
-                  onChange={(e) =>
-                    onChange(updateLine(lines, line.id, { supplierId: e.target.value }))
-                  }
-                >
-                  {lookup.suppliers.map((s) => (
-                    <option key={s.supplierId} value={s.supplierId}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Color / ቀለም
-                <select
-                  value={line.colorId}
-                  onChange={(e) =>
-                    onChange(updateLine(lines, line.id, { colorId: e.target.value }))
-                  }
-                >
-                  {lookup.colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-
-          {line.entryMode === "variant" && line.yarnVariantId && (
-            <p className="muted" style={{ fontSize: "0.85rem" }}>
-              {lookup.yarnTypes.find((t) => String(t.yarnTypeId) === line.yarnTypeId)?.materialName}
-              {" · "}
-              {lookup.suppliers.find((s) => String(s.supplierId) === line.supplierId)?.name}
-              {" · "}
-              {lookup.colors.find((c) => String(c.colorId) === line.colorId)?.name}
-            </p>
-          )}
+            <label>
+              Supplier
+              <select
+                value={line.supplierId}
+                onChange={(e) =>
+                  onChange(updateLine(lines, line.id, { ...YARN_DETAILS_EDITED, supplierId: e.target.value }))
+                }
+              >
+                {lookup.suppliers.map((s) => (
+                  <option key={s.supplierId} value={s.supplierId}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Color / ቀለም
+              <select
+                value={line.colorId}
+                onChange={(e) =>
+                  onChange(updateLine(lines, line.id, { ...YARN_DETAILS_EDITED, colorId: e.target.value }))
+                }
+              >
+                {lookup.colors.map((c) => (
+                  <option key={c.colorId} value={c.colorId}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <div className="form-row">
             <label>

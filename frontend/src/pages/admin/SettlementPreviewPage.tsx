@@ -3,20 +3,21 @@ import { Link, useParams } from "react-router-dom";
 import { calculationsApi, reportsApi } from "../../api";
 import { formatDateDDMMYY } from "../../utils/formatDate";
 
+// One displayed line = all returns of the same fabric type in the zig, merged by the server.
 interface ReturnLine {
-  returnId: number;
+  returnIds: number[];
   fabricType: string;
   quantityReturned: number;
   avgWeight: number;
   unitPrice: number;
-  netCredit: number;
   deductionPerPiece: number;
-  bonusAmount: number;
+  adjustedPrice: number;
+  lineSubtotal: number;
 }
 
 interface ZigDetail {
   zigId: string;
-  returns: ReturnLine[];
+  groupedReturns: ReturnLine[];
   yarnQty: number;
   yarnTotal: number;
   yarnAvgPrice: number;
@@ -67,7 +68,7 @@ export function SettlementPreviewPage() {
 
   for (const w of data.weavers) {
     for (const z of w.zigDetails) {
-      for (const r of z.returns) {
+      for (const r of z.groupedReturns) {
         grandFabricQty += r.quantityReturned;
       }
       grandFabricValue += Math.round(z.fabricTotal);
@@ -152,14 +153,13 @@ export function SettlementPreviewPage() {
                 const zigYarnAvg = zig.yarnQty > 0 ? Math.round(zig.yarnTotal / zig.yarnQty) : 0;
                 const zigNetProfit = Math.round(zig.netProfit);
 
-                const lines = zig.returns.length > 0 ? zig.returns : [null];
+                const lines = zig.groupedReturns.length > 0 ? zig.groupedReturns : [null];
                 let firstZigRow = true;
 
                 return lines.map((ret, idx) => {
-                  const deduction = ret ? ret.deductionPerPiece : 0;
-                  const adjustedPrice = ret ? Math.round(ret.unitPrice - deduction) : "";
-                  const lineSubtotal = ret ? Math.round(ret.netCredit) : "";
-                  const avgWt = ret ? Math.floor(ret.avgWeight) : "";
+                  const adjustedPrice = ret ? ret.adjustedPrice : "";
+                  const lineSubtotal = ret ? Math.round(ret.lineSubtotal) : "";
+                  const avgWt = ret ? ret.avgWeight : "";
 
                   const showWeaver = firstWeaverRow;
                   const showZig = firstZigRow;
@@ -168,7 +168,7 @@ export function SettlementPreviewPage() {
 
                   return (
                     <tr
-                      key={`${weaver.weaverId}-${zig.zigId}-${ret ? ret.returnId : `empty-${idx}`}`}
+                      key={`${weaver.weaverId}-${zig.zigId}-${ret ? ret.returnIds[0] : `empty-${idx}`}`}
                       style={{ borderBottom: "1px solid var(--border)" }}
                     >
                       <td>{showWeaver ? weaver.weaverId : ""}</td>

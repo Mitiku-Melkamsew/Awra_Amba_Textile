@@ -115,10 +115,7 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
         totalWeight: Number(row.totalWeight),
         unitPrice: Number(row.unitPrice),
         qualityRule: row.fabricVariant.qualityRule
-          ? {
-              minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold),
-              deductionRatePerUnit: Number(row.fabricVariant.qualityRule.deductionRatePerUnit),
-            }
+          ? { minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold) }
           : null,
         bonusRule: null,
       })),

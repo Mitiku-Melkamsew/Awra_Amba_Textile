@@ -6,10 +6,13 @@ import type { FabricVariant, WorkOrderDetail } from "../api";
 import {
   applyFabricVariantToLine,
   createFabricLineDraft,
+  DETAILS_EDITED,
   type FabricCatalogLookup,
   type FabricLineDraft,
 } from "../utils/fabricLines";
 import type { LineEntryMode } from "../utils/yarnLines";
+import { fabricNameFromParts, fabricVariantName } from "../utils/variantNames";
+import { VariantSearch } from "./VariantSearch";
 
 type FabricReturnRow = WorkOrderDetail["fabricReturns"][number];
 
@@ -76,7 +79,22 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
     });
   }, [product.productId, fv, defaultPrice, editReturn]);
 
-  const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
+  /** Readable name of what is being saved: the chosen variant, or the typed details on the zig's product. */
+  function savedFabricName(): string {
+    const chosen =
+      entryMode === "variant" && line.fabricVariantId
+        ? fabricVariants.find((v) => String(v.fabricVariantId) === line.fabricVariantId)
+        : undefined;
+    if (chosen) return fabricVariantName(chosen);
+    const colorName = (id: string) => lookup.colors.find((c) => String(c.colorId) === id)?.name;
+    const designName = lookup.designs.find((d) => String(d.designId) === line.designId)?.name;
+    return fabricNameFromParts(product.name, colorName(line.warpColorId), colorName(line.weftColorId), designName);
+  }
+
+  function editDetails(patch: Partial<FabricLineDraft>) {
+    setLine({ ...line, ...DETAILS_EDITED, ...patch });
+    setEntryMode("catalog");
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -126,7 +144,7 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
           variantResolved?: { created: boolean; sku: string };
         };
         const msg = result.variantResolved?.created
-          ? `Fabric return updated. New variant created: ${result.variantResolved.sku}`
+          ? `Fabric return updated. New fabric type created: ${savedFabricName()}`
           : `Fabric return updated.`;
         onSaved(msg);
         return;
@@ -137,8 +155,8 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
       };
 
       const msg = result.variantResolved?.created
-        ? `Fabric recorded. New variant created: ${result.variantResolved.sku}`
-        : `Fabric recorded. Used variant: ${result.variantResolved?.sku ?? ""}`;
+        ? `Fabric recorded. New fabric type created: ${savedFabricName()}`
+        : `Fabric recorded: ${savedFabricName()}`;
       onSaved(msg);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -159,115 +177,67 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
         {fv.design && ` · ${fv.design.name}`}
       </p>
 
-      <div className="entry-mode-toggle">
-        <label>
-          <input
-            type="radio"
-            checked={entryMode === "catalog"}
-            onChange={() => setEntryMode("catalog")}
-          />
-          Describe fabric
-        </label>
-        <label>
-          <input
-            type="radio"
-            checked={entryMode === "variant"}
-            onChange={() => setEntryMode("variant")}
-          />
-          Pick existing variant
-        </label>
-      </div>
+      <VariantSearch
+        label="Find existing fabric / ጨርቅ ፈልግ"
+        placeholder="Type a name, e.g. medebegna-biret-geberdin"
+        items={fabricVariants}
+        getId={(v) => String(v.fabricVariantId)}
+        getLabel={fabricVariantName}
+        getSearchText={(v) => v.sku}
+        selectedId={entryMode === "variant" ? line.fabricVariantId : ""}
+        onSelect={(variant) => {
+          setEntryMode("variant");
+          setLine(applyFabricVariantToLine(line, variant));
+          if (variant.basePrice) setUnitPrice(String(variant.basePrice));
+        }}
+        onClear={() => editDetails({})}
+      />
+      <p className="muted" style={{ fontSize: "0.85rem", margin: "0.25rem 0" }}>
+        Not in the list? Fill in the details below. The product is always the zig's product
+        ({product.name}).
+      </p>
 
-      {entryMode === "variant" ? (
+      <label>
+        Design
+        <select value={line.designId} onChange={(e) => editDetails({ designId: e.target.value })}>
+          <option value="">None</option>
+          {lookup.designs.map((d) => (
+            <option key={d.designId} value={d.designId}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="form-row">
         <label>
-          Fabric variant
+          Warp color
           <select
-            value={line.fabricVariantId}
-            onChange={(e) => {
-              const variant = fabricVariants.find(
-                (v) => String(v.fabricVariantId) === e.target.value,
-              );
-              if (variant) {
-                setLine(applyFabricVariantToLine(line, variant));
-                if (variant.basePrice) setUnitPrice(String(variant.basePrice));
-              } else {
-                setLine({ ...line, fabricVariantId: e.target.value });
-              }
-            }}
+            value={line.warpColorId}
+            onChange={(e) => editDetails({ warpColorId: e.target.value })}
+            required
           >
-            <option value="">Select...</option>
-            {fabricVariants.map((v) => (
-              <option key={v.fabricVariantId} value={v.fabricVariantId}>
-                {v.product.name} · {v.sku}
+            {lookup.colors.map((c) => (
+              <option key={c.colorId} value={c.colorId}>
+                {c.name}
               </option>
             ))}
           </select>
         </label>
-      ) : (
-        <>
-          <label>
-            Product
-            <select
-              value={line.productId}
-              onChange={(e) => {
-                const p = fabricProducts.find((x) => String(x.productId) === e.target.value);
-                setLine({ ...line, productId: e.target.value });
-                if (p) setUnitPrice(String(p.basePrice));
-              }}
-            >
-              {fabricProducts.map((p) => (
-                <option key={p.productId} value={p.productId}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Design
-            <select
-              value={line.designId}
-              onChange={(e) => setLine({ ...line, designId: e.target.value })}
-            >
-              <option value="">None</option>
-              {lookup.designs.map((d) => (
-                <option key={d.designId} value={d.designId}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="form-row">
-            <label>
-              Warp color
-              <select
-                value={line.warpColorId}
-                onChange={(e) => setLine({ ...line, warpColorId: e.target.value })}
-                required
-              >
-                {lookup.colors.map((c) => (
-                  <option key={c.colorId} value={c.colorId}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Weft color
-              <select
-                value={line.weftColorId}
-                onChange={(e) => setLine({ ...line, weftColorId: e.target.value })}
-                required
-              >
-                {lookup.colors.map((c) => (
-                  <option key={c.colorId} value={c.colorId}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </>
-      )}
+        <label>
+          Weft color
+          <select
+            value={line.weftColorId}
+            onChange={(e) => editDetails({ weftColorId: e.target.value })}
+            required
+          >
+            {lookup.colors.map((c) => (
+              <option key={c.colorId} value={c.colorId}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <p className="muted" style={{ fontSize: "0.85rem" }}>
         Missing a color or design?{" "}

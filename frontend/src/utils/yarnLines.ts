@@ -89,18 +89,22 @@ export function yarnRowToLineDraft(
   };
 }
 
+/** A line uses an existing variant only when one is actually chosen; otherwise it saves from the typed details. */
+const usesVariant = (line: YarnLineDraft) => line.entryMode === "variant" && Boolean(line.yarnVariantId);
+
+/** Editing any detail field means the line no longer refers to the chosen variant. */
+export const YARN_DETAILS_EDITED = { entryMode: "catalog", yarnVariantId: "" } as const;
+
 export function parseYarnLines(lines: YarnLineDraft[]): YarnLinePayload[] {
   return lines
     .filter(
       (line) =>
         Number(line.quantity) > 0 &&
         line.unitPrice &&
-        (line.entryMode === "variant"
-          ? line.yarnVariantId
-          : line.yarnTypeId && line.colorId && line.supplierId),
+        (usesVariant(line) || (line.yarnTypeId && line.colorId && line.supplierId)),
     )
     .map((line) => ({
-      ...(line.entryMode === "variant" && line.yarnVariantId
+      ...(usesVariant(line)
         ? { yarnVariantId: Number(line.yarnVariantId) }
         : {
             yarnTypeId: Number(line.yarnTypeId),

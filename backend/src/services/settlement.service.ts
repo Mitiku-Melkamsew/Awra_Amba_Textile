@@ -1,16 +1,7 @@
 import { prisma } from "../lib/prisma.js";
-import {
-  buildSettlementPreview,
-  calculateDeduction,
-  calculateNetCredit,
-} from "./calculation.service.js";
+import { buildSettlementPreview, type LineOverride } from "./calculation.service.js";
 
-export interface SettlementOverride {
-  returnId: number;
-  calculatedDeduction?: number;
-  bonusAmount?: number;
-  remark?: string;
-}
+export type SettlementOverride = LineOverride;
 
 export interface CommitSettlementInput {
   weaverId: number;
@@ -62,10 +53,8 @@ export async function commitSettlement(input: CommitSettlementInput) {
       throw new Error("CONFLICT:One or more sale adjustments are invalid or already settled.");
     }
 
-    const overrideMap = new Map(
-      (input.overrides ?? []).map((item) => [item.returnId, item]),
-    );
-
+    // ONE calculation (overrides included) produces both the per-row values that are
+    // saved below and the payment amount, so the two can never disagree.
     const preview = buildSettlementPreview({
       returns: returns.map((row) => ({
         returnId: row.returnId,
@@ -75,12 +64,8 @@ export async function commitSettlement(input: CommitSettlementInput) {
         totalWeight: Number(row.totalWeight),
         unitPrice: Number(row.unitPrice),
         qualityRule: row.fabricVariant.qualityRule
-          ? {
-              minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold),
-              deductionRatePerUnit: Number(row.fabricVariant.qualityRule.deductionRatePerUnit),
-            }
+          ? { minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold) }
           : null,
-        bonusRule: null,
       })),
       yarnGiven: yarnGiven.map((row) => ({
         yarnGivenId: row.yarnGivenId,
@@ -94,6 +79,7 @@ export async function commitSettlement(input: CommitSettlementInput) {
         quantity: Number(row.quantity),
         unitPrice: Number(row.unitPrice),
       })),
+      overrides: input.overrides,
     });
 
     const payment = await tx.payment.create({
@@ -107,34 +93,13 @@ export async function commitSettlement(input: CommitSettlementInput) {
     });
 
     for (const line of preview.lineItems) {
-      const row = returns.find((item) => item.returnId === line.returnId)!;
-      const override = overrideMap.get(line.returnId);
-      const avgWeight =
-        row.quantityReturned > 0 ? Number(row.totalWeight) / row.quantityReturned : 0;
-
-      const deductionResult = calculateDeduction({
-        avgWeight,
-        unitPrice: Number(row.unitPrice),
-        quantity: row.quantityReturned,
-        minWeightThreshold: Number(row.fabricVariant.qualityRule?.minWeightThreshold ?? 0),
-        deductionRatePerUnit: 10,
-      });
-
-      const calculatedDeduction = override?.calculatedDeduction ?? deductionResult.deductionPerPiece;
-      const bonusAmount = 0; // Bonus is disabled
-      const netCreditValue = calculateNetCredit(
-        Number(row.unitPrice),
-        calculatedDeduction,
-        row.quantityReturned,
-      );
-
       await tx.fabricReturn.update({
         where: { returnId: line.returnId },
         data: {
-          calculatedDeduction,
-          bonusAmount,
-          netCreditValue,
-          remark: override?.remark ?? line.remark,
+          calculatedDeduction: line.deductionPerPiece,
+          bonusAmount: 0, // Bonus is disabled
+          netCreditValue: line.netCredit,
+          remark: line.remark,
           paymentId: payment.paymentId,
         },
       });

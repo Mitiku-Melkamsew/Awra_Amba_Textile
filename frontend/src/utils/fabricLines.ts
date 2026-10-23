@@ -71,16 +71,19 @@ export function applyFabricVariantToLine(
   };
 }
 
+/** A line uses an existing variant only when one is actually chosen; otherwise it saves from the typed details. */
+const usesVariant = (line: FabricLineDraft) =>
+  line.entryMode === "variant" && Boolean(line.fabricVariantId);
+
+/** Editing any detail field means the line no longer refers to the chosen variant. */
+export const DETAILS_EDITED = { entryMode: "catalog", fabricVariantId: "" } as const;
+
 export function parseFabricLines(lines: FabricLineDraft[]): FabricLinePayload[] {
   return lines
     .filter((line) => Number(line.quantity) > 0 && line.unitPrice)
-    .filter((line) =>
-      line.entryMode === "variant"
-        ? line.fabricVariantId
-        : line.productId && line.warpColorId && line.weftColorId,
-    )
+    .filter((line) => usesVariant(line) || (line.productId && line.warpColorId && line.weftColorId))
     .map((line) => ({
-      ...(line.entryMode === "variant" && line.fabricVariantId
+      ...(usesVariant(line)
         ? { fabricVariantId: Number(line.fabricVariantId) }
         : {
             productId: Number(line.productId),

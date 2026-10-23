@@ -104,6 +104,9 @@ export function SettlementPage() {
           <h1 className="page-title">Weaver Payroll & Settlement</h1>
           <p className="page-subtitle">Generate, review, and record the master payroll for all returned zigs.</p>
         </div>
+        <Link to="/admin/settlement/history" className="btn-ghost">
+          Settlement history
+        </Link>
       </div>
 
       {/* Step indicator */}

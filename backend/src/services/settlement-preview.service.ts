@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
 import { formatDateDDMMYY } from "../utils/format-date.js";
+import { groupReturnsByFabricType } from "./fabric-line-grouping.js";
 import {
   batchCommitSettlements,
   discoverReturnedSettlementBundles,
@@ -94,6 +95,7 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
           const avgWeight = row!.quantityReturned > 0 ? Number(row!.totalWeight) / row!.quantityReturned : 0;
           return {
             returnId: row!.returnId,
+            fabricVariantId: row!.fabricVariantId,
             fabricType: fabricTypeLabel(row!.fabricVariant),
             quantityReturned: row!.quantityReturned,
             totalWeight: Number(row!.totalWeight),
@@ -142,6 +144,26 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
   };
 }
 
+type BatchSnapshot = Awaited<ReturnType<typeof buildDetailedBatchSnapshot>>;
+
+/**
+ * Adds `groupedReturns` (same fabric type merged into one line) next to the raw
+ * per-return lines of every zig. Done when the snapshot is read, so older saved
+ * snapshots get the merged layout too.
+ */
+export function withGroupedReturns(snapshot: BatchSnapshot) {
+  return {
+    ...snapshot,
+    weavers: snapshot.weavers.map((weaver) => ({
+      ...weaver,
+      zigDetails: weaver.zigDetails.map((zig) => ({
+        ...zig,
+        groupedReturns: groupReturnsByFabricType(zig.returns),
+      })),
+    })),
+  };
+}
+
 export async function createSettlementPreview(createdByUserId: number, cutoffDate?: Date | null) {
   const snapshot = await buildDetailedBatchSnapshot(cutoffDate);
   const previewId = await generateNextPreviewId();
@@ -154,7 +176,7 @@ export async function createSettlementPreview(createdByUserId: number, cutoffDat
     },
   });
 
-  return { previewId: row.previewId, ...snapshot };
+  return { previewId: row.previewId, ...withGroupedReturns(snapshot) };
 }
 
 export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedBatchSnapshot>>): string {
@@ -201,7 +223,8 @@ export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedB
       grandYarnTotal += zigYarnTotal;
       grandNetProfit += zigNetProfit;
 
-      const lines = zig.returns.length > 0 ? zig.returns : [null];
+      const grouped = groupReturnsByFabricType(zig.returns);
+      const lines = grouped.length > 0 ? grouped : [null];
       let firstRowForZig = true;
 
       for (const line of lines) {
@@ -380,4 +403,44 @@ export async function commitSettlementPreview(
   });
 
   return { previewId, ...result };
+}
+
+/**
+ * History of confirmed batch settlements, newest first. Reads what is already stored:
+ * the preview snapshot (totals, cutoff) and the payments linked to it (who confirmed, how).
+ */
+export async function listCommittedSettlements() {
+  const rows = await prisma.settlementPreview.findMany({
+    where: { status: "committed" },
+    orderBy: { committedAt: "desc" },
+    take: 200,
+    include: {
+      createdBy: { select: { username: true } },
+      payments: {
+        select: {
+          paymentId: true,
+          amount: true,
+          paymentMethod: true,
+          recordedBy: { select: { username: true } },
+        },
+      },
+    },
+  });
+
+  return rows.map((row) => {
+    const snapshot = row.snapshot as unknown as BatchSnapshot;
+    const firstPayment = row.payments[0];
+    return {
+      previewId: row.previewId,
+      createdAt: row.createdAt,
+      committedAt: row.committedAt,
+      cutoffDate: snapshot.cutoffDate ?? null,
+      weaverCount: snapshot.weaverCount,
+      grandTotal: snapshot.grandTotal,
+      paymentCount: row.payments.length,
+      paidTotal: row.payments.reduce((sum, payment) => sum + Number(payment.amount), 0),
+      paymentMethod: firstPayment?.paymentMethod ?? null,
+      confirmedBy: firstPayment?.recordedBy.username ?? row.createdBy.username,
+    };
+  });
 }

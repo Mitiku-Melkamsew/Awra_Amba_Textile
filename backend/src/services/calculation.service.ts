@@ -1,9 +1,11 @@
+/** Birr deducted per piece for every unit of average weight below the threshold. */
+export const DEDUCTION_RATE_PER_UNIT = 10;
+
 export interface DeductionInput {
   avgWeight: number;
   unitPrice: number;
   quantity: number;
   minWeightThreshold: number;
-  deductionRatePerUnit?: number;
 }
 
 export interface DeductionResult {
@@ -27,7 +29,10 @@ export interface SettlementLinePreview {
   zigId: string;
   fabricVariantId: number;
   quantity: number;
+  /** This return's own average weight. */
   avgWeight: number;
+  /** Merged average weight of all returns of the same fabric in the same zig; the deduction is based on this. */
+  deductionBasisAvgWeight: number;
   unitPrice: number;
   deductionPerPiece: number;
   bonusAmount: number;
@@ -42,43 +47,58 @@ export interface SettlementPreview {
   netSettlement: number;
 }
 
-export function calculateDeduction(input: DeductionInput): DeductionResult {
-  const threshold = input.minWeightThreshold;
-  const flooredWeight = Math.floor(input.avgWeight);
+export interface PieceDeduction {
+  threshold: number;
+  deductionPerPiece: number;
+  ruleApplied: string;
+  remark: string;
+}
 
-  if (!input.avgWeight || input.avgWeight <= 0) {
+/**
+ * The deduction rule itself, independent of price and quantity:
+ * below the threshold, deduct DEDUCTION_RATE_PER_UNIT for every whole unit of average weight missing.
+ */
+export function deductionForAverageWeight(avgWeight: number, minWeightThreshold: number): PieceDeduction {
+  const threshold = minWeightThreshold;
+  const flooredWeight = Math.floor(avgWeight);
+
+  if (!avgWeight || avgWeight <= 0) {
     return {
       threshold,
       deductionPerPiece: 0,
-      adjustedUnitPrice: input.unitPrice,
-      lineCredit: Math.round(input.unitPrice * input.quantity),
       ruleApplied: "no_weight",
       remark: "No weight recorded; no deduction applied.",
     };
   }
 
-  if (input.avgWeight >= threshold) {
+  if (avgWeight >= threshold) {
     return {
       threshold,
       deductionPerPiece: 0,
-      adjustedUnitPrice: input.unitPrice,
-      lineCredit: Math.round(input.unitPrice * input.quantity),
       ruleApplied: "meets_threshold",
       remark: `Weight ${flooredWeight} meets minimum ${threshold}.`,
     };
   }
 
-  const deductionPerPiece = (threshold - flooredWeight) * 10;
-  const adjustedUnitPrice = input.unitPrice - deductionPerPiece;
-  const lineCredit = Math.round(adjustedUnitPrice * input.quantity);
-
+  const deductionPerPiece = (threshold - flooredWeight) * DEDUCTION_RATE_PER_UNIT;
   return {
     threshold,
     deductionPerPiece,
-    adjustedUnitPrice,
-    lineCredit,
     ruleApplied: "below_threshold",
     remark: `Weight ${flooredWeight} below ${threshold}; deduction ${deductionPerPiece} per piece.`,
+  };
+}
+
+export function calculateDeduction(input: DeductionInput): DeductionResult {
+  const rule = deductionForAverageWeight(input.avgWeight, input.minWeightThreshold);
+  const adjustedUnitPrice = input.unitPrice - rule.deductionPerPiece;
+  return {
+    threshold: rule.threshold,
+    deductionPerPiece: rule.deductionPerPiece,
+    adjustedUnitPrice,
+    lineCredit: Math.round(adjustedUnitPrice * input.quantity),
+    ruleApplied: rule.ruleApplied,
+    remark: rule.remark,
   };
 }
 
@@ -107,6 +127,13 @@ export function calculateNetCredit(
   return Math.round((unitPrice - deductionPerPiece) * quantity);
 }
 
+export interface LineOverride {
+  returnId: number;
+  /** Deduction per piece to use for this return instead of the calculated one. */
+  calculatedDeduction?: number;
+  remark?: string;
+}
+
 export function buildSettlementPreview(params: {
   returns: Array<{
     returnId: number;
@@ -115,29 +142,57 @@ export function buildSettlementPreview(params: {
     quantityReturned: number;
     totalWeight: number;
     unitPrice: number;
-    qualityRule?: { minWeightThreshold: number; deductionRatePerUnit: number } | null;
+    qualityRule?: { minWeightThreshold: number } | null;
     bonusRule?: unknown;
   }>;
   yarnGiven: Array<{ yarnGivenId: number; zigId: string; quantity: number; unitPrice: number }>;
   sales: Array<{ saleId: number; movementType: string; quantity: number; unitPrice: number }>;
+  overrides?: LineOverride[];
 }): SettlementPreview {
+  // The deduction is based on the MERGED average weight of all returns of the same
+  // fabric in the same zig (total weight / total pieces), not on each return alone.
+  const groups = new Map<
+    string,
+    { quantity: number; weight: number; threshold: number; count: number }
+  >();
+  for (const row of params.returns) {
+    const key = `${row.zigId}::${row.fabricVariantId}`;
+    const group = groups.get(key) ?? {
+      quantity: 0,
+      weight: 0,
+      threshold: Number(row.qualityRule?.minWeightThreshold ?? 0),
+      count: 0,
+    };
+    group.quantity += row.quantityReturned;
+    group.weight += Number(row.totalWeight);
+    group.count += 1;
+    groups.set(key, group);
+  }
+
+  const groupDeductions = new Map<string, PieceDeduction & { mergedAvgWeight: number }>();
+  for (const [key, group] of groups) {
+    const mergedAvgWeight = group.quantity > 0 ? group.weight / group.quantity : 0;
+    const rule = deductionForAverageWeight(mergedAvgWeight, group.threshold);
+    groupDeductions.set(key, {
+      ...rule,
+      mergedAvgWeight,
+      remark:
+        group.count > 1
+          ? `${rule.remark} (merged average of ${group.count} returns)`
+          : rule.remark,
+    });
+  }
+
+  const overrideMap = new Map((params.overrides ?? []).map((item) => [item.returnId, item]));
+
   const lineItems: SettlementLinePreview[] = params.returns.map((row) => {
     const avgWeight = row.quantityReturned > 0 ? row.totalWeight / row.quantityReturned : 0;
     const unitPrice = Number(row.unitPrice);
+    const group = groupDeductions.get(`${row.zigId}::${row.fabricVariantId}`)!;
+    const override = overrideMap.get(row.returnId);
 
-    const deduction = calculateDeduction({
-      avgWeight,
-      unitPrice,
-      quantity: row.quantityReturned,
-      minWeightThreshold: Number(row.qualityRule?.minWeightThreshold ?? 0),
-      deductionRatePerUnit: 10,
-    });
-
-    const netCredit = calculateNetCredit(
-      unitPrice,
-      deduction.deductionPerPiece,
-      row.quantityReturned,
-    );
+    const deductionPerPiece = override?.calculatedDeduction ?? group.deductionPerPiece;
+    const netCredit = calculateNetCredit(unitPrice, deductionPerPiece, row.quantityReturned);
 
     return {
       returnId: row.returnId,
@@ -145,11 +200,12 @@ export function buildSettlementPreview(params: {
       fabricVariantId: row.fabricVariantId,
       quantity: row.quantityReturned,
       avgWeight,
+      deductionBasisAvgWeight: group.mergedAvgWeight,
       unitPrice,
-      deductionPerPiece: deduction.deductionPerPiece,
+      deductionPerPiece,
       bonusAmount: 0,
       netCredit,
-      remark: deduction.remark,
+      remark: override?.remark ?? group.remark,
     };
   });
 

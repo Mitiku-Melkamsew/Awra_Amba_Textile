@@ -11,6 +11,7 @@ import { PublicHomePage } from "./pages/PublicHomePage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettlementPage } from "./pages/SettlementPage";
 import { SettlementPreviewPage } from "./pages/admin/SettlementPreviewPage";
+import { SettlementHistoryPage } from "./pages/admin/SettlementHistoryPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { CatalogPage } from "./pages/admin/CatalogPage";
 import { HisabPrintPage } from "./pages/admin/HisabPrintPage";
@@ -66,6 +67,7 @@ function App() {
                 />
                 <Route path="/admin/catalog" element={<CatalogPage />} />
                 <Route path="/admin/settlement" element={<SettlementPage />} />
+                <Route path="/admin/settlement/history" element={<SettlementHistoryPage />} />
                 <Route
                   path="/admin/settlement/preview/:previewId"
                   element={<SettlementPreviewPage />}

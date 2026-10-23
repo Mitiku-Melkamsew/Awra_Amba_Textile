@@ -10,7 +10,9 @@ import {
 import {
   commitSettlementPreview,
   createSettlementPreview,
+  listCommittedSettlements,
   snapshotToCsv,
+  withGroupedReturns,
 } from "../services/settlement-preview.service.js";
 import { commitSettlement } from "../services/settlement.service.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
@@ -23,7 +25,6 @@ const deductionSchema = z.object({
   unitPrice: z.number(),
   quantity: z.number().int().positive(),
   minWeightThreshold: z.number().optional(),
-  deductionRatePerUnit: z.number().optional(),
 });
 
 const bonusSchema = z.object({
@@ -51,7 +52,6 @@ const commitSchema = previewSchema.extend({
       z.object({
         returnId: z.number().int().positive(),
         calculatedDeduction: z.number().optional(),
-        bonusAmount: z.number().optional(),
         remark: z.string().optional(),
       }),
     )
@@ -63,15 +63,12 @@ calculationRouter.post("/deduction", async (req, res, next) => {
     const body = deductionSchema.parse(req.body);
 
     let threshold = body.minWeightThreshold;
-    let rate = body.deductionRatePerUnit;
-
     if (body.fabricVariantId) {
       const rule = await prisma.qualityRule.findUnique({
         where: { fabricVariantId: body.fabricVariantId },
       });
       if (rule) {
         threshold = Number(rule.minWeightThreshold);
-        rate = Number(rule.deductionRatePerUnit);
       }
     }
 
@@ -80,7 +77,6 @@ calculationRouter.post("/deduction", async (req, res, next) => {
       unitPrice: body.unitPrice,
       quantity: body.quantity,
       minWeightThreshold: threshold ?? 0,
-      deductionRatePerUnit: rate,
     });
 
     res.json(result);
@@ -163,6 +159,19 @@ calculationRouter.post(
 );
 
 calculationRouter.get(
+  "/settlements/history",
+  authenticate,
+  requireAdmin,
+  async (_req, res, next) => {
+    try {
+      res.json(await listCommittedSettlements());
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+calculationRouter.get(
   "/settlements/preview/:previewId",
   authenticate,
   requireAdmin,
@@ -178,7 +187,7 @@ calculationRouter.get(
         previewId: row.previewId,
         status: row.status,
         committedAt: row.committedAt,
-        ...(row.snapshot as object),
+        ...withGroupedReturns(row.snapshot as unknown as Parameters<typeof snapshotToCsv>[0]),
       });
     } catch (error) {
       next(error);
@@ -289,10 +298,7 @@ calculationRouter.post("/settlements/preview", authenticate, requireAdmin, async
         totalWeight: Number(row.totalWeight),
         unitPrice: Number(row.unitPrice),
         qualityRule: row.fabricVariant.qualityRule
-          ? {
-              minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold),
-              deductionRatePerUnit: Number(row.fabricVariant.qualityRule.deductionRatePerUnit),
-            }
+          ? { minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold) }
           : null,
         bonusRule: row.fabricVariant.bonusRule
           ? {
