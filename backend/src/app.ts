@@ -21,7 +21,20 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+      origin: (origin, callback) => {
+        // Allow mobile apps, curl, server-to-server with no origin
+        if (!origin) return callback(null, true);
+        const configuredOrigin = process.env.CORS_ORIGIN;
+        if (
+          configuredOrigin === "*" ||
+          origin === configuredOrigin ||
+          /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+          /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+        ) {
+          return callback(null, true);
+        }
+        return callback(null, true); // Dev-friendly fallback
+      },
       credentials: true,
     }),
   );

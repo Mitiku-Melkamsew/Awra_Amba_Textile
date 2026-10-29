@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../constants/api_constants.dart';
 import '../storage/token_storage.dart';
@@ -8,7 +8,9 @@ class ApiClient {
   final TokenStorage tokenStorage;
 
   ApiClient({required this.tokenStorage}) {
-    final defaultUrl = (Platform.isAndroid)
+    // Web-safe platform check: Avoid dart:io Platform on web platforms
+    final bool isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final defaultUrl = isAndroid
         ? ApiConstants.defaultAndroidBaseUrl
         : ApiConstants.defaultLocalhostBaseUrl;
 

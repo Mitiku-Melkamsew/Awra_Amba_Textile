@@ -1,78 +1,202 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'blocs/auth/auth_bloc.dart';
-import 'blocs/auth/auth_event.dart';
-import 'blocs/auth/auth_state.dart';
-import 'blocs/settlement/settlement_bloc.dart';
-import 'blocs/stock/stock_bloc.dart';
-import 'blocs/transactions/transactions_bloc.dart';
-import 'blocs/weavers/weavers_bloc.dart';
-import 'blocs/work_orders/work_orders_bloc.dart';
 import 'core/constants/app_colors.dart';
 import 'core/constants/app_theme.dart';
 import 'core/network/api_client.dart';
 import 'core/storage/token_storage.dart';
-import 'repositories/auth_repository.dart';
-import 'repositories/settlement_repository.dart';
-import 'repositories/stock_repository.dart';
-import 'repositories/transactions_repository.dart';
-import 'repositories/weavers_repository.dart';
-import 'repositories/work_orders_repository.dart';
-import 'views/admin/admin_home_screen.dart';
-import 'views/auth/login_screen.dart';
-import 'views/weaver/weaver_home_screen.dart';
+
+// Authentication Feature
+import 'features/authentication/data/datasources/auth_local_data_source.dart';
+import 'features/authentication/data/datasources/auth_remote_data_source.dart';
+import 'features/authentication/data/repositories/auth_repository_impl.dart';
+import 'features/authentication/domain/repositories/auth_repository.dart';
+import 'features/authentication/domain/usecases/get_current_user_usecase.dart';
+import 'features/authentication/domain/usecases/login_usecase.dart';
+import 'features/authentication/domain/usecases/logout_usecase.dart';
+import 'features/authentication/domain/usecases/signup_usecase.dart';
+import 'features/authentication/presentation/blocs/auth_bloc.dart';
+import 'features/authentication/presentation/blocs/auth_event.dart';
+import 'features/authentication/presentation/blocs/auth_state.dart';
+import 'features/authentication/presentation/pages/login_page.dart';
+
+// Products Feature
+import 'features/products/data/datasources/products_remote_data_source.dart';
+import 'features/products/data/repositories/products_repository_impl.dart';
+import 'features/products/domain/repositories/products_repository.dart';
+import 'features/products/domain/usecases/calculate_deduction_usecase.dart';
+import 'features/products/domain/usecases/get_catalog_lookup_usecase.dart';
+import 'features/products/domain/usecases/get_fabric_variants_usecase.dart';
+import 'features/products/domain/usecases/get_stock_usecase.dart';
+import 'features/products/domain/usecases/get_yarn_variants_usecase.dart';
+import 'features/products/presentation/blocs/stock_bloc.dart';
+
+// Weavers Feature
+import 'features/weavers/data/datasources/weavers_remote_data_source.dart';
+import 'features/weavers/data/repositories/weavers_repository_impl.dart';
+import 'features/weavers/domain/repositories/weavers_repository.dart';
+import 'features/weavers/domain/usecases/weavers_usecases.dart';
+import 'features/weavers/presentation/blocs/weavers_bloc.dart';
+
+// Work Orders Feature
+import 'features/work_orders/data/datasources/work_orders_remote_data_source.dart';
+import 'features/work_orders/data/repositories/work_orders_repository_impl.dart';
+import 'features/work_orders/domain/repositories/work_orders_repository.dart';
+import 'features/work_orders/domain/usecases/work_orders_usecases.dart';
+import 'features/work_orders/presentation/blocs/work_orders_bloc.dart';
+
+// Transactions Feature
+import 'features/transactions/data/datasources/transactions_remote_data_source.dart';
+import 'features/transactions/data/repositories/transactions_repository_impl.dart';
+import 'features/transactions/domain/repositories/transactions_repository.dart';
+import 'features/transactions/domain/usecases/transactions_usecases.dart';
+import 'features/transactions/presentation/blocs/transactions_bloc.dart';
+
+// Settlement Feature
+import 'features/settlement/data/datasources/settlement_remote_data_source.dart';
+import 'features/settlement/data/repositories/settlement_repository_impl.dart';
+import 'features/settlement/domain/repositories/settlement_repository.dart';
+import 'features/settlement/domain/usecases/settlement_usecases.dart';
+import 'features/settlement/presentation/blocs/settlement_bloc.dart';
+
+// Home / Portals
+import 'features/home/presentation/pages/admin_home_page.dart';
+import 'features/home/presentation/pages/weaver_home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize persistent token and settings storage
+  // Core Storage & Network Client (Web-safe)
   final tokenStorage = await TokenStorage.create();
-
-  // Create HTTP API Client with interceptors
   final apiClient = ApiClient(tokenStorage: tokenStorage);
 
-  // Initialize data repositories
-  final authRepository = AuthRepository(apiClient: apiClient);
-  final weaversRepository = WeaversRepository(apiClient: apiClient);
-  final workOrdersRepository = WorkOrdersRepository(apiClient: apiClient);
-  final transactionsRepository = TransactionsRepository(apiClient: apiClient);
-  final settlementRepository = SettlementRepository(apiClient: apiClient);
-  final stockRepository = StockRepository(apiClient: apiClient);
+  // Authentication Feature Assembly
+  final authRemoteDataSource = AuthRemoteDataSourceImpl(apiClient: apiClient);
+  final authLocalDataSource = AuthLocalDataSourceImpl(tokenStorage: tokenStorage);
+  final authRepository = AuthRepositoryImpl(
+    remoteDataSource: authRemoteDataSource,
+    localDataSource: authLocalDataSource,
+  );
+  final loginUseCase = LoginUseCase(authRepository);
+  final signupUseCase = SignupUseCase(authRepository);
+  final getCurrentUserUseCase = GetCurrentUserUseCase(authRepository);
+  final logoutUseCase = LogoutUseCase(authRepository);
+
+  // Products Feature Assembly
+  final productsRemoteDataSource = ProductsRemoteDataSourceImpl(apiClient: apiClient);
+  final productsRepository = ProductsRepositoryImpl(remoteDataSource: productsRemoteDataSource);
+  final getFabricVariantsUseCase = GetFabricVariantsUseCase(productsRepository);
+  final getYarnVariantsUseCase = GetYarnVariantsUseCase(productsRepository);
+  final getCatalogLookupUseCase = GetCatalogLookupUseCase(productsRepository);
+  final getStockUseCase = GetStockUseCase(productsRepository);
+  final calculateDeductionUseCase = CalculateDeductionUseCase(productsRepository);
+
+  // Weavers Feature Assembly
+  final weaversRemoteDataSource = WeaversRemoteDataSourceImpl(apiClient: apiClient);
+  final weaversRepository = WeaversRepositoryImpl(remoteDataSource: weaversRemoteDataSource);
+  final getWeaversUseCase = GetWeaversUseCase(weaversRepository);
+  final getWeaverDetailUseCase = GetWeaverDetailUseCase(weaversRepository);
+  final createWeaverUseCase = CreateWeaverUseCase(weaversRepository);
+  final getUnsettledUseCase = GetUnsettledUseCase(weaversRepository);
+
+  // Work Orders Feature Assembly
+  final workOrdersRemoteDataSource = WorkOrdersRemoteDataSourceImpl(apiClient: apiClient);
+  final workOrdersRepository = WorkOrdersRepositoryImpl(remoteDataSource: workOrdersRemoteDataSource);
+  final getWorkOrdersUseCase = GetWorkOrdersUseCase(workOrdersRepository);
+  final getWorkOrderDetailUseCase = GetWorkOrderDetailUseCase(workOrdersRepository);
+  final createWorkOrderUseCase = CreateWorkOrderUseCase(workOrdersRepository);
+  final updateWorkOrderStatusUseCase = UpdateWorkOrderStatusUseCase(workOrdersRepository);
+  final addYarnGivenUseCase = AddYarnGivenUseCase(workOrdersRepository);
+  final addFabricReturnUseCase = AddFabricReturnUseCase(workOrdersRepository);
+
+  // Transactions Feature Assembly
+  final transactionsRemoteDataSource = TransactionsRemoteDataSourceImpl(apiClient: apiClient);
+  final transactionsRepository = TransactionsRepositoryImpl(remoteDataSource: transactionsRemoteDataSource);
+  final getTransactionsUseCase = GetTransactionsUseCase(transactionsRepository);
+  final getTransactionDetailUseCase = GetTransactionDetailUseCase(transactionsRepository);
+  final createTransactionUseCase = CreateTransactionUseCase(transactionsRepository);
+  final deliverTransactionUseCase = DeliverTransactionUseCase(transactionsRepository);
+  final addTransactionPaymentUseCase = AddTransactionPaymentUseCase(transactionsRepository);
+  final cancelTransactionUseCase = CancelTransactionUseCase(transactionsRepository);
+
+  // Settlement Feature Assembly
+  final settlementRemoteDataSource = SettlementRemoteDataSourceImpl(apiClient: apiClient);
+  final settlementRepository = SettlementRepositoryImpl(remoteDataSource: settlementRemoteDataSource);
+  final generateBatchPreviewUseCase = GenerateBatchPreviewUseCase(settlementRepository);
+  final getSettlementPreviewUseCase = GetSettlementPreviewUseCase(settlementRepository);
+  final commitBatchUseCase = CommitBatchUseCase(settlementRepository);
 
   runApp(
     MultiRepositoryProvider(
       providers: [
-        RepositoryProvider.value(value: tokenStorage),
-        RepositoryProvider.value(value: apiClient),
-        RepositoryProvider.value(value: authRepository),
-        RepositoryProvider.value(value: weaversRepository),
-        RepositoryProvider.value(value: workOrdersRepository),
-        RepositoryProvider.value(value: transactionsRepository),
-        RepositoryProvider.value(value: settlementRepository),
-        RepositoryProvider.value(value: stockRepository),
+        RepositoryProvider<TokenStorage>.value(value: tokenStorage),
+        RepositoryProvider<ApiClient>.value(value: apiClient),
+        RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<ProductsRepository>.value(value: productsRepository),
+        RepositoryProvider<WeaversRepository>.value(value: weaversRepository),
+        RepositoryProvider<WorkOrdersRepository>.value(value: workOrdersRepository),
+        RepositoryProvider<TransactionsRepository>.value(value: transactionsRepository),
+        RepositoryProvider<SettlementRepository>.value(value: settlementRepository),
       ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (_) => AuthBloc(authRepository: authRepository)..add(AppStarted()),
+            create: (_) => AuthBloc(
+              loginUseCase: loginUseCase,
+              signupUseCase: signupUseCase,
+              getCurrentUserUseCase: getCurrentUserUseCase,
+              logoutUseCase: logoutUseCase,
+              authRepository: authRepository,
+            )..add(AppStarted()),
           ),
           BlocProvider(
-            create: (_) => WeaversBloc(weaversRepository: weaversRepository),
+            create: (_) => WeaversBloc(
+              getWeaversUseCase: getWeaversUseCase,
+              getWeaverDetailUseCase: getWeaverDetailUseCase,
+              createWeaverUseCase: createWeaverUseCase,
+              getUnsettledUseCase: getUnsettledUseCase,
+              weaversRepository: weaversRepository,
+            ),
           ),
           BlocProvider(
-            create: (_) => WorkOrdersBloc(workOrdersRepository: workOrdersRepository),
+            create: (_) => WorkOrdersBloc(
+              getWorkOrdersUseCase: getWorkOrdersUseCase,
+              getWorkOrderDetailUseCase: getWorkOrderDetailUseCase,
+              createWorkOrderUseCase: createWorkOrderUseCase,
+              updateWorkOrderStatusUseCase: updateWorkOrderStatusUseCase,
+              addYarnGivenUseCase: addYarnGivenUseCase,
+              addFabricReturnUseCase: addFabricReturnUseCase,
+              workOrdersRepository: workOrdersRepository,
+            ),
           ),
           BlocProvider(
-            create: (_) =>
-                TransactionsBloc(transactionsRepository: transactionsRepository),
+            create: (_) => TransactionsBloc(
+              getTransactionsUseCase: getTransactionsUseCase,
+              getTransactionDetailUseCase: getTransactionDetailUseCase,
+              createTransactionUseCase: createTransactionUseCase,
+              deliverTransactionUseCase: deliverTransactionUseCase,
+              addTransactionPaymentUseCase: addTransactionPaymentUseCase,
+              cancelTransactionUseCase: cancelTransactionUseCase,
+              transactionsRepository: transactionsRepository,
+            ),
           ),
           BlocProvider(
-            create: (_) =>
-                SettlementBloc(settlementRepository: settlementRepository),
+            create: (_) => SettlementBloc(
+              generateBatchPreviewUseCase: generateBatchPreviewUseCase,
+              getSettlementPreviewUseCase: getSettlementPreviewUseCase,
+              commitBatchUseCase: commitBatchUseCase,
+              settlementRepository: settlementRepository,
+            ),
           ),
           BlocProvider(
-            create: (_) => StockBloc(stockRepository: stockRepository),
+            create: (_) => StockBloc(
+              getStockUseCase: getStockUseCase,
+              getFabricVariantsUseCase: getFabricVariantsUseCase,
+              getYarnVariantsUseCase: getYarnVariantsUseCase,
+              getCatalogLookupUseCase: getCatalogLookupUseCase,
+              calculateDeductionUseCase: calculateDeductionUseCase,
+              productsRepository: productsRepository,
+            ),
           ),
         ],
         child: const AwraAmbaApp(),
@@ -99,12 +223,12 @@ class AwraAmbaApp extends StatelessWidget {
           home = const _SplashScreen();
         } else if (authState.isAuthenticated) {
           if (authState.isAdmin) {
-            home = const AdminHomeScreen();
+            home = const AdminHomePage();
           } else {
-            home = const WeaverHomeScreen();
+            home = const WeaverHomePage();
           }
         } else {
-          home = const LoginScreen();
+          home = const LoginPage();
         }
 
         return MaterialApp(
@@ -133,7 +257,7 @@ class _SplashScreen extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
+                color: Colors.white.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white24, width: 2),
               ),
