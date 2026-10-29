@@ -83,7 +83,7 @@ class _IssueZigScreenState extends State<IssueZigScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<YarnType>(
-                      value: selectedType,
+                      initialValue: selectedType,
                       decoration: const InputDecoration(labelText: 'Yarn Material'),
                       items: lookup.yarnTypes
                           .map((yt) => DropdownMenuItem(
@@ -97,7 +97,7 @@ class _IssueZigScreenState extends State<IssueZigScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<NamedColor>(
-                      value: selectedColor,
+                      initialValue: selectedColor,
                       decoration: const InputDecoration(labelText: 'Color'),
                       items: lookup.colors
                           .map((c) => DropdownMenuItem(
@@ -313,7 +313,7 @@ class _IssueZigScreenState extends State<IssueZigScreen> {
                           ),
                           const SizedBox(height: 14),
                           DropdownButtonFormField<Product>(
-                            value: _selectedProduct,
+                            initialValue: _selectedProduct,
                             decoration: const InputDecoration(
                               labelText: 'Fabric Product (የጨርቅ ዓይነት) *',
                             ),
@@ -339,7 +339,7 @@ class _IssueZigScreenState extends State<IssueZigScreen> {
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<NamedColor>(
-                                  value: _selectedWarpColor,
+                                  initialValue: _selectedWarpColor,
                                   decoration: const InputDecoration(
                                     labelText: 'Warp (የድር ቀለም) *',
                                   ),
@@ -356,7 +356,7 @@ class _IssueZigScreenState extends State<IssueZigScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: DropdownButtonFormField<NamedColor>(
-                                  value: _selectedWeftColor,
+                                  initialValue: _selectedWeftColor,
                                   decoration: const InputDecoration(
                                     labelText: 'Weft (የማግ ቀለም) *',
                                   ),

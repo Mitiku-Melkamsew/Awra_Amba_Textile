@@ -33,7 +33,7 @@ class SettlementRepository {
       ApiConstants.batchCommit,
       data: {
         'previewId': previewId,
-        if (paymentMethod != null) 'paymentMethod': paymentMethod,
+        'paymentMethod': ?paymentMethod,
         if (cutoffDate != null && cutoffDate.isNotEmpty) 'cutoffDate': cutoffDate,
       },
     );

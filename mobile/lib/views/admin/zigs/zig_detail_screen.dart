@@ -50,7 +50,7 @@ class _ZigDetailScreenState extends State<ZigDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<YarnType>(
-                      value: selectedType,
+                      initialValue: selectedType,
                       decoration: const InputDecoration(labelText: 'Material'),
                       items: lookup.yarnTypes
                           .map((yt) => DropdownMenuItem(
@@ -64,7 +64,7 @@ class _ZigDetailScreenState extends State<ZigDetailScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<NamedColor>(
-                      value: selectedColor,
+                      initialValue: selectedColor,
                       decoration: const InputDecoration(labelText: 'Color'),
                       items: lookup.colors
                           .map((c) => DropdownMenuItem(
@@ -547,7 +547,7 @@ class _ZigDetailScreenState extends State<ZigDetailScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: detail.yarnGiven.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final item = detail.yarnGiven[index];
                       return Card(

@@ -247,7 +247,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       ),
                       const SizedBox(height: 14),
                       DropdownButtonFormField<String>(
-                        value: _selectedType,
+                        initialValue: _selectedType,
                         decoration: const InputDecoration(labelText: 'Type'),
                         items: _typeOptions
                             .map((t) => DropdownMenuItem(
@@ -261,7 +261,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       ),
                       const SizedBox(height: 14),
                       DropdownButtonFormField<String>(
-                        value: _paymentTerms,
+                        initialValue: _paymentTerms,
                         decoration:
                             const InputDecoration(labelText: 'Payment Terms'),
                         items: const [
@@ -292,7 +292,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: DropdownButtonFormField<Supplier>(
-                          value: _selectedSupplier,
+                          initialValue: _selectedSupplier,
                           decoration:
                               const InputDecoration(labelText: 'Supplier (አቅራቢ)'),
                           items: suppliers
@@ -316,7 +316,7 @@ class _CreateTransactionScreenState extends State<CreateTransactionScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: DropdownButtonFormField<Weaver>(
-                          value: _selectedWeaver,
+                          initialValue: _selectedWeaver,
                           decoration:
                               const InputDecoration(labelText: 'Weaver (አሸጋይ)'),
                           items: state.weavers

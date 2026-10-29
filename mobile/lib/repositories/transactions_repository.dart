@@ -53,9 +53,9 @@ class TransactionsRepository {
           'transactionId': transactionId,
         'type': type,
         'paymentTerms': paymentTerms,
-        if (supplierId != null) 'supplierId': supplierId,
-        if (weaverId != null) 'weaverId': weaverId,
-        if (merchantId != null) 'merchantId': merchantId,
+        'supplierId': ?supplierId,
+        'weaverId': ?weaverId,
+        'merchantId': ?merchantId,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
         'lines': lines,
       },
@@ -80,8 +80,8 @@ class TransactionsRepository {
       '${ApiConstants.transactions}/$transactionId/payments',
       data: {
         'amount': amount,
-        if (paymentMethod != null) 'paymentMethod': paymentMethod,
-        if (notes != null) 'notes': notes,
+        'paymentMethod': ?paymentMethod,
+        'notes': ?notes,
       },
     );
     return CommercialTransaction.fromJson(response.data);

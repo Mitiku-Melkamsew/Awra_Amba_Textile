@@ -54,7 +54,7 @@ class _ZigsListScreenState extends State<ZigsListScreen> {
                     child: FilterChip(
                       label: Text(filter['label']!),
                       selected: isSelected,
-                      selectedColor: AppColors.adminPrimary.withOpacity(0.15),
+                      selectedColor: AppColors.adminPrimary.withValues(alpha: 0.15),
                       labelStyle: TextStyle(
                         fontSize: 12.5,
                         fontWeight:
