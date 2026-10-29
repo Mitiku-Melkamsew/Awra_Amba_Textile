@@ -12,6 +12,8 @@ class WorkOrdersState extends Equatable {
   final String? errorMessage;
   final String? successMessage;
 
+  WorkOrderDetail? get selectedWorkOrder => selectedDetail;
+
   const WorkOrdersState({
     this.status = WorkOrdersStatus.initial,
     this.workOrders = const [],

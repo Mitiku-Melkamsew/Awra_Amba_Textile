@@ -23,7 +23,7 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     emit(state.copyWith(
       status: WorkOrdersStatus.loading,
       statusFilter: event.status,
-      weaverFilter: event.weaverFilter,
+      weaverFilter: event.weaverId,
       errorMessage: null,
       successMessage: null,
     ));

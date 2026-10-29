@@ -53,7 +53,7 @@ class StatCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: themeColor.withOpacity(0.1),
+                    color: themeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, size: 16, color: themeColor),
@@ -100,8 +100,8 @@ class StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
         status.replaceAll('_', ' ').toUpperCase(),
@@ -118,12 +118,14 @@ class StatusBadge extends StatelessWidget {
 
 class SectionHeader extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final int? count;
   final Widget? action;
 
   const SectionHeader({
     super.key,
     required this.title,
+    this.subtitle,
     this.count,
     this.action,
   });
@@ -135,36 +137,53 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (count != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          count.toString(),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ),
-              if (count != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    count.toString(),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
                     style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      fontSize: 11.5,
+                      color: AppColors.textMuted,
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
           if (action != null) action!,
         ],
@@ -184,10 +203,11 @@ class EmptyState extends StatelessWidget {
     super.key,
     this.icon = Icons.inbox_outlined,
     required this.title,
-    required this.message,
+    String? message,
+    String? subtitle,
     this.buttonText,
     this.onButtonPressed,
-  });
+  }) : message = message ?? subtitle ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -207,15 +227,17 @@ class EmptyState extends StatelessWidget {
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
+            if (message.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
+            ],
             if (buttonText != null && onButtonPressed != null) ...[
               const SizedBox(height: 16),
               ElevatedButton(
@@ -248,7 +270,7 @@ class ErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.dangerLight,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

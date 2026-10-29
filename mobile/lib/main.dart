@@ -1,121 +1,177 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'blocs/auth/auth_bloc.dart';
+import 'blocs/auth/auth_event.dart';
+import 'blocs/auth/auth_state.dart';
+import 'blocs/settlement/settlement_bloc.dart';
+import 'blocs/stock/stock_bloc.dart';
+import 'blocs/transactions/transactions_bloc.dart';
+import 'blocs/weavers/weavers_bloc.dart';
+import 'blocs/work_orders/work_orders_bloc.dart';
+import 'core/constants/app_colors.dart';
+import 'core/constants/app_theme.dart';
+import 'core/network/api_client.dart';
+import 'core/storage/token_storage.dart';
+import 'repositories/auth_repository.dart';
+import 'repositories/settlement_repository.dart';
+import 'repositories/stock_repository.dart';
+import 'repositories/transactions_repository.dart';
+import 'repositories/weavers_repository.dart';
+import 'repositories/work_orders_repository.dart';
+import 'views/admin/admin_home_screen.dart';
+import 'views/auth/login_screen.dart';
+import 'views/weaver/weaver_home_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize persistent token and settings storage
+  final tokenStorage = await TokenStorage.create();
+
+  // Create HTTP API Client with interceptors
+  final apiClient = ApiClient(tokenStorage: tokenStorage);
+
+  // Initialize data repositories
+  final authRepository = AuthRepository(apiClient: apiClient);
+  final weaversRepository = WeaversRepository(apiClient: apiClient);
+  final workOrdersRepository = WorkOrdersRepository(apiClient: apiClient);
+  final transactionsRepository = TransactionsRepository(apiClient: apiClient);
+  final settlementRepository = SettlementRepository(apiClient: apiClient);
+  final stockRepository = StockRepository(apiClient: apiClient);
+
+  runApp(
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider.value(value: tokenStorage),
+        RepositoryProvider.value(value: apiClient),
+        RepositoryProvider.value(value: authRepository),
+        RepositoryProvider.value(value: weaversRepository),
+        RepositoryProvider.value(value: workOrdersRepository),
+        RepositoryProvider.value(value: transactionsRepository),
+        RepositoryProvider.value(value: settlementRepository),
+        RepositoryProvider.value(value: stockRepository),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) => AuthBloc(authRepository: authRepository)..add(AppStarted()),
+          ),
+          BlocProvider(
+            create: (_) => WeaversBloc(weaversRepository: weaversRepository),
+          ),
+          BlocProvider(
+            create: (_) => WorkOrdersBloc(workOrdersRepository: workOrdersRepository),
+          ),
+          BlocProvider(
+            create: (_) =>
+                TransactionsBloc(transactionsRepository: transactionsRepository),
+          ),
+          BlocProvider(
+            create: (_) =>
+                SettlementBloc(settlementRepository: settlementRepository),
+          ),
+          BlocProvider(
+            create: (_) => StockBloc(stockRepository: stockRepository),
+          ),
+        ],
+        child: const AwraAmbaApp(),
+      ),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AwraAmbaApp extends StatelessWidget {
+  const AwraAmbaApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return BlocBuilder<AuthBloc, AuthState>(
+      buildWhen: (previous, current) =>
+          previous.status != current.status || previous.user != current.user,
+      builder: (context, authState) {
+        final isWeaver = authState.user?.isWeaver ?? false;
+        final theme = isWeaver ? AppTheme.weaverTheme : AppTheme.adminTheme;
+
+        Widget home;
+        if (authState.status == AuthStatus.initial ||
+            (authState.status == AuthStatus.loading && authState.user == null)) {
+          home = const _SplashScreen();
+        } else if (authState.isAuthenticated) {
+          if (authState.isAdmin) {
+            home = const AdminHomeScreen();
+          } else {
+            home = const WeaverHomeScreen();
+          }
+        } else {
+          home = const LoginScreen();
+        }
+
+        return MaterialApp(
+          title: 'Awra Amba Textile',
+          debugShowCheckedModeBanner: false,
+          theme: theme,
+          home: home,
+        );
+      },
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
+      backgroundColor: AppColors.adminPrimary,
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.12),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white24, width: 2),
+              ),
+              child: const Icon(
+                Icons.grid_view_rounded,
+                size: 40,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'አዕራ አምባ ቴክስታይል',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Awra Amba Textile Community',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 36),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }

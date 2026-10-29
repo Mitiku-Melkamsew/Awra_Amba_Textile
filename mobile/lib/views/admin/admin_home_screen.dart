@@ -1,8 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../blocs/auth/auth_bloc.dart';
-import '../../blocs/auth/auth_event.dart';
-import '../../core/constants/app_colors.dart';
 import 'weavers/weavers_list_screen.dart';
 import 'zigs/zigs_list_screen.dart';
 import 'transactions/transactions_list_screen.dart';

@@ -10,7 +10,6 @@ class AppTheme {
         primary: AppColors.adminPrimary,
         secondary: AppColors.adminAccent,
         surface: AppColors.surface,
-        background: AppColors.adminBackground,
       ),
       scaffoldBackgroundColor: AppColors.adminBackground,
       appBarTheme: const AppBarTheme(
@@ -25,7 +24,7 @@ class AppTheme {
           letterSpacing: 0.2,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -106,7 +105,6 @@ class AppTheme {
         primary: AppColors.weaverPrimary,
         secondary: AppColors.weaverAccent,
         surface: AppColors.surface,
-        background: AppColors.weaverBackground,
       ),
       scaffoldBackgroundColor: AppColors.weaverBackground,
       appBarTheme: const AppBarTheme(
@@ -120,7 +118,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
