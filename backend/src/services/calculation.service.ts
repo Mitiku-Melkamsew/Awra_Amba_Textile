@@ -1,4 +1,4 @@
-/** Birr deducted per piece for every unit of average weight below the threshold. */
+/** Birr deducted per piece for every unit of average weight below standard. */
 export const DEDUCTION_RATE_PER_UNIT = 10;
 
 export interface DeductionInput {
@@ -6,6 +6,7 @@ export interface DeductionInput {
   unitPrice: number;
   quantity: number;
   minWeightThreshold: number;
+  deductionRatePerUnit?: number;
 }
 
 export interface DeductionResult {
@@ -24,29 +25,6 @@ export interface BonusResult {
   remark: string;
 }
 
-export interface SettlementLinePreview {
-  returnId: number;
-  zigId: string;
-  fabricVariantId: number;
-  quantity: number;
-  /** This return's own average weight. */
-  avgWeight: number;
-  /** Merged average weight of all returns of the same fabric in the same zig; the deduction is based on this. */
-  deductionBasisAvgWeight: number;
-  unitPrice: number;
-  deductionPerPiece: number;
-  bonusAmount: number;
-  netCredit: number;
-  remark: string;
-}
-
-export interface SettlementPreview {
-  lineItems: SettlementLinePreview[];
-  yarnDebits: Array<{ yarnGivenId: number; zigId: string; cost: number }>;
-  saleAdjustments: Array<{ saleId: number; signedAmount: number }>;
-  netSettlement: number;
-}
-
 export interface PieceDeduction {
   threshold: number;
   deductionPerPiece: number;
@@ -55,11 +33,16 @@ export interface PieceDeduction {
 }
 
 /**
- * The deduction rule itself, independent of price and quantity:
- * below the threshold, deduct DEDUCTION_RATE_PER_UNIT for every whole unit of average weight missing.
+ * The deduction rule itself:
+ * Below the standard, deduct deductionRatePerUnit for every whole unit of average weight missing.
+ * Clamps overweight measurements to 0 (no deduction, no bonus).
  */
-export function deductionForAverageWeight(avgWeight: number, minWeightThreshold: number): PieceDeduction {
-  const threshold = minWeightThreshold;
+export function deductionForAverageWeight(
+  avgWeight: number,
+  standardWeight: number,
+  deductionRatePerUnit: number = DEDUCTION_RATE_PER_UNIT,
+): PieceDeduction {
+  const threshold = standardWeight;
   const flooredWeight = Math.floor(avgWeight);
 
   if (!avgWeight || avgWeight <= 0) {
@@ -76,22 +59,24 @@ export function deductionForAverageWeight(avgWeight: number, minWeightThreshold:
       threshold,
       deductionPerPiece: 0,
       ruleApplied: "meets_threshold",
-      remark: `Weight ${flooredWeight} meets minimum ${threshold}.`,
+      remark: `Weight ${flooredWeight} meets or exceeds standard ${threshold}.`,
     };
   }
 
-  const deductionPerPiece = (threshold - flooredWeight) * DEDUCTION_RATE_PER_UNIT;
+  const deficit = Math.max(0, threshold - flooredWeight);
+  const deductionPerPiece = deficit * deductionRatePerUnit;
   return {
     threshold,
     deductionPerPiece,
     ruleApplied: "below_threshold",
-    remark: `Weight ${flooredWeight} below ${threshold}; deduction ${deductionPerPiece} per piece.`,
+    remark: `Weight ${flooredWeight} is ${deficit} below standard ${threshold}; deduction ${deductionPerPiece} per piece.`,
   };
 }
 
 export function calculateDeduction(input: DeductionInput): DeductionResult {
-  const rule = deductionForAverageWeight(input.avgWeight, input.minWeightThreshold);
-  const adjustedUnitPrice = input.unitPrice - rule.deductionPerPiece;
+  const rate = input.deductionRatePerUnit ?? DEDUCTION_RATE_PER_UNIT;
+  const rule = deductionForAverageWeight(input.avgWeight, input.minWeightThreshold, rate);
+  const adjustedUnitPrice = Math.max(0, input.unitPrice - rule.deductionPerPiece);
   return {
     threshold: rule.threshold,
     deductionPerPiece: rule.deductionPerPiece,
@@ -102,7 +87,7 @@ export function calculateDeduction(input: DeductionInput): DeductionResult {
   };
 }
 
-// Bonus is disabled — always returns zero.
+// Bonus is disabled in this design — always returns zero.
 export function calculateBonus(_input?: {
   avgWeight?: number;
   unitPrice?: number;
@@ -134,102 +119,313 @@ export interface LineOverride {
   remark?: string;
 }
 
+export interface SettlementLinePreview {
+  returnId: number;
+  zigId: string;
+  fabricId?: number;
+  fabricVariantId: number;
+  quantity: number;
+  totalWeight: number;
+  avgWeight: number;
+  deductionBasisAvgWeight: number;
+  unitPrice: number;
+  deductionPerPiece: number;
+  bonusAmount: number;
+  grossValue: number;
+  deductionAmount: number;
+  netCredit: number;
+  remark: string;
+}
+
+export interface SettlementGroupPreview {
+  zigId: string;
+  fabricId: number;
+  fabricName?: string;
+  totalQuantity: number;
+  totalWeight: number;
+  averageWeight: number;
+  standardWeightG: number;
+  unitPrice: number;
+  deductionFactor: string;
+  deductionUnit: string;
+  deductionPerPiece: number;
+  deductionAmount: number;
+  grossFabricValue: number;
+  netFabricValue: number;
+  returnIds: number[];
+}
+
+export interface SettlementYarnLinePreview {
+  yarnGivenId: number;
+  zigId: string;
+  yarnVariantId: number;
+  issuedQuantity: number;
+  returnedQuantity: number;
+  netQuantity: number;
+  unitPrice: number;
+  totalCost: number;
+}
+
+export interface SettlementPreview {
+  lineItems: SettlementLinePreview[];
+  groupedLines: SettlementGroupPreview[];
+  yarnLines: SettlementYarnLinePreview[];
+  yarnDebits: Array<{ yarnGivenId: number; zigId: string; cost: number }>;
+  grossFabricValue: number;
+  totalDeductions: number;
+  totalYarnCost: number;
+  netSettlement: number;
+  isBlocked: boolean;
+  blockReasons: string[];
+  // For backwards compatibility with older tests/pages
+  saleAdjustments: Array<{ saleId: number; signedAmount: number }>;
+}
+
 export function buildSettlementPreview(params: {
   returns: Array<{
     returnId: number;
     zigId: string;
+    fabricId?: number;
+    fabricName?: string;
     fabricVariantId: number;
     quantityReturned: number;
     totalWeight: number;
     unitPrice: number;
-    qualityRule?: { minWeightThreshold: number } | null;
-    bonusRule?: unknown;
+    standardWeightG?: number;
+    qualityRule?: { minWeightThreshold: number; deductionRatePerUnit?: number } | null;
   }>;
-  yarnGiven: Array<{ yarnGivenId: number; zigId: string; quantity: number; unitPrice: number }>;
-  sales: Array<{ saleId: number; movementType: string; quantity: number; unitPrice: number }>;
+  yarnGiven: Array<{
+    yarnGivenId: number;
+    zigId: string;
+    yarnVariantId?: number;
+    quantity: number;
+    unitPrice: number;
+  }>;
+  yarnReturns?: Array<{
+    yarnVariantId: number;
+    zigId: string;
+    quantity: number;
+  }>;
+  sales?: Array<{
+    saleId: number;
+    movementType: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
   overrides?: LineOverride[];
 }): SettlementPreview {
-  // The deduction is based on the MERGED average weight of all returns of the same
-  // fabric in the same zig (total weight / total pieces), not on each return alone.
+  // 1. Group fabric returns by zigId + fabricId (or fabricVariantId if fabricId is omitted)
   const groups = new Map<
     string,
-    { quantity: number; weight: number; threshold: number; count: number }
+    {
+      zigId: string;
+      fabricId: number;
+      fabricName?: string;
+      quantity: number;
+      weight: number;
+      standardWeight: number;
+      deductionRate: number;
+      unitPriceSum: number;
+      returnIds: number[];
+    }
   >();
+
   for (const row of params.returns) {
-    const key = `${row.zigId}::${row.fabricVariantId}`;
+    const fabricId = row.fabricId ?? row.fabricVariantId;
+    const key = `${row.zigId}::${fabricId}`;
+    const standardWeight = Number(
+      row.standardWeightG ?? row.qualityRule?.minWeightThreshold ?? 0,
+    );
+    const deductionRate = Number(
+      row.qualityRule?.deductionRatePerUnit ?? DEDUCTION_RATE_PER_UNIT,
+    );
+
     const group = groups.get(key) ?? {
+      zigId: row.zigId,
+      fabricId,
+      fabricName: row.fabricName,
       quantity: 0,
       weight: 0,
-      threshold: Number(row.qualityRule?.minWeightThreshold ?? 0),
-      count: 0,
+      standardWeight,
+      deductionRate,
+      unitPriceSum: 0,
+      returnIds: [],
     };
+
     group.quantity += row.quantityReturned;
     group.weight += Number(row.totalWeight);
-    group.count += 1;
+    group.unitPriceSum += row.quantityReturned * Number(row.unitPrice);
+    group.returnIds.push(row.returnId);
     groups.set(key, group);
   }
 
-  const groupDeductions = new Map<string, PieceDeduction & { mergedAvgWeight: number }>();
+  // 2. Compute group deduction for each zigId + fabricId group
+  const groupDeductions = new Map<
+    string,
+    PieceDeduction & { mergedAvgWeight: number; weightedUnitPrice: number }
+  >();
+
   for (const [key, group] of groups) {
     const mergedAvgWeight = group.quantity > 0 ? group.weight / group.quantity : 0;
-    const rule = deductionForAverageWeight(mergedAvgWeight, group.threshold);
+    const weightedUnitPrice =
+      group.quantity > 0 ? group.unitPriceSum / group.quantity : 0;
+    const rule = deductionForAverageWeight(
+      mergedAvgWeight,
+      group.standardWeight,
+      group.deductionRate,
+    );
+
     groupDeductions.set(key, {
       ...rule,
       mergedAvgWeight,
+      weightedUnitPrice,
       remark:
-        group.count > 1
-          ? `${rule.remark} (merged average of ${group.count} returns)`
+        group.returnIds.length > 1
+          ? `${rule.remark} (merged average of ${group.returnIds.length} returns)`
           : rule.remark,
     });
   }
 
   const overrideMap = new Map((params.overrides ?? []).map((item) => [item.returnId, item]));
+  const blockReasons: string[] = [];
+
+  // 3. Process individual return line items
+  let grossFabricValue = 0;
+  let totalDeductions = 0;
 
   const lineItems: SettlementLinePreview[] = params.returns.map((row) => {
-    const avgWeight = row.quantityReturned > 0 ? row.totalWeight / row.quantityReturned : 0;
-    const unitPrice = Number(row.unitPrice);
-    const group = groupDeductions.get(`${row.zigId}::${row.fabricVariantId}`)!;
+    const fabricId = row.fabricId ?? row.fabricVariantId;
+    const key = `${row.zigId}::${fabricId}`;
+    const group = groupDeductions.get(key)!;
     const override = overrideMap.get(row.returnId);
 
     const deductionPerPiece = override?.calculatedDeduction ?? group.deductionPerPiece;
+    const unitPrice = Number(row.unitPrice);
+    const grossValue = unitPrice * row.quantityReturned;
+    const deductionAmount = deductionPerPiece * row.quantityReturned;
     const netCredit = calculateNetCredit(unitPrice, deductionPerPiece, row.quantityReturned);
+
+    grossFabricValue += grossValue;
+    totalDeductions += deductionAmount;
+
+    // Check if deduction exceeds unit price
+    if (deductionPerPiece > unitPrice) {
+      blockReasons.push(
+        `Deduction (${deductionPerPiece} ETB) exceeds unit price (${unitPrice} ETB) on return #${row.returnId} (zig ${row.zigId}). Settlement blocked for admin review.`,
+      );
+    }
+
+    const avgWeight = row.quantityReturned > 0 ? row.totalWeight / row.quantityReturned : 0;
 
     return {
       returnId: row.returnId,
       zigId: row.zigId,
+      fabricId: row.fabricId,
       fabricVariantId: row.fabricVariantId,
       quantity: row.quantityReturned,
+      totalWeight: row.totalWeight,
       avgWeight,
       deductionBasisAvgWeight: group.mergedAvgWeight,
       unitPrice,
       deductionPerPiece,
       bonusAmount: 0,
+      grossValue,
+      deductionAmount,
       netCredit,
       remark: override?.remark ?? group.remark,
     };
   });
 
-  const yarnDebits = params.yarnGiven.map((row) => ({
-    yarnGivenId: row.yarnGivenId,
-    zigId: row.zigId,
-    cost: Math.round(Number(row.quantity) * Number(row.unitPrice)),
-  }));
-
-  const saleAdjustments = params.sales.map((row) => {
-    const amount = Math.round(Number(row.quantity) * Number(row.unitPrice));
-    let signedAmount = amount;
-    if (row.movementType === "weaver_yarn_sale") {
-      signedAmount = -Math.abs(amount);
-    } else if (row.movementType === "weaver_fabric_purchase") {
-      signedAmount = Math.abs(amount);
-    }
-    return { saleId: row.saleId, signedAmount };
+  // 4. Construct grouped lines summary
+  const groupedLines: SettlementGroupPreview[] = [...groups.values()].map((g) => {
+    const key = `${g.zigId}::${g.fabricId}`;
+    const group = groupDeductions.get(key)!;
+    const gross = g.unitPriceSum;
+    const deductionAmt = group.deductionPerPiece * g.quantity;
+    return {
+      zigId: g.zigId,
+      fabricId: g.fabricId,
+      fabricName: g.fabricName,
+      totalQuantity: g.quantity,
+      totalWeight: g.weight,
+      averageWeight: group.mergedAvgWeight,
+      standardWeightG: g.standardWeight,
+      unitPrice: group.weightedUnitPrice,
+      deductionFactor: "weight",
+      deductionUnit: "g",
+      deductionPerPiece: group.deductionPerPiece,
+      deductionAmount: deductionAmt,
+      grossFabricValue: gross,
+      netFabricValue: gross - deductionAmt,
+      returnIds: g.returnIds,
+    };
   });
 
-  const fabricCredits = lineItems.reduce((sum, item) => sum + item.netCredit, 0);
-  const yarnTotal = yarnDebits.reduce((sum, item) => sum + item.cost, 0);
-  const saleTotal = saleAdjustments.reduce((sum, item) => sum + item.signedAmount, 0);
-  const netSettlement = fabricCredits - yarnTotal + saleTotal;
+  // 5. Process yarn lines (with yarn returns subtracted)
+  const yarnReturnsMap = new Map<string, number>();
+  for (const yr of params.yarnReturns ?? []) {
+    const key = `${yr.zigId}::${yr.yarnVariantId}`;
+    yarnReturnsMap.set(key, (yarnReturnsMap.get(key) ?? 0) + Number(yr.quantity));
+  }
 
-  return { lineItems, yarnDebits, saleAdjustments, netSettlement };
+  let totalYarnCost = 0;
+  const yarnLines: SettlementYarnLinePreview[] = params.yarnGiven.map((yg) => {
+    const key = `${yg.zigId}::${yg.yarnVariantId ?? 0}`;
+    const returnedQty = yarnReturnsMap.get(key) ?? 0;
+    const netQty = Math.max(0, yg.quantity - returnedQty);
+    const cost = Math.round(netQty * yg.unitPrice);
+    totalYarnCost += cost;
+
+    return {
+      yarnGivenId: yg.yarnGivenId,
+      zigId: yg.zigId,
+      yarnVariantId: yg.yarnVariantId ?? 0,
+      issuedQuantity: yg.quantity,
+      returnedQuantity: returnedQty,
+      netQuantity: netQty,
+      unitPrice: yg.unitPrice,
+      totalCost: cost,
+    };
+  });
+
+  const yarnDebits = yarnLines.map((yl) => ({
+    yarnGivenId: yl.yarnGivenId,
+    zigId: yl.zigId,
+    cost: yl.totalCost,
+  }));
+
+  // Backwards compatibility for tests with sales adjustments
+  let salesAdjustmentTotal = 0;
+  const saleAdjustments = (params.sales ?? []).map((sale) => {
+    const amount = Number(sale.quantity) * Number(sale.unitPrice);
+    const signedAmount =
+      sale.movementType === "weaver_fabric_purchase" ? amount : -amount;
+    salesAdjustmentTotal += signedAmount;
+    return { saleId: sale.saleId, signedAmount };
+  });
+
+  const netFabricValue = grossFabricValue - totalDeductions;
+
+  // Check if yarn cost exceeds net fabric credit
+  if (totalYarnCost > netFabricValue) {
+    blockReasons.push(
+      `Total yarn cost (${totalYarnCost} ETB) exceeds net fabric credit (${netFabricValue} ETB). Settlement blocked for admin review.`,
+    );
+  }
+
+  const netSettlement = netFabricValue - totalYarnCost + salesAdjustmentTotal;
+
+  return {
+    lineItems,
+    groupedLines,
+    yarnLines,
+    yarnDebits,
+    grossFabricValue,
+    totalDeductions,
+    totalYarnCost,
+    netSettlement,
+    isBlocked: blockReasons.length > 0,
+    blockReasons,
+    saleAdjustments,
+  };
 }

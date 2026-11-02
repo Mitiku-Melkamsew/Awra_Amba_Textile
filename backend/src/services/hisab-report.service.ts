@@ -2,19 +2,6 @@ import { prisma } from "../lib/prisma.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
 import { formatDateDDMMYY } from "../utils/format-date.js";
 
-function fabricTypeLabel(fabricVariant: {
-  product: { name: string };
-  warpColor: { name: string };
-  weftColor: { name: string };
-  design: { name: string } | null;
-}): string {
-  const parts = [fabricVariant.product.name];
-  parts.push(`warp:${fabricVariant.warpColor.name}`);
-  parts.push(`weft:${fabricVariant.weftColor.name}`);
-  if (fabricVariant.design) parts.push(fabricVariant.design.name);
-  return parts.join(" · ");
-}
-
 export interface HisabRow {
   weaverId: string | number;
   weaverName: string;
@@ -39,72 +26,88 @@ function zigSortKey(zigId: string): number {
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
 
-export async function buildHisabReport(paymentId: number) {
-  const payment = await prisma.payment.findUnique({
-    where: { paymentId },
+export async function buildHisabReport(settlementOrPaymentId: number) {
+  // Try by settlementId first, fallback to settlementPaymentId
+  let settlement = await prisma.settlement.findUnique({
+    where: { settlementId: settlementOrPaymentId },
     include: {
       weaver: true,
-      fabricReturns: {
-        include: {
-          fabricVariant: {
-            include: { product: true, warpColor: true, weftColor: true, design: true },
-          },
-          workOrder: true,
-        },
-        orderBy: [{ zigId: "asc" }, { returnId: "asc" }],
+      lines: {
+        include: { fabric: true },
+        orderBy: [{ zigId: "asc" }, { settlementLineId: "asc" }],
       },
-      yarnGiven: {
-        include: { workOrder: true },
-        orderBy: { yarnGivenId: "asc" },
+      yarnLines: {
+        include: { yarnVariant: { include: { yarn: true } } },
+        orderBy: { settlementYarnLineId: "asc" },
       },
+      payments: true,
     },
   });
 
-  if (!payment) {
-    throw new Error("CONFLICT:Payment not found.");
+  if (!settlement) {
+    const payment = await prisma.settlementPayment.findUnique({
+      where: { settlementPaymentId: settlementOrPaymentId },
+      include: {
+        settlement: {
+          include: {
+            weaver: true,
+            lines: {
+              include: { fabric: true },
+              orderBy: [{ zigId: "asc" }, { settlementLineId: "asc" }],
+            },
+            yarnLines: {
+              include: { yarnVariant: { include: { yarn: true } } },
+              orderBy: { settlementYarnLineId: "asc" },
+            },
+            payments: true,
+          },
+        },
+      },
+    });
+    if (payment?.settlement) {
+      settlement = payment.settlement;
+    }
+  }
+
+  if (!settlement) {
+    throw new Error("CONFLICT:Settlement or payment not found.");
   }
 
   const rows: HisabRow[] = [];
-  const zigIds = [...new Set(payment.fabricReturns.map((row) => row.zigId))].sort(
+  const zigIds = [...new Set(settlement.lines.map((l) => l.zigId))].sort(
     (a, b) => zigSortKey(a) - zigSortKey(b),
   );
 
-  const yarnByZig = new Map<string, typeof payment.yarnGiven>();
-  for (const yarn of payment.yarnGiven) {
+  const yarnByZig = new Map<string, typeof settlement.yarnLines>();
+  for (const yarn of settlement.yarnLines) {
     const list = yarnByZig.get(yarn.zigId) ?? [];
     list.push(yarn);
     yarnByZig.set(yarn.zigId, list);
   }
 
-  const returnsByZig = new Map<string, typeof payment.fabricReturns>();
-  for (const row of payment.fabricReturns) {
-    const list = returnsByZig.get(row.zigId) ?? [];
-    list.push(row);
-    returnsByZig.set(row.zigId, list);
+  const linesByZig = new Map<string, typeof settlement.lines>();
+  for (const line of settlement.lines) {
+    const list = linesByZig.get(line.zigId) ?? [];
+    list.push(line);
+    linesByZig.set(line.zigId, list);
   }
 
-  const weaverName = `${payment.weaver.firstName} ${payment.weaver.lastName}`;
+  const weaverName = settlement.weaver.fullName;
   let firstWeaverRow = true;
 
   const zigTotals = zigIds.map((zigId) => {
-    const zigReturns = returnsByZig.get(zigId) ?? [];
+    const zigLines = linesByZig.get(zigId) ?? [];
     const zigYarn = yarnByZig.get(zigId) ?? [];
-    const yarnQty = zigYarn.reduce((sum, row) => sum + Number(row.quantity), 0);
+    const yarnQty = zigYarn.reduce((sum, row) => sum + Number(row.netQuantity), 0);
     const yarnTotal = Math.round(
-      zigYarn.reduce(
-        (sum, row) => sum + Number(row.quantity) * Number(row.unitPrice),
-        0,
-      ),
+      zigYarn.reduce((sum, row) => sum + Number(row.totalCost), 0),
     );
     const fabricTotalValue = Math.round(
-      zigReturns.reduce(
-        (sum, row) => sum + Number(row.netCreditValue ?? 0),
-        0,
-      ),
+      zigLines.reduce((sum, row) => sum + Number(row.netFabricValue), 0),
     );
     return {
       zigId,
-      zigReturns,
+      zigLines,
       yarnQty,
       yarnTotal,
       yarnAvgPrice: yarnQty > 0 ? Math.round(yarnTotal / yarnQty) : 0,
@@ -116,26 +119,23 @@ export async function buildHisabReport(paymentId: number) {
   const weaverNetTotal = zigTotals.reduce((sum, zig) => sum + zig.netProfit, 0);
 
   for (const zig of zigTotals) {
-    const { zigId, zigReturns, yarnQty, yarnTotal, yarnAvgPrice, fabricTotalValue, netProfit } =
+    const { zigId, zigLines, yarnQty, yarnTotal, yarnAvgPrice, fabricTotalValue, netProfit } =
       zig;
 
     let firstZigRow = true;
-    for (const fabricRow of zigReturns) {
-      const avgWeight =
-        fabricRow.quantityReturned > 0
-          ? Math.floor(Number(fabricRow.totalWeight) / fabricRow.quantityReturned)
-          : 0;
-      const deduction = Number(fabricRow.calculatedDeduction ?? 0);
-      const unitPrice = Number(fabricRow.unitPrice);
+    for (const line of zigLines) {
+      const avgWeight = Math.floor(Number(line.averageWeight));
+      const deduction = Number(line.deductionPerPiece);
+      const unitPrice = Number(line.unitPrice);
       const adjustedPrice = unitPrice - deduction;
-      const lineSubtotal = Math.round(adjustedPrice * fabricRow.quantityReturned);
+      const lineSubtotal = Math.round(Number(line.netFabricValue));
 
       rows.push({
-        weaverId: firstWeaverRow ? payment.weaverId : "",
+        weaverId: firstWeaverRow ? settlement.weaverUserId : "",
         weaverName: firstWeaverRow ? weaverName : "",
         zigId: firstZigRow ? zigId : "",
-        fabricType: fabricTypeLabel(fabricRow.fabricVariant),
-        fabricQty: fabricRow.quantityReturned,
+        fabricType: line.fabric.name,
+        fabricQty: line.totalQuantity,
         avgWeight,
         basePrice: unitPrice,
         deduction,
@@ -153,23 +153,20 @@ export async function buildHisabReport(paymentId: number) {
     }
   }
 
-  const grandFabricQty = payment.fabricReturns.reduce(
-    (sum, row) => sum + row.quantityReturned,
+  const grandFabricQty = settlement.lines.reduce((sum, row) => sum + row.totalQuantity, 0);
+  const grandFabricValue = settlement.lines.reduce(
+    (sum, row) => sum + Number(row.netFabricValue),
     0,
   );
-  const grandFabricValue = payment.fabricReturns.reduce(
-    (sum, row) => sum + Number(row.netCreditValue ?? 0),
+  const grandYarnQty = settlement.yarnLines.reduce(
+    (sum, row) => sum + Number(row.netQuantity),
     0,
   );
-  const grandYarnQty = payment.yarnGiven.reduce(
-    (sum, row) => sum + Number(row.quantity),
+  const grandYarnTotal = settlement.yarnLines.reduce(
+    (sum, row) => sum + Number(row.totalCost),
     0,
   );
-  const grandYarnTotal = payment.yarnGiven.reduce(
-    (sum, row) => sum + Number(row.quantity) * Number(row.unitPrice),
-    0,
-  );
-  const grandNet = Number(payment.amount);
+  const grandNet = Number(settlement.netAmount);
 
   rows.push({
     weaverId: "",
@@ -267,10 +264,13 @@ export async function buildHisabReport(paymentId: number) {
     },
   );
 
+  const paymentDate = settlement.paidAt ?? settlement.createdAt;
+
   return {
-    paymentId: payment.paymentId,
-    paymentDate: payment.paymentDate,
-    weaver: payment.weaver,
+    paymentId: settlement.payments[0]?.settlementPaymentId ?? settlement.settlementId,
+    settlementId: settlement.settlementId,
+    paymentDate,
+    weaver: settlement.weaver,
     amount: grandNet,
     amharicAmountInWords: amharicAmount,
     rows,

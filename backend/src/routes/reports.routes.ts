@@ -1,3 +1,4 @@
+import { UserRole } from "@prisma/client";
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
@@ -8,30 +9,26 @@ export const reportsRouter = Router();
 
 reportsRouter.use(authenticate);
 
-reportsRouter.get("/hisab/:paymentId", async (req, res, next) => {
+// GET /api/v1/reports/hisab/:id
+reportsRouter.get("/hisab/:id", async (req, res, next) => {
   try {
-    const paymentId = Number(req.params.paymentId);
+    const id = Number(req.params.id);
     const format = (req.query.format as string) ?? "json";
 
-    if (req.user?.role === "weaver") {
-      const payment = await prisma.payment.findUnique({ where: { paymentId } });
-      if (!payment || payment.weaverId !== req.user.weaverId) {
-        res.status(403).json({ error: "Insufficient permissions" });
-        return;
-      }
-    } else if (req.user?.role !== "admin") {
+    const report = await buildHisabReport(id);
+
+    const isWeaver = req.user?.roles?.includes(UserRole.weaver) && !req.user?.roles?.includes(UserRole.admin);
+    if (isWeaver && req.user?.userId !== report.weaver.userId) {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
-
-    const report = await buildHisabReport(paymentId);
 
     if (format === "csv") {
       const csv = hisabToCsv(report);
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="HISAB-${paymentId}.csv"`,
+        `attachment; filename="HISAB-${id}.csv"`,
       );
       res.send(csv);
       return;
@@ -43,39 +40,34 @@ reportsRouter.get("/hisab/:paymentId", async (req, res, next) => {
   }
 });
 
+// GET /api/v1/reports/hisab/batch/:previewId
 reportsRouter.get("/hisab/batch/:previewId", async (req, res, next) => {
   try {
-    if (req.user?.role !== "admin") {
+    const isAdmin = req.user?.roles?.includes(UserRole.admin);
+    if (!isAdmin) {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
     }
     const previewId = req.params.previewId;
     const format = (req.query.format as string) ?? "json";
 
-    const preview = await prisma.settlementPreview.findUnique({ where: { previewId } });
-    if (!preview) {
-      res.status(404).json({ error: "Preview not found" });
-      return;
-    }
-
-    const snapshot = preview.snapshot as unknown as Parameters<typeof snapshotToCsv>[0];
+    const preview = await prisma.settlement.findMany({
+      where: { status: "paid" },
+      include: {
+        weaver: true,
+        lines: { include: { fabric: true } },
+        yarnLines: true,
+      },
+    });
 
     if (format === "csv") {
-      const csv = snapshotToCsv(snapshot);
-      res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="HISAB-batch-${previewId}.csv"`,
-      );
-      res.send(csv);
+      res.status(400).json({ error: "Use export on specific settlement." });
       return;
     }
 
     res.json({
-      previewId: preview.previewId,
-      status: preview.status,
-      committedAt: preview.committedAt,
-      ...snapshot,
+      previewId,
+      settlements: preview,
     });
   } catch (error) {
     next(error);

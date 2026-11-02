@@ -1,214 +1,234 @@
-import { PrismaClient, ProductCategory, UserRole } from "@prisma/client";
+import { PrismaClient, UserRole, WorkOrderStatus } from "@prisma/client";
 import argon2 from "argon2";
 
 const prisma = new PrismaClient();
 
-const FABRIC_PRODUCTS = [
-  { code: "f-01", name: "መደበኛ", basePrice: 1300, threshold: 64, width: 150, length: 225 },
-  { code: "f-02", name: "በ 2.50 ሜ", basePrice: 1436, threshold: 71, width: 150, length: 250 },
-  { code: "f-03", name: "በ 2.75 ሜ", basePrice: 1572, threshold: 78, width: 150, length: 275 },
-  { code: "f-04", name: "በ 3.00 ሜ", basePrice: 1707, threshold: 84, width: 150, length: 300 },
-  { code: "f-05", name: "ከ 60", basePrice: 1860, threshold: 90, width: 160, length: 300 },
-  { code: "f-06", name: "ከ 10", basePrice: 950, threshold: 42, width: 110, length: 200 },
-  { code: "f-07", name: "yalga libs", basePrice: 1500, threshold: 70, width: 180, length: 250 },
-  { code: "f-08", name: "sharp", basePrice: 800, threshold: 0, width: 25, length: 200 },
-  { code: "f-09", name: "gabi", basePrice: 1860, threshold: 90, width: 160, length: 300 },
-  { code: "f-10", name: "ferj", basePrice: 1200, threshold: 60, width: 75, length: 300 },
+const FABRICS = [
+  { code: "f-01", name: "መደበኛ", weaverRate: 1300, sellingPrice: 1600, threshold: 64, width: 150, length: 225 },
+  { code: "f-02", name: "በ 2.50 ሜ", weaverRate: 1436, sellingPrice: 1750, threshold: 71, width: 150, length: 250 },
+  { code: "f-03", name: "በ 2.75 ሜ", weaverRate: 1572, sellingPrice: 1900, threshold: 78, width: 150, length: 275 },
+  { code: "f-04", name: "በ 3.00 ሜ", weaverRate: 1707, sellingPrice: 2100, threshold: 84, width: 150, length: 300 },
+  { code: "f-05", name: "ከ 60", weaverRate: 1860, sellingPrice: 2300, threshold: 90, width: 160, length: 300 },
+  { code: "f-06", name: "ከ 10", weaverRate: 950, sellingPrice: 1200, threshold: 42, width: 110, length: 200 },
+  { code: "f-07", name: "yalga libs", weaverRate: 1500, sellingPrice: 1850, threshold: 70, width: 180, length: 250 },
+  { code: "f-08", name: "sharp", weaverRate: 800, sellingPrice: 1000, threshold: 0, width: 25, length: 200 },
+  { code: "f-09", name: "gabi", weaverRate: 1860, sellingPrice: 2300, threshold: 90, width: 160, length: 300 },
+  { code: "f-10", name: "ferj", weaverRate: 1200, sellingPrice: 1500, threshold: 60, width: 75, length: 300 },
+];
+
+const YARNS = [
+  { name: "Tilet", purchasePrice: 400, sellingPrice: 450 },
+  { name: "Warba", purchasePrice: 350, sellingPrice: 400 },
+  { name: "Dir", purchasePrice: 320, sellingPrice: 380 },
+  { name: "Kezere", purchasePrice: 420, sellingPrice: 480 },
 ];
 
 async function main() {
-  const defaultColor = await prisma.color.upsert({
-    where: { colorCode: "C-001" },
-    update: {},
-    create: { colorCode: "C-001", name: "Default" },
-  });
+  console.log("Seeding redesigned database...");
 
-  const supplier = await prisma.supplier.upsert({
-    where: { name: "Default Supplier" },
-    update: {},
-    create: { name: "Default Supplier", contactPhone: "0000000000" },
-  });
-
-  const yarnType = await prisma.yarnType.upsert({
-    where: { materialName: "Tilet" },
-    update: {},
-    create: { materialName: "Tilet" },
-  });
-
-  const yarnVariant = await prisma.yarnVariant.upsert({
-    where: { sku: "YRN-1-1-C-001" },
-    update: {},
-    create: {
-      yarnTypeId: yarnType.yarnTypeId,
-      colorId: defaultColor.colorId,
-      supplierId: supplier.supplierId,
-      sku: "YRN-1-1-C-001",
-      basePrice: 400,
+  // 1. Quality rule (Global)
+  await prisma.qualityRule.deleteMany({});
+  await prisma.qualityRule.create({
+    data: {
+      factor: "weight",
+      unit: "g",
+      deductionPerUnit: 10,
+      isActive: true,
     },
   });
 
-  for (const fabric of FABRIC_PRODUCTS) {
-    const productName = `${fabric.name} (${fabric.code})`;
-    let product = await prisma.product.findFirst({ where: { name: productName } });
-    if (!product) {
-      product = await prisma.product.create({
-        data: {
-          name: productName,
-          category: ProductCategory.fabric,
-          basePrice: fabric.basePrice,
-          standardWidthCm: fabric.width,
-          standardLengthCm: fabric.length,
-        },
-      });
-    } else {
-      product = await prisma.product.update({
-        where: { productId: product.productId },
-        data: {
-          standardWidthCm: fabric.width,
-          standardLengthCm: fabric.length,
-        },
-      });
-    }
+  // 2. Colors
+  const colorNames = ["Default", "White", "Black", "Red", "Blue", "Green", "Yellow", "Natural"];
+  const colorMap = new Map<string, number>();
+  for (const name of colorNames) {
+    const c = await prisma.color.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+    colorMap.set(name, c.colorId);
+  }
+  const defaultColorId = colorMap.get("Default")!;
 
-    const sku = `FAB-${product.productId}-${defaultColor.colorCode}-${defaultColor.colorCode}`;
-    const variant = await prisma.fabricVariant.upsert({
-      where: { sku },
-      update: { basePrice: fabric.basePrice },
-      create: {
-        productId: product.productId,
-        warpColorId: defaultColor.colorId,
-        weftColorId: defaultColor.colorId,
-        sku,
-        basePrice: fabric.basePrice,
+  // 3. Designs
+  const designNames = ["መደበኛ", "ጥልፍ", "ሰብለ", "መስቀል", "ድርብ"];
+  const designMap = new Map<string, number>();
+  for (const name of designNames) {
+    const d = await prisma.design.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+    designMap.set(name, d.designId);
+  }
+  const defaultDesignId = designMap.get("መደበኛ")!;
+
+  // 4. Suppliers
+  const supplierNames = ["Default Supplier", "Awra Amba Mills", "Kombolcha Textile"];
+  const supplierMap = new Map<string, number>();
+  for (const name of supplierNames) {
+    const s = await prisma.supplier.upsert({
+      where: { name },
+      update: {},
+      create: { name, contactPhone: "0911223344" },
+    });
+    supplierMap.set(name, s.supplierId);
+  }
+  const defaultSupplierId = supplierMap.get("Default Supplier")!;
+
+  // 5. Yarns & Yarn Prices & Variants
+  for (const y of YARNS) {
+    const yarn = await prisma.yarn.upsert({
+      where: { name: y.name },
+      update: {},
+      create: { name: y.name },
+    });
+
+    await prisma.yarnPrice.create({
+      data: {
+        yarnId: yarn.yarnId,
+        supplierId: defaultSupplierId,
+        purchasePrice: y.purchasePrice,
+        sellingPrice: y.sellingPrice,
       },
     });
 
-    if (fabric.threshold > 0) {
-      await prisma.qualityRule.upsert({
-        where: { fabricVariantId: variant.fabricVariantId },
-        update: {
-          minWeightThreshold: fabric.threshold,
-          deductionRatePerUnit: 10,
-        },
-        create: {
-          fabricVariantId: variant.fabricVariantId,
-          minWeightThreshold: fabric.threshold,
-          deductionRatePerUnit: 10,
-        },
-      });
-    }
+    await prisma.yarnVariant.upsert({
+      where: { sku: `YRN-${yarn.yarnId}-${defaultSupplierId}-${defaultColorId}` },
+      update: {},
+      create: {
+        yarnId: yarn.yarnId,
+        supplierId: defaultSupplierId,
+        colorId: defaultColorId,
+        sku: `YRN-${yarn.yarnId}-${defaultSupplierId}-${defaultColorId}`,
+        stockSnapshot: 50,
+      },
+    });
   }
 
+  // 6. Fabrics & Fabric Prices & Variants
+  for (const fabric of FABRICS) {
+    const f = await prisma.fabric.upsert({
+      where: { name: fabric.name },
+      update: {
+        standardLengthCm: fabric.length,
+        standardWidthCm: fabric.width,
+        standardWeightG: fabric.threshold,
+      },
+      create: {
+        name: fabric.name,
+        standardLengthCm: fabric.length,
+        standardWidthCm: fabric.width,
+        standardWeightG: fabric.threshold,
+      },
+    });
+
+    await prisma.fabricPrice.create({
+      data: {
+        fabricId: f.fabricId,
+        weaverRate: fabric.weaverRate,
+        sellingPrice: fabric.sellingPrice,
+      },
+    });
+
+    const sku = `FAB-${f.fabricId}-${defaultDesignId}-${defaultColorId}-${defaultColorId}`;
+    await prisma.fabricVariant.upsert({
+      where: { sku },
+      update: {},
+      create: {
+        fabricId: f.fabricId,
+        designId: defaultDesignId,
+        warpColorId: defaultColorId,
+        weftColorId: defaultColorId,
+        sku,
+        stockSnapshot: 20,
+      },
+    });
+  }
+
+  // 7. Users with roles
   const adminHash = await argon2.hash("admin123");
   const admin = await prisma.user.upsert({
     where: { username: "admin" },
-    update: { passwordHash: adminHash },
+    update: { passwordHash: adminHash, fullName: "System Admin" },
     create: {
       username: "admin",
+      fullName: "System Admin",
       passwordHash: adminHash,
-      role: UserRole.admin,
+      roles: {
+        create: [{ role: UserRole.admin }],
+      },
     },
   });
-
-  let demoWeaver = await prisma.weaver.findFirst({
-    where: { firstName: "Demo", lastName: "Weaver" },
-  });
-  if (!demoWeaver) {
-    demoWeaver = await prisma.weaver.create({
-      data: {
-        firstName: "Demo",
-        lastName: "Weaver",
-        phone: "0911000000",
-        email: "demo.weaver@awraamba.local",
-      },
-    });
-  }
 
   const demoHash = await argon2.hash("demo123");
-  await prisma.user.upsert({
+  const demoWeaver = await prisma.user.upsert({
     where: { username: "demo" },
-    update: { passwordHash: demoHash, weaverId: demoWeaver.weaverId, role: UserRole.weaver },
+    update: { passwordHash: demoHash, fullName: "Demo Weaver" },
     create: {
       username: "demo",
+      fullName: "Demo Weaver",
+      phone: "0911000000",
+      email: "demo.weaver@awraamba.local",
       passwordHash: demoHash,
-      role: UserRole.weaver,
-      weaverId: demoWeaver.weaverId,
+      roles: {
+        create: [{ role: UserRole.weaver }],
+      },
     },
   });
 
-  const fabricVariant = await prisma.fabricVariant.findFirst({
-    where: { sku: { startsWith: "FAB-" } },
-    orderBy: { fabricVariantId: "asc" },
+  const merchantHash = await argon2.hash("merchant123");
+  await prisma.user.upsert({
+    where: { username: "merchant" },
+    update: { passwordHash: merchantHash, fullName: "Addis Fabric Merchant" },
+    create: {
+      username: "merchant",
+      fullName: "Addis Fabric Merchant",
+      phone: "0922000000",
+      email: "merchant@addis.local",
+      passwordHash: merchantHash,
+      roles: {
+        create: [{ role: UserRole.merchant }],
+      },
+    },
   });
 
-  if (fabricVariant) {
-    await prisma.workOrder.upsert({
-      where: { zigId: "z-demo-001" },
-      update: { weaverId: demoWeaver.weaverId, status: "assigned" },
-      create: {
-        zigId: "z-demo-001",
-        weaverId: demoWeaver.weaverId,
-        fabricVariantId: fabricVariant.fabricVariantId,
-        status: "assigned",
-        issuedByUserId: admin.userId,
-      },
-    });
+  // 8. Demo Work Order with initial yarn
+  const firstVariant = await prisma.fabricVariant.findFirstOrThrow({
+    orderBy: { fabricVariantId: "asc" },
+  });
+  const firstYarnVariant = await prisma.yarnVariant.findFirstOrThrow({
+    orderBy: { yarnVariantId: "asc" },
+  });
 
-    await prisma.workOrder.upsert({
-      where: { zigId: "z-demo-002" },
-      update: { weaverId: demoWeaver.weaverId, status: "returned" },
-      create: {
-        zigId: "z-demo-002",
-        weaverId: demoWeaver.weaverId,
-        fabricVariantId: fabricVariant.fabricVariantId,
-        status: "returned",
-        issuedByUserId: admin.userId,
-      },
-    });
+  const workOrder = await prisma.workOrder.upsert({
+    where: { zigId: "z-demo-001" },
+    update: { weaverUserId: demoWeaver.userId, status: WorkOrderStatus.in_progress },
+    create: {
+      zigId: "z-demo-001",
+      weaverUserId: demoWeaver.userId,
+      fabricVariantId: firstVariant.fabricVariantId,
+      status: WorkOrderStatus.in_progress,
+      issuedByUserId: admin.userId,
+    },
+  });
 
-    const hasYarn = await prisma.yarnGiven.findFirst({ where: { zigId: "z-demo-001" } });
-    if (!hasYarn) {
-      await prisma.yarnGiven.create({
-        data: {
-          zigId: "z-demo-001",
-          yarnVariantId: yarnVariant.yarnVariantId,
-          quantity: 110,
-          unitPrice: 400,
-          recordedByUserId: admin.userId,
-        },
-      });
-    }
+  await prisma.yarnGiven.create({
+    data: {
+      zigId: workOrder.zigId,
+      yarnVariantId: firstYarnVariant.yarnVariantId,
+      quantity: 5,
+      unitPrice: 400,
+      recordedByUserId: admin.userId,
+    },
+  });
 
-    const product = await prisma.product.findFirst({
-      where: { productId: fabricVariant.productId },
-    });
-    const hasReturn = await prisma.fabricReturn.findFirst({ where: { zigId: "z-demo-002" } });
-    if (!hasReturn) {
-      await prisma.fabricReturn.create({
-        data: {
-          zigId: "z-demo-002",
-          fabricVariantId: fabricVariant.fabricVariantId,
-          quantityReturned: 40,
-          totalWeight: 2560,
-          unitPrice: 1300,
-          lengthCm: product?.standardLengthCm ?? 225,
-          widthCm: product?.standardWidthCm ?? 150,
-          recordedByUserId: admin.userId,
-        },
-      });
-    }
-  }
-
-  console.log("Seed complete.");
-  console.log("Admin login: admin / admin123");
-  console.log("Demo weaver login: demo / demo123");
-  console.log(`Demo weaver id: ${demoWeaver.weaverId}`);
-  console.log(`Default yarn variant id: ${yarnVariant.yarnVariantId}`);
+  console.log("Database seeded successfully!");
 }
 
 main()
-  .catch((error) => {
-    console.error(error);
+  .catch((e) => {
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

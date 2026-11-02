@@ -6,7 +6,8 @@
 
 export interface ReturnLine {
   returnId: number;
-  /** Present in snapshots made after grouping was introduced; older snapshots fall back to the label. */
+  zigId?: string;
+  fabricId?: number;
   fabricVariantId?: number;
   fabricType: string;
   quantityReturned: number;
@@ -20,11 +21,12 @@ export interface ReturnLine {
 export interface GroupedFabricLine {
   returnIds: number[];
   returnCount: number;
+  fabricId?: number;
   fabricVariantId?: number;
   fabricType: string;
   quantityReturned: number;
   totalWeight: number;
-  /** Merged average weight (total weight / total pieces), whole units, as used for the deduction. */
+  /** Merged average weight (total weight / total pieces), floored integer, as used for the deduction. */
   avgWeight: number;
   /** Weighted average base price: sum(qty * price) / sum(qty), 2 decimals. */
   unitPrice: number;
@@ -42,8 +44,16 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export function groupReturnsByFabricType(lines: ReturnLine[]): GroupedFabricLine[] {
   const groups = new Map<string, ReturnLine[]>();
   for (const line of lines) {
-    const key =
-      line.fabricVariantId !== undefined ? `v:${line.fabricVariantId}` : `t:${line.fabricType}`;
+    // Group primarily by zigId + fabricId (or fabricType if fabricId is absent)
+    const zigKey = line.zigId ?? "default";
+    const fabricKey =
+      line.fabricId !== undefined
+        ? `f:${line.fabricId}`
+        : line.fabricType
+          ? `t:${line.fabricType}`
+          : `v:${line.fabricVariantId}`;
+    const key = `${zigKey}::${fabricKey}`;
+
     const list = groups.get(key);
     if (list) list.push(line);
     else groups.set(key, [line]);
@@ -61,6 +71,7 @@ export function groupReturnsByFabricType(lines: ReturnLine[]): GroupedFabricLine
     return {
       returnIds: rows.map((r) => r.returnId),
       returnCount: rows.length,
+      fabricId: rows[0].fabricId,
       fabricVariantId: rows[0].fabricVariantId,
       fabricType: rows[0].fabricType,
       quantityReturned: quantity,

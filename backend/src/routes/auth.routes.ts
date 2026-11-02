@@ -24,7 +24,10 @@ const signupSchema = z.object({
 authRouter.post("/login", async (req, res, next) => {
   try {
     const body = loginSchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { username: body.username } });
+    const user = await prisma.user.findUnique({
+      where: { username: body.username },
+      include: { roles: true },
+    });
 
     if (!user?.passwordHash || !user.isActive) {
       res.status(401).json({ error: "Invalid credentials" });
@@ -37,16 +40,22 @@ authRouter.post("/login", async (req, res, next) => {
       return;
     }
 
+    const roles = user.roles.map((r) => r.role);
     const authUser = {
       userId: user.userId,
       username: user.username,
-      role: user.role,
-      weaverId: user.weaverId,
-      merchantId: user.merchantId,
+      fullName: user.fullName,
+      roles,
+      // Backwards-compatibility for existing frontend screens expecting single 'role':
+      role: roles[0] ?? UserRole.weaver,
     };
 
     res.json({
-      token: signToken(authUser),
+      token: signToken({
+        userId: user.userId,
+        username: user.username,
+        roles,
+      }),
       user: authUser,
     });
   } catch (error) {
@@ -64,35 +73,39 @@ authRouter.post("/signup", async (req, res, next) => {
     }
 
     const passwordHash = await argon2.hash(body.password);
-    const result = await prisma.$transaction(async (tx) => {
-      const weaver = await tx.weaver.create({
-        data: {
-          firstName: body.firstName,
-          lastName: body.lastName,
-          phone: body.phone,
-        },
-      });
-      const user = await tx.user.create({
+    const fullName = `${body.firstName.trim()} ${body.lastName.trim()}`;
+
+    const user = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
         data: {
           username: body.username,
+          fullName,
+          phone: body.phone,
           passwordHash,
-          role: UserRole.weaver,
-          weaverId: weaver.weaverId,
+          roles: {
+            create: [{ role: UserRole.weaver }],
+          },
         },
+        include: { roles: true },
       });
-      return { user, weaver };
+      return createdUser;
     });
 
+    const roles = user.roles.map((r) => r.role);
     const authUser = {
-      userId: result.user.userId,
-      username: result.user.username,
-      role: result.user.role,
-      weaverId: result.user.weaverId,
-      merchantId: result.user.merchantId,
+      userId: user.userId,
+      username: user.username,
+      fullName: user.fullName,
+      roles,
+      role: roles[0] ?? UserRole.weaver,
     };
 
     res.status(201).json({
-      token: signToken(authUser),
+      token: signToken({
+        userId: user.userId,
+        username: user.username,
+        roles,
+      }),
       user: authUser,
     });
   } catch (error) {
@@ -100,6 +113,33 @@ authRouter.post("/signup", async (req, res, next) => {
   }
 });
 
-authRouter.get("/me", authenticate, (req, res) => {
-  res.json({ user: req.user });
+authRouter.get("/me", authenticate, async (req, res, next) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    const user = await prisma.user.findUnique({
+      where: { userId: req.user.userId },
+      include: { roles: true },
+    });
+    if (!user || !user.isActive) {
+      res.status(401).json({ error: "User not found or inactive" });
+      return;
+    }
+    const roles = user.roles.map((r) => r.role);
+    res.json({
+      user: {
+        userId: user.userId,
+        username: user.username,
+        fullName: user.fullName,
+        phone: user.phone,
+        email: user.email,
+        roles,
+        role: roles[0] ?? UserRole.weaver,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 });

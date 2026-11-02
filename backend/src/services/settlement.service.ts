@@ -1,13 +1,16 @@
 import { prisma } from "../lib/prisma.js";
-import { buildSettlementPreview, type LineOverride } from "./calculation.service.js";
+import {
+  buildSettlementPreview,
+  type LineOverride,
+  type SettlementPreview,
+} from "./calculation.service.js";
 
 export type SettlementOverride = LineOverride;
 
 export interface CommitSettlementInput {
-  weaverId: number;
+  weaverUserId: number;
   returnIds: number[];
   yarnGivenIds: number[];
-  saleIds: number[];
   paymentMethod?: string;
   notes?: string;
   recordedByUserId: number;
@@ -16,115 +19,182 @@ export interface CommitSettlementInput {
 
 export async function commitSettlement(input: CommitSettlementInput) {
   return prisma.$transaction(async (tx) => {
+    // 1. Fetch eligible returns belonging to the weaver and not yet settled
     const returns = await tx.fabricReturn.findMany({
       where: {
         returnId: { in: input.returnIds },
-        paymentId: null,
-        workOrder: { weaverId: input.weaverId },
+        workOrder: { weaverUserId: input.weaverUserId },
+        settlementLineReturns: { none: {} },
       },
       include: {
-        fabricVariant: { include: { qualityRule: true } },
-      },
-    });
-
-    const yarnGiven = await tx.yarnGiven.findMany({
-      where: {
-        yarnGivenId: { in: input.yarnGivenIds },
-        paymentId: null,
-        workOrder: { weaverId: input.weaverId },
-      },
-    });
-
-    const sales = await tx.sale.findMany({
-      where: {
-        saleId: { in: input.saleIds },
-        paymentId: null,
-        weaverId: input.weaverId,
+        fabricVariant: {
+          include: {
+            fabric: true,
+          },
+        },
+        workOrder: true,
       },
     });
 
     if (returns.length !== input.returnIds.length) {
-      throw new Error("CONFLICT:One or more fabric returns are invalid or already settled.");
-    }
-    if (yarnGiven.length !== input.yarnGivenIds.length) {
-      throw new Error("CONFLICT:One or more yarn deliveries are invalid or already settled.");
-    }
-    if (sales.length !== input.saleIds.length) {
-      throw new Error("CONFLICT:One or more sale adjustments are invalid or already settled.");
+      throw new Error(
+        "CONFLICT: One or more fabric returns are invalid, belong to another weaver, or are already settled.",
+      );
     }
 
-    // ONE calculation (overrides included) produces both the per-row values that are
-    // saved below and the payment amount, so the two can never disagree.
-    const preview = buildSettlementPreview({
-      returns: returns.map((row) => ({
-        returnId: row.returnId,
-        zigId: row.zigId,
-        fabricVariantId: row.fabricVariantId,
-        quantityReturned: row.quantityReturned,
-        totalWeight: Number(row.totalWeight),
-        unitPrice: Number(row.unitPrice),
-        qualityRule: row.fabricVariant.qualityRule
-          ? { minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold) }
-          : null,
+    // 2. Fetch yarn given records
+    const yarnGiven = await tx.yarnGiven.findMany({
+      where: {
+        yarnGivenId: { in: input.yarnGivenIds },
+        workOrder: { weaverUserId: input.weaverUserId },
+      },
+      include: {
+        workOrder: true,
+      },
+    });
+
+    if (yarnGiven.length !== input.yarnGivenIds.length) {
+      throw new Error(
+        "CONFLICT: One or more yarn records are invalid or belong to another weaver.",
+      );
+    }
+
+    const zigIds = [...new Set(returns.map((r) => r.zigId))];
+
+    // 3. Fetch yarn returns for these zigs
+    const yarnReturns = await tx.yarnReturn.findMany({
+      where: { zigId: { in: zigIds } },
+    });
+
+    // 4. Fetch global quality rules (for weight deduction rate)
+    const weightRule = await tx.qualityRule.findFirst({
+      where: { factor: "weight", isActive: true },
+    });
+
+    // 5. Build settlement calculation preview
+    const preview: SettlementPreview = buildSettlementPreview({
+      returns: returns.map((r) => ({
+        returnId: r.returnId,
+        zigId: r.zigId,
+        fabricId: r.fabricVariant.fabricId,
+        fabricName: r.fabricVariant.fabric.name,
+        fabricVariantId: r.fabricVariantId,
+        quantityReturned: r.quantityReturned,
+        totalWeight: Number(r.totalWeight),
+        unitPrice: Number(r.unitPrice),
+        standardWeightG: Number(r.fabricVariant.fabric.standardWeightG),
+        qualityRule: weightRule
+          ? {
+              minWeightThreshold: Number(r.fabricVariant.fabric.standardWeightG),
+              deductionRatePerUnit: Number(weightRule.deductionPerUnit),
+            }
+          : undefined,
       })),
-      yarnGiven: yarnGiven.map((row) => ({
-        yarnGivenId: row.yarnGivenId,
-        zigId: row.zigId,
-        quantity: Number(row.quantity),
-        unitPrice: Number(row.unitPrice),
+      yarnGiven: yarnGiven.map((y) => ({
+        yarnGivenId: y.yarnGivenId,
+        zigId: y.zigId,
+        yarnVariantId: y.yarnVariantId,
+        quantity: Number(y.quantity),
+        unitPrice: Number(y.unitPrice),
       })),
-      sales: sales.map((row) => ({
-        saleId: row.saleId,
-        movementType: row.movementType,
-        quantity: Number(row.quantity),
-        unitPrice: Number(row.unitPrice),
+      yarnReturns: yarnReturns.map((yr) => ({
+        yarnVariantId: yr.yarnVariantId,
+        zigId: yr.zigId,
+        quantity: Number(yr.quantity),
       })),
       overrides: input.overrides,
     });
 
-    const payment = await tx.payment.create({
+    if (preview.isBlocked) {
+      throw new Error(`BLOCKED: ${preview.blockReasons.join(" | ")}`);
+    }
+
+    // 6. Create settlement header
+    const settlement = await tx.settlement.create({
       data: {
-        weaverId: input.weaverId,
-        amount: preview.netSettlement,
-        paymentMethod: input.paymentMethod,
+        weaverUserId: input.weaverUserId,
+        status: "paid",
+        grossFabricValue: preview.grossFabricValue,
+        totalDeductions: preview.totalDeductions,
+        totalYarnCost: preview.totalYarnCost,
+        netAmount: preview.netSettlement,
+        createdByUserId: input.recordedByUserId,
+        paidAt: new Date(),
         notes: input.notes,
-        recordedByUserId: input.recordedByUserId,
       },
     });
 
-    for (const line of preview.lineItems) {
-      await tx.fabricReturn.update({
-        where: { returnId: line.returnId },
+    // 7. Create settlement lines and settlement_line_returns
+    for (const group of preview.groupedLines) {
+      const line = await tx.settlementLine.create({
         data: {
-          calculatedDeduction: line.deductionPerPiece,
-          bonusAmount: 0, // Bonus is disabled
-          netCreditValue: line.netCredit,
-          remark: line.remark,
-          paymentId: payment.paymentId,
+          settlementId: settlement.settlementId,
+          zigId: group.zigId,
+          fabricId: group.fabricId,
+          totalQuantity: group.totalQuantity,
+          totalWeight: group.totalWeight,
+          averageWeight: group.averageWeight,
+          standardWeightG: group.standardWeightG,
+          unitPrice: group.unitPrice,
+          deductionFactor: group.deductionFactor,
+          deductionUnit: group.deductionUnit,
+          deductionPerPiece: group.deductionPerPiece,
+          deductionAmount: group.deductionAmount,
+          grossFabricValue: group.grossFabricValue,
+          netFabricValue: group.netFabricValue,
+        },
+      });
+
+      for (const returnId of group.returnIds) {
+        await tx.settlementLineReturn.create({
+          data: {
+            settlementLineId: line.settlementLineId,
+            returnId,
+          },
+        });
+      }
+    }
+
+    // 8. Create settlement yarn lines
+    for (const yl of preview.yarnLines) {
+      await tx.settlementYarnLine.create({
+        data: {
+          settlementId: settlement.settlementId,
+          zigId: yl.zigId,
+          yarnGivenId: yl.yarnGivenId,
+          yarnVariantId: yl.yarnVariantId,
+          issuedQuantity: yl.issuedQuantity,
+          returnedQuantity: yl.returnedQuantity,
+          netQuantity: yl.netQuantity,
+          unitPrice: yl.unitPrice,
+          totalCost: yl.totalCost,
         },
       });
     }
 
-    for (const yarnRow of yarnGiven) {
-      await tx.yarnGiven.update({
-        where: { yarnGivenId: yarnRow.yarnGivenId },
-        data: { paymentId: payment.paymentId },
-      });
-    }
+    // 9. Record payment
+    const payment = await tx.settlementPayment.create({
+      data: {
+        settlementId: settlement.settlementId,
+        amount: preview.netSettlement,
+        paymentMethod: input.paymentMethod,
+        paymentDate: new Date(),
+        recordedByUserId: input.recordedByUserId,
+        notes: input.notes,
+      },
+    });
 
-    for (const saleRow of sales) {
-      await tx.sale.update({
-        where: { saleId: saleRow.saleId },
-        data: { paymentId: payment.paymentId },
-      });
-    }
-
-    const reconciledZigIds = [...new Set(returns.map((row) => row.zigId))];
+    // 10. Reconcile all included work orders
+    await tx.workOrder.updateMany({
+      where: { zigId: { in: zigIds } },
+      data: { status: "reconciled" },
+    });
 
     return {
-      paymentId: payment.paymentId,
+      settlementId: settlement.settlementId,
+      paymentId: payment.settlementPaymentId,
       amount: Number(payment.amount),
-      reconciledZigIds,
+      reconciledZigIds: zigIds,
       preview,
     };
   });

@@ -2,7 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
-import { adjustFabricReturnStock } from "../services/stock-adjustment.service.js";
 import { resolveFabricVariant } from "../services/variant.service.js";
 
 export const fabricReturnsRouter = Router();
@@ -12,8 +11,8 @@ fabricReturnsRouter.use(authenticate, requireAdmin);
 const createSchema = z.object({
   zigId: z.string(),
   fabricVariantId: z.number().int().positive().optional(),
-  /** Fabric type of the return when described by details; defaults to the zig's own product. */
-  productId: z.number().int().positive().optional(),
+  fabricId: z.number().int().positive().optional(),
+  productId: z.number().int().positive().optional(), // alias
   warpColorId: z.number().int().positive().optional(),
   weftColorId: z.number().int().positive().optional(),
   designId: z.number().int().positive().optional().nullable(),
@@ -26,12 +25,13 @@ const createSchema = z.object({
 });
 
 const fabricInclude = {
-  product: true,
+  fabric: true,
   warpColor: true,
   weftColor: true,
   design: true,
 };
 
+// GET /api/v1/fabric-returns
 fabricReturnsRouter.get("/", async (req, res, next) => {
   try {
     const zigId = req.query.zigId as string | undefined;
@@ -40,7 +40,7 @@ fabricReturnsRouter.get("/", async (req, res, next) => {
     const rows = await prisma.fabricReturn.findMany({
       where: {
         ...(zigId ? { zigId } : {}),
-        ...(unsettled ? { paymentId: null } : {}),
+        ...(unsettled ? { settlementLineReturns: { none: {} } } : {}),
       },
       include: {
         fabricVariant: { include: fabricInclude },
@@ -54,46 +54,40 @@ fabricReturnsRouter.get("/", async (req, res, next) => {
   }
 });
 
+// POST /api/v1/fabric-returns
 fabricReturnsRouter.post("/", async (req, res, next) => {
   try {
     const body = createSchema.parse(req.body);
 
     const result = await prisma.$transaction(async (tx) => {
-      const workOrder = await tx.workOrder.findUnique({
+      const workOrder = await tx.workOrder.findUniqueOrThrow({
         where: { zigId: body.zigId },
-        include: { fabricVariant: { include: { product: true } } },
+        include: { fabricVariant: { include: { fabric: true } } },
       });
 
-      if (!workOrder) {
-        throw new Error("NOT_FOUND:Work order not found.");
+      if (workOrder.status === "reconciled" || workOrder.status === "cancelled") {
+        throw new Error(`CONFLICT: Cannot record fabric return for a ${workOrder.status} zig.`);
       }
 
-      let variantId = body.fabricVariantId ?? null;
-      let resolved = null as Awaited<ReturnType<typeof resolveFabricVariant>> | null;
-
-      if (variantId) {
-        await tx.fabricVariant.findUniqueOrThrow({ where: { fabricVariantId: variantId } });
-        resolved = { variantId, created: false, sku: "" };
-        const existing = await tx.fabricVariant.findUnique({ where: { fabricVariantId: variantId } });
-        if (existing) resolved.sku = existing.sku;
-      } else {
+      let variantId = body.fabricVariantId;
+      if (!variantId) {
+        const fabricId = body.fabricId ?? body.productId ?? workOrder.fabricVariant.fabricId;
         if (!body.warpColorId || !body.weftColorId) {
-          throw new Error("VALIDATION:Provide fabric variant or warp/weft colors.");
+          throw new Error("VALIDATION: Provide fabric variant or warp and weft colors.");
         }
-        const productId = body.productId ?? workOrder.fabricVariant.productId;
-        resolved = await resolveFabricVariant(
+        const resolved = await resolveFabricVariant(
           {
-            productId,
+            fabricId,
             warpColorId: body.warpColorId,
             weftColorId: body.weftColorId,
-            designId: body.designId ?? null,
-            basePrice: body.unitPrice,
+            designId: body.designId ?? workOrder.fabricVariant.designId,
           },
           tx,
         );
         variantId = resolved.variantId;
       }
 
+      // Record production fact
       const row = await tx.fabricReturn.create({
         data: {
           zigId: body.zigId,
@@ -103,99 +97,7 @@ fabricReturnsRouter.post("/", async (req, res, next) => {
           unitPrice: body.unitPrice,
           lengthCm: body.lengthCm,
           widthCm: body.widthCm,
-          remark: body.remark,
           recordedByUserId: req.user!.userId,
-        },
-        include: {
-          fabricVariant: { include: fabricInclude },
-          workOrder: { include: { weaver: true } },
-        },
-      });
-
-      return { row, variantResolved: resolved! };
-    });
-
-    res.status(201).json({
-      ...result.row,
-      variantResolved: {
-        created: result.variantResolved.created,
-        sku: result.variantResolved.sku,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-const updateSchema = createSchema.omit({ zigId: true });
-
-fabricReturnsRouter.patch("/:returnId", async (req, res, next) => {
-  try {
-    const returnId = Number(req.params.returnId);
-    if (!Number.isInteger(returnId) || returnId <= 0) {
-      res.status(400).json({ error: "Invalid return id." });
-      return;
-    }
-
-    const body = updateSchema.parse(req.body);
-
-    const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.fabricReturn.findUnique({
-        where: { returnId },
-        include: { workOrder: { include: { fabricVariant: { include: { product: true } } } } },
-      });
-
-      if (!existing) {
-        throw new Error("NOT_FOUND:Fabric return not found.");
-      }
-      if (existing.paymentId != null) {
-        throw new Error("FORBIDDEN:This fabric return is already settled and cannot be edited.");
-      }
-
-      let variantId = body.fabricVariantId ?? null;
-      let resolved = null as Awaited<ReturnType<typeof resolveFabricVariant>> | null;
-
-      if (variantId) {
-        const variant = await tx.fabricVariant.findUnique({ where: { fabricVariantId: variantId } });
-        if (!variant) {
-          throw new Error("NOT_FOUND:Fabric variant not found.");
-        }
-        resolved = { variantId, created: false, sku: variant.sku };
-      } else {
-        if (!body.warpColorId || !body.weftColorId) {
-          throw new Error("VALIDATION:Provide fabric variant or warp/weft colors.");
-        }
-        const productId = body.productId ?? existing.workOrder.fabricVariant.productId;
-        resolved = await resolveFabricVariant(
-          {
-            productId,
-            warpColorId: body.warpColorId,
-            weftColorId: body.weftColorId,
-            designId: body.designId ?? null,
-            basePrice: body.unitPrice,
-          },
-          tx,
-        );
-        variantId = resolved.variantId;
-      }
-
-      await adjustFabricReturnStock(
-        tx,
-        existing.fabricVariantId,
-        existing.quantityReturned,
-        variantId,
-        body.quantityReturned,
-      );
-
-      const row = await tx.fabricReturn.update({
-        where: { returnId },
-        data: {
-          fabricVariantId: variantId,
-          quantityReturned: body.quantityReturned,
-          totalWeight: body.totalWeight,
-          unitPrice: body.unitPrice,
-          lengthCm: body.lengthCm,
-          widthCm: body.widthCm,
           remark: body.remark,
         },
         include: {
@@ -204,16 +106,24 @@ fabricReturnsRouter.patch("/:returnId", async (req, res, next) => {
         },
       });
 
-      return { row, variantResolved: resolved! };
+      // Increment fabric stock
+      await tx.fabricVariant.update({
+        where: { fabricVariantId: variantId },
+        data: { stockSnapshot: { increment: body.quantityReturned } },
+      });
+
+      // Advance work order status from assigned to in_progress if needed
+      if (workOrder.status === "assigned") {
+        await tx.workOrder.update({
+          where: { zigId: body.zigId },
+          data: { status: "in_progress" },
+        });
+      }
+
+      return row;
     });
 
-    res.json({
-      ...result.row,
-      variantResolved: {
-        created: result.variantResolved.created,
-        sku: result.variantResolved.sku,
-      },
-    });
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }

@@ -183,7 +183,9 @@ describe("buildSettlementPreview - overrides", () => {
     expect(base.netSettlement).toBe(12600 + 5000 - 1200 - 300);
 
     const overridden = buildSettlementPreview({
-      returns, yarnGiven, sales,
+      returns,
+      yarnGiven,
+      sales,
       overrides: [{ returnId: 1, calculatedDeduction: 0, remark: "Waived by admin" }],
     });
     expect(overridden.lineItems[0].deductionPerPiece).toBe(0);
@@ -194,12 +196,108 @@ describe("buildSettlementPreview - overrides", () => {
 
   it("the settlement total always equals the sum of its rows minus yarn plus sales", () => {
     const preview = buildSettlementPreview({
-      returns, yarnGiven, sales,
+      returns,
+      yarnGiven,
+      sales,
       overrides: [{ returnId: 2, calculatedDeduction: 25 }],
     });
     const rows = preview.lineItems.reduce((sum, l) => sum + l.netCredit, 0);
     const yarn = preview.yarnDebits.reduce((sum, y) => sum + y.cost, 0);
     const adjustments = preview.saleAdjustments.reduce((sum, a) => sum + a.signedAmount, 0);
     expect(preview.netSettlement).toBe(rows - yarn + adjustments);
+  });
+});
+
+describe("buildSettlementPreview - planned update validations & yarn returns", () => {
+  it("blocks settlement when deduction exceeds unit price", () => {
+    // standard is 100, return average is 50 -> deduction is (100 - 50) * 10 = 500
+    // but unit price is only 200 ETB
+    const preview = buildSettlementPreview({
+      returns: [
+        {
+          returnId: 10,
+          zigId: "zig-bad",
+          fabricVariantId: 1,
+          quantityReturned: 1,
+          totalWeight: 50,
+          unitPrice: 200,
+          standardWeightG: 100,
+        },
+      ],
+      yarnGiven: [],
+    });
+
+    expect(preview.isBlocked).toBe(true);
+    expect(preview.blockReasons.length).toBeGreaterThan(0);
+    expect(preview.blockReasons[0]).toContain("exceeds unit price");
+  });
+
+  it("blocks settlement when total yarn cost exceeds net fabric credit", () => {
+    const preview = buildSettlementPreview({
+      returns: [
+        {
+          returnId: 11,
+          zigId: "zig-yarn-heavy",
+          fabricVariantId: 1,
+          quantityReturned: 1,
+          totalWeight: 100,
+          unitPrice: 500,
+          standardWeightG: 100,
+        },
+      ],
+      yarnGiven: [
+        {
+          yarnGivenId: 1,
+          zigId: "zig-yarn-heavy",
+          yarnVariantId: 2,
+          quantity: 10,
+          unitPrice: 100, // 1000 ETB > 500 ETB fabric credit
+        },
+      ],
+    });
+
+    expect(preview.isBlocked).toBe(true);
+    expect(preview.blockReasons.length).toBeGreaterThan(0);
+    expect(preview.blockReasons[0]).toContain("exceeds net fabric credit");
+  });
+
+  it("yarn returns reduce net yarn quantity and total cost", () => {
+    const preview = buildSettlementPreview({
+      returns: [
+        {
+          returnId: 12,
+          zigId: "zig-yarn-return",
+          fabricVariantId: 1,
+          quantityReturned: 2,
+          totalWeight: 200,
+          unitPrice: 1000,
+          standardWeightG: 100,
+        },
+      ],
+      yarnGiven: [
+        {
+          yarnGivenId: 5,
+          zigId: "zig-yarn-return",
+          yarnVariantId: 3,
+          quantity: 5, // issued 5 cones
+          unitPrice: 100, // cost would be 500
+        },
+      ],
+      yarnReturns: [
+        {
+          yarnVariantId: 3,
+          zigId: "zig-yarn-return",
+          quantity: 2, // returned 2 cones unused
+        },
+      ],
+    });
+
+    expect(preview.isBlocked).toBe(false);
+    expect(preview.yarnLines[0].issuedQuantity).toBe(5);
+    expect(preview.yarnLines[0].returnedQuantity).toBe(2);
+    expect(preview.yarnLines[0].netQuantity).toBe(3);
+    expect(preview.yarnLines[0].totalCost).toBe(300); // 3 * 100
+    expect(preview.totalYarnCost).toBe(300);
+    expect(preview.netSettlement).toBe(2000 - 300);
   });
 });

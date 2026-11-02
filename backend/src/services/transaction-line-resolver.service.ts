@@ -7,9 +7,11 @@ type Tx = Prisma.TransactionClient;
 export interface TransactionLineInput {
   yarnVariantId?: number;
   fabricVariantId?: number;
+  yarnId?: number;
   yarnTypeId?: number;
   colorId?: number;
   supplierId?: number;
+  fabricId?: number;
   productId?: number;
   warpColorId?: number;
   weftColorId?: number;
@@ -22,9 +24,11 @@ export interface TransactionLineInput {
 export interface ResolvedTransactionLine {
   yarnVariantId: number | null;
   fabricVariantId: number | null;
+  yarnId: number | null;
   yarnTypeId: number | null;
   colorId: number | null;
   supplierId: number | null;
+  fabricId: number | null;
   productId: number | null;
   warpColorId: number | null;
   weftColorId: number | null;
@@ -49,9 +53,11 @@ export async function resolveTransactionLine(
       return {
         yarnVariantId: variant.yarnVariantId,
         fabricVariantId: null,
-        yarnTypeId: variant.yarnTypeId,
+        yarnId: variant.yarnId,
+        yarnTypeId: variant.yarnId,
         colorId: variant.colorId,
         supplierId: variant.supplierId,
+        fabricId: null,
         productId: null,
         warpColorId: null,
         weftColorId: null,
@@ -64,16 +70,16 @@ export async function resolveTransactionLine(
       };
     }
 
-    if (!line.yarnTypeId || !line.colorId || !line.supplierId) {
-      throw new Error("VALIDATION:Yarn line requires variant or type, color, and supplier.");
+    const yarnId = line.yarnId ?? line.yarnTypeId;
+    if (!yarnId || !line.colorId || !line.supplierId) {
+      throw new Error("VALIDATION: Yarn line requires variant or yarn, color, and supplier.");
     }
 
     const resolved = await resolveYarnVariant(
       {
-        yarnTypeId: line.yarnTypeId,
+        yarnId,
         colorId: line.colorId,
         supplierId: line.supplierId,
-        basePrice: line.unitPrice,
       },
       tx,
     );
@@ -81,9 +87,11 @@ export async function resolveTransactionLine(
     return {
       yarnVariantId: resolved.variantId,
       fabricVariantId: null,
-      yarnTypeId: line.yarnTypeId,
+      yarnId,
+      yarnTypeId: yarnId,
       colorId: line.colorId,
       supplierId: line.supplierId,
+      fabricId: null,
       productId: null,
       warpColorId: null,
       weftColorId: null,
@@ -96,18 +104,20 @@ export async function resolveTransactionLine(
     };
   }
 
+  // Fabric
   if (line.fabricVariantId) {
     const variant = await tx.fabricVariant.findUniqueOrThrow({
       where: { fabricVariantId: line.fabricVariantId },
-      include: { product: true },
     });
     return {
       yarnVariantId: null,
       fabricVariantId: variant.fabricVariantId,
+      yarnId: null,
       yarnTypeId: null,
       colorId: null,
       supplierId: null,
-      productId: variant.productId,
+      fabricId: variant.fabricId,
+      productId: variant.fabricId,
       warpColorId: variant.warpColorId,
       weftColorId: variant.weftColorId,
       designId: variant.designId,
@@ -119,17 +129,17 @@ export async function resolveTransactionLine(
     };
   }
 
-  if (!line.productId || !line.warpColorId || !line.weftColorId) {
-    throw new Error("VALIDATION:Fabric line requires variant or product, warp, and weft colors.");
+  const fabricId = line.fabricId ?? line.productId;
+  if (!fabricId || !line.warpColorId || !line.weftColorId) {
+    throw new Error("VALIDATION: Fabric line requires variant or fabric, warp, and weft colors.");
   }
 
   const resolved = await resolveFabricVariant(
     {
-      productId: line.productId,
+      fabricId,
       warpColorId: line.warpColorId,
       weftColorId: line.weftColorId,
       designId: line.designId ?? null,
-      basePrice: line.unitPrice,
     },
     tx,
   );
@@ -137,10 +147,12 @@ export async function resolveTransactionLine(
   return {
     yarnVariantId: null,
     fabricVariantId: resolved.variantId,
+    yarnId: null,
     yarnTypeId: null,
     colorId: null,
     supplierId: null,
-    productId: line.productId,
+    fabricId,
+    productId: fabricId,
     warpColorId: line.warpColorId,
     weftColorId: line.weftColorId,
     designId: line.designId ?? null,

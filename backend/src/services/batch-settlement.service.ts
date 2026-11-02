@@ -1,45 +1,59 @@
 import { prisma } from "../lib/prisma.js";
-import { buildSettlementPreview } from "./calculation.service.js";
+import { buildSettlementPreview, type SettlementPreview } from "./calculation.service.js";
 import { commitSettlement } from "./settlement.service.js";
-import { createWeaverPayoutTransaction } from "./transaction.service.js";
 
 export interface WeaverSettlementBundle {
-  weaverId: number;
+  weaverUserId: number;
   weaverName: string;
   zigIds: string[];
   returnIds: number[];
   yarnGivenIds: number[];
-  saleIds: number[];
-  preview: ReturnType<typeof buildSettlementPreview>;
+  preview: SettlementPreview;
 }
 
 export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null) {
-  // Get all returned work orders
+  // 1. Get all returned work orders
   const returnedOrders = await prisma.workOrder.findMany({
     where: { status: "returned" },
     include: { weaver: true },
-    orderBy: [{ weaverId: "asc" }, { zigId: "asc" }],
+    orderBy: [{ weaverUserId: "asc" }, { zigId: "asc" }],
   });
 
   const zigIds = returnedOrders.map((o) => o.zigId);
   if (zigIds.length === 0) return [];
 
-  const [returns, yarnGiven] = await Promise.all([
+  // 2. Fetch unsettled fabric returns and yarn given for these zigs
+  const [returns, yarnGiven, yarnReturns, qualityRules] = await Promise.all([
     prisma.fabricReturn.findMany({
-      where: { zigId: { in: zigIds }, paymentId: null },
+      where: {
+        zigId: { in: zigIds },
+        settlementLineReturns: { none: {} },
+      },
       include: {
-        fabricVariant: { include: { qualityRule: true, bonusRule: true } },
+        fabricVariant: {
+          include: {
+            fabric: true,
+          },
+        },
         workOrder: { include: { weaver: true } },
       },
       orderBy: [{ zigId: "asc" }, { returnId: "asc" }],
     }),
     prisma.yarnGiven.findMany({
-      where: { zigId: { in: zigIds }, paymentId: null },
+      where: { zigId: { in: zigIds } },
       orderBy: { yarnGivenId: "asc" },
+    }),
+    prisma.yarnReturn.findMany({
+      where: { zigId: { in: zigIds } },
+    }),
+    prisma.qualityRule.findMany({
+      where: { isActive: true },
     }),
   ]);
 
-  // Build map of zigId -> first fabric return date
+  const weightRule = qualityRules.find((q) => q.factor === "weight");
+
+  // 3. Optional cutoff filter by first return date
   const firstReturnDateByZig = new Map<string, Date>();
   for (const ret of returns) {
     const existing = firstReturnDateByZig.get(ret.zigId);
@@ -49,14 +63,12 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
     }
   }
 
-  // Filter by cutoff date: include zig only if its first return date <= cutoffDate
   const eligibleZigIds = new Set(
     returnedOrders
       .filter((o) => {
         if (!cutoffDate) return true;
         const firstReturn = firstReturnDateByZig.get(o.zigId);
-        if (!firstReturn) return false; // no returns yet, exclude
-        // Normalize cutoff to end of day for inclusive comparison
+        if (!firstReturn) return false;
         const cutoffEnd = new Date(cutoffDate);
         cutoffEnd.setHours(23, 59, 59, 999);
         return firstReturn <= cutoffEnd;
@@ -65,129 +77,102 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
   );
 
   const eligibleOrders = returnedOrders.filter((o) => eligibleZigIds.has(o.zigId));
-
   const byWeaver = new Map<number, WeaverSettlementBundle>();
 
   for (const order of eligibleOrders) {
-    if (!byWeaver.has(order.weaverId)) {
-      byWeaver.set(order.weaverId, {
-        weaverId: order.weaverId,
-        weaverName: `${order.weaver.firstName} ${order.weaver.lastName}`,
+    if (!byWeaver.has(order.weaverUserId)) {
+      byWeaver.set(order.weaverUserId, {
+        weaverUserId: order.weaverUserId,
+        weaverName: order.weaver.fullName,
         zigIds: [],
         returnIds: [],
         yarnGivenIds: [],
-        saleIds: [],
         preview: {
           lineItems: [],
+          groupedLines: [],
+          yarnLines: [],
           yarnDebits: [],
-          saleAdjustments: [],
+          grossFabricValue: 0,
+          totalDeductions: 0,
+          totalYarnCost: 0,
           netSettlement: 0,
+          isBlocked: false,
+          blockReasons: [],
+          saleAdjustments: [],
         },
       });
     }
-    const bundle = byWeaver.get(order.weaverId)!;
+    const bundle = byWeaver.get(order.weaverUserId)!;
     if (!bundle.zigIds.includes(order.zigId)) {
       bundle.zigIds.push(order.zigId);
     }
   }
 
-  for (const [weaverId, bundle] of byWeaver) {
+  for (const [weaverUserId, bundle] of byWeaver) {
     const weaverReturns = returns.filter(
-      (r) => r.workOrder.weaverId === weaverId && eligibleZigIds.has(r.zigId),
+      (r) => r.workOrder.weaverUserId === weaverUserId && eligibleZigIds.has(r.zigId),
     );
     const weaverZigSet = new Set(bundle.zigIds);
     const weaverYarn = yarnGiven.filter((y) => weaverZigSet.has(y.zigId));
+    const weaverYarnReturns = yarnReturns.filter((yr) => weaverZigSet.has(yr.zigId));
 
     bundle.returnIds = weaverReturns.map((r) => r.returnId);
     bundle.yarnGivenIds = weaverYarn.map((y) => y.yarnGivenId);
 
-    if (bundle.returnIds.length === 0 && bundle.yarnGivenIds.length === 0) {
-      byWeaver.delete(weaverId);
-      continue;
-    }
-
     bundle.preview = buildSettlementPreview({
-      returns: weaverReturns.map((row) => ({
-        returnId: row.returnId,
-        zigId: row.zigId,
-        fabricVariantId: row.fabricVariantId,
-        quantityReturned: row.quantityReturned,
-        totalWeight: Number(row.totalWeight),
-        unitPrice: Number(row.unitPrice),
-        qualityRule: row.fabricVariant.qualityRule
-          ? { minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold) }
-          : null,
-        bonusRule: null,
+      returns: weaverReturns.map((r) => ({
+        returnId: r.returnId,
+        zigId: r.zigId,
+        fabricId: r.fabricVariant.fabricId,
+        fabricName: r.fabricVariant.fabric.name,
+        fabricVariantId: r.fabricVariantId,
+        quantityReturned: r.quantityReturned,
+        totalWeight: Number(r.totalWeight),
+        unitPrice: Number(r.unitPrice),
+        standardWeightG: Number(r.fabricVariant.fabric.standardWeightG),
+        qualityRule: weightRule
+          ? {
+              minWeightThreshold: Number(r.fabricVariant.fabric.standardWeightG),
+              deductionRatePerUnit: Number(weightRule.deductionPerUnit),
+            }
+          : undefined,
       })),
-      yarnGiven: weaverYarn.map((row) => ({
-        yarnGivenId: row.yarnGivenId,
-        zigId: row.zigId,
-        quantity: Number(row.quantity),
-        unitPrice: Number(row.unitPrice),
+      yarnGiven: weaverYarn.map((y) => ({
+        yarnGivenId: y.yarnGivenId,
+        zigId: y.zigId,
+        yarnVariantId: y.yarnVariantId,
+        quantity: Number(y.quantity),
+        unitPrice: Number(y.unitPrice),
       })),
-      sales: [],
+      yarnReturns: weaverYarnReturns.map((yr) => ({
+        yarnVariantId: yr.yarnVariantId,
+        zigId: yr.zigId,
+        quantity: Number(yr.quantity),
+      })),
     });
   }
 
-  return [...byWeaver.values()];
+  return [...byWeaver.values()].filter((b) => b.returnIds.length > 0);
 }
 
-export async function batchCommitSettlements(
-  recordedByUserId: number,
-  paymentMethod?: string,
-  settlementPreviewId?: string,
-  cutoffDate?: Date | null,
-) {
-  const bundles = await discoverReturnedSettlementBundles(cutoffDate);
-  const payments: Array<{
-    paymentId: number;
-    weaverId: number;
-    weaverName: string;
-    amount: number;
-    reconciledZigIds: string[];
-  }> = [];
-
-  for (const bundle of bundles) {
-    if (bundle.returnIds.length === 0) continue;
-
+export async function batchCommitSettlements(params: {
+  bundles: WeaverSettlementBundle[];
+  recordedByUserId: number;
+  paymentMethod?: string;
+}) {
+  const results = [];
+  for (const bundle of params.bundles) {
+    if (bundle.preview.isBlocked) {
+      continue;
+    }
     const result = await commitSettlement({
-      weaverId: bundle.weaverId,
+      weaverUserId: bundle.weaverUserId,
       returnIds: bundle.returnIds,
       yarnGivenIds: bundle.yarnGivenIds,
-      saleIds: [],
-      paymentMethod: paymentMethod ?? "Recorded",
-      notes: settlementPreviewId
-        ? `Batch settlement — preview ${settlementPreviewId}`
-        : "Batch settlement — returned zigs",
-      recordedByUserId,
+      paymentMethod: params.paymentMethod,
+      recordedByUserId: params.recordedByUserId,
     });
-
-    if (settlementPreviewId) {
-      await prisma.payment.update({
-        where: { paymentId: result.paymentId },
-        data: { settlementPreviewId },
-      });
-    }
-
-    await createWeaverPayoutTransaction({
-      linkedPaymentId: result.paymentId,
-      weaverId: bundle.weaverId,
-      amount: result.amount,
-      notes: settlementPreviewId
-        ? `Settlement preview ${settlementPreviewId}`
-        : undefined,
-      recordedByUserId,
-    });
-
-    payments.push({
-      paymentId: result.paymentId,
-      weaverId: bundle.weaverId,
-      weaverName: bundle.weaverName,
-      amount: result.amount,
-      reconciledZigIds: result.reconciledZigIds,
-    });
+    results.push(result);
   }
-
-  const grandTotal = payments.reduce((sum, p) => sum + p.amount, 0);
-  return { payments, grandTotal, weaverCount: payments.length };
+  return results;
 }

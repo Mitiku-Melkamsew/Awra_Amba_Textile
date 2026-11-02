@@ -4,18 +4,18 @@ import { prisma } from "../lib/prisma.js";
 type Tx = Prisma.TransactionClient;
 
 export interface ResolveFabricInput {
-  productId: number;
+  fabricId?: number;
+  productId?: number;
   warpColorId: number;
   weftColorId: number;
   designId?: number | null;
-  basePrice?: number;
 }
 
 export interface ResolveYarnInput {
-  yarnTypeId: number;
+  yarnId?: number;
+  yarnTypeId?: number;
   colorId: number;
   supplierId: number;
-  basePrice?: number;
 }
 
 export interface ResolveResult {
@@ -24,70 +24,39 @@ export interface ResolveResult {
   sku: string;
 }
 
-async function findFabricVariant(tx: Tx, input: ResolveFabricInput, designId: number | null) {
-  const designKey = designId;
-  return tx.fabricVariant.findFirst({
-    where: {
-      productId: input.productId,
-      warpColorId: input.warpColorId,
-      weftColorId: input.weftColorId,
-      designId: designKey,
-      isActive: true,
-    },
+async function getOrCreateDefaultDesign(tx: Tx): Promise<number> {
+  const existing = await tx.design.findFirst({
+    orderBy: { designId: "asc" },
   });
-}
+  if (existing) return existing.designId;
 
-async function copyRulesFromSibling(
-  tx: Tx,
-  productId: number,
-  newVariantId: number,
-) {
-  const sibling = await tx.fabricVariant.findFirst({
-    where: { productId, NOT: { fabricVariantId: newVariantId } },
-    include: { qualityRule: true, bonusRule: true },
-    orderBy: { fabricVariantId: "asc" },
+  const created = await tx.design.create({
+    data: { name: "መደበኛ" }, // Standard design
   });
-  if (!sibling) return;
-
-  if (sibling.qualityRule) {
-    await tx.qualityRule.upsert({
-      where: { fabricVariantId: newVariantId },
-      update: {
-        minWeightThreshold: sibling.qualityRule.minWeightThreshold,
-        deductionRatePerUnit: sibling.qualityRule.deductionRatePerUnit,
-      },
-      create: {
-        fabricVariantId: newVariantId,
-        minWeightThreshold: sibling.qualityRule.minWeightThreshold,
-        deductionRatePerUnit: sibling.qualityRule.deductionRatePerUnit,
-      },
-    });
-  }
-
-  if (sibling.bonusRule) {
-    await tx.bonusRule.upsert({
-      where: { fabricVariantId: newVariantId },
-      update: {
-        minWeightThreshold: sibling.bonusRule.minWeightThreshold,
-        bonusRatePerUnit: sibling.bonusRule.bonusRatePerUnit,
-        maxBonusPerPiece: sibling.bonusRule.maxBonusPerPiece,
-      },
-      create: {
-        fabricVariantId: newVariantId,
-        minWeightThreshold: sibling.bonusRule.minWeightThreshold,
-        bonusRatePerUnit: sibling.bonusRule.bonusRatePerUnit,
-        maxBonusPerPiece: sibling.bonusRule.maxBonusPerPiece,
-      },
-    });
-  }
+  return created.designId;
 }
 
 export async function resolveFabricVariant(
   input: ResolveFabricInput,
   tx: Tx = prisma,
 ): Promise<ResolveResult> {
-  const designId = input.designId ?? null;
-  const existing = await findFabricVariant(tx, input, designId);
+  const fabricId = input.fabricId ?? input.productId;
+  if (!fabricId) {
+    throw new Error("VALIDATION: fabricId (or productId) is required.");
+  }
+
+  const designId = input.designId ?? (await getOrCreateDefaultDesign(tx));
+
+  const existing = await tx.fabricVariant.findFirst({
+    where: {
+      fabricId,
+      warpColorId: input.warpColorId,
+      weftColorId: input.weftColorId,
+      designId,
+      isActive: true,
+    },
+  });
+
   if (existing) {
     return {
       variantId: existing.fabricVariantId,
@@ -96,33 +65,29 @@ export async function resolveFabricVariant(
     };
   }
 
-  const [product, warp, weft] = await Promise.all([
-    tx.product.findUniqueOrThrow({ where: { productId: input.productId } }),
+  const [fabric, warp, weft, design] = await Promise.all([
+    tx.fabric.findUniqueOrThrow({ where: { fabricId } }),
     tx.color.findUniqueOrThrow({ where: { colorId: input.warpColorId } }),
     tx.color.findUniqueOrThrow({ where: { colorId: input.weftColorId } }),
+    tx.design.findUniqueOrThrow({ where: { designId } }),
   ]);
 
-  const skuBase = `FAB-${input.productId}-${warp.colorCode}-${weft.colorCode}`;
-  const sku = designId ? `${skuBase}-D${designId}` : skuBase;
-  const basePrice = input.basePrice ?? Number(product.basePrice);
+  const sku = `FV-${fabric.fabricId}-${design.designId}-${warp.colorId}-${weft.colorId}-${Date.now().toString(36)}`;
 
-  const variant = await tx.fabricVariant.create({
+  const created = await tx.fabricVariant.create({
     data: {
-      productId: input.productId,
-      warpColorId: input.warpColorId,
-      weftColorId: input.weftColorId,
+      fabricId: fabric.fabricId,
       designId,
+      warpColorId: warp.colorId,
+      weftColorId: weft.colorId,
       sku,
-      basePrice,
     },
   });
 
-  await copyRulesFromSibling(tx, input.productId, variant.fabricVariantId);
-
   return {
-    variantId: variant.fabricVariantId,
+    variantId: created.fabricVariantId,
     created: true,
-    sku: variant.sku,
+    sku: created.sku,
   };
 }
 
@@ -130,9 +95,14 @@ export async function resolveYarnVariant(
   input: ResolveYarnInput,
   tx: Tx = prisma,
 ): Promise<ResolveResult> {
+  const yarnId = input.yarnId ?? input.yarnTypeId;
+  if (!yarnId) {
+    throw new Error("VALIDATION: yarnId (or yarnTypeId) is required.");
+  }
+
   const existing = await tx.yarnVariant.findFirst({
     where: {
-      yarnTypeId: input.yarnTypeId,
+      yarnId,
       colorId: input.colorId,
       supplierId: input.supplierId,
       isActive: true,
@@ -147,25 +117,26 @@ export async function resolveYarnVariant(
     };
   }
 
-  const color = await tx.color.findUniqueOrThrow({
-    where: { colorId: input.colorId },
-  });
+  const [yarn, color, supplier] = await Promise.all([
+    tx.yarn.findUniqueOrThrow({ where: { yarnId } }),
+    tx.color.findUniqueOrThrow({ where: { colorId: input.colorId } }),
+    tx.supplier.findUniqueOrThrow({ where: { supplierId: input.supplierId } }),
+  ]);
 
-  const sku = `YRN-${input.yarnTypeId}-${input.supplierId}-${color.colorCode}`;
+  const sku = `YV-${yarn.yarnId}-${supplier.supplierId}-${color.colorId}-${Date.now().toString(36)}`;
 
-  const variant = await tx.yarnVariant.create({
+  const created = await tx.yarnVariant.create({
     data: {
-      yarnTypeId: input.yarnTypeId,
-      colorId: input.colorId,
-      supplierId: input.supplierId,
+      yarnId: yarn.yarnId,
+      colorId: color.colorId,
+      supplierId: supplier.supplierId,
       sku,
-      basePrice: input.basePrice,
     },
   });
 
   return {
-    variantId: variant.yarnVariantId,
+    variantId: created.yarnVariantId,
     created: true,
-    sku: variant.sku,
+    sku: created.sku,
   };
 }

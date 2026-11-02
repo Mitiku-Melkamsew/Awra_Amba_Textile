@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
 import { formatDateDDMMYY } from "../utils/format-date.js";
@@ -8,27 +7,13 @@ import {
   discoverReturnedSettlementBundles,
 } from "./batch-settlement.service.js";
 
-export async function generateNextPreviewId(): Promise<string> {
-  const rows = await prisma.settlementPreview.findMany({
-    select: { previewId: true },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
-  let max = 0;
-  for (const row of rows) {
-    const match = row.previewId.match(/^prev-(\d+)$/);
-    if (match) max = Math.max(max, Number(match[1]));
-  }
-  return `prev-${max + 1}`;
-}
-
 function fabricTypeLabel(fabricVariant: {
-  product: { name: string };
+  fabric: { name: string };
   warpColor: { name: string };
   weftColor: { name: string };
   design: { name: string } | null;
 }): string {
-  const parts = [fabricVariant.product.name];
+  const parts = [fabricVariant.fabric.name];
   if (fabricVariant.warpColor?.name && fabricVariant.warpColor.name !== "Default") {
     parts.push(`warp:${fabricVariant.warpColor.name}`);
   }
@@ -49,7 +34,7 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
       where: { returnId: { in: returnIds } },
       include: {
         fabricVariant: {
-          include: { product: true, warpColor: true, weftColor: true, design: true },
+          include: { fabric: true, warpColor: true, weftColor: true, design: true },
         },
       },
       orderBy: [{ zigId: "asc" }, { returnId: "asc" }],
@@ -57,7 +42,7 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
     prisma.yarnGiven.findMany({
       where: { yarnGivenId: { in: yarnIds } },
       include: {
-        yarnVariant: { include: { yarnType: true, color: true } },
+        yarnVariant: { include: { yarn: true, color: true } },
       },
       orderBy: { yarnGivenId: "asc" },
     }),
@@ -92,7 +77,10 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
           const li = bundle.preview.lineItems.find((item) => item.returnId === row!.returnId);
           const deduction = li?.deductionPerPiece ?? 0;
           const adjustedPrice = Math.round(Number(row!.unitPrice) - deduction);
-          const avgWeight = row!.quantityReturned > 0 ? Number(row!.totalWeight) / row!.quantityReturned : 0;
+          const avgWeight =
+            row!.quantityReturned > 0
+              ? Number(row!.totalWeight) / row!.quantityReturned
+              : 0;
           return {
             returnId: row!.returnId,
             fabricVariantId: row!.fabricVariantId,
@@ -117,18 +105,20 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
     });
 
     return {
-      weaverId: bundle.weaverId,
+      weaverId: bundle.weaverUserId,
       weaverName: bundle.weaverName,
       zigIds: bundle.zigIds,
       returnIds: bundle.returnIds,
       yarnGivenIds: bundle.yarnGivenIds,
-      saleIds: bundle.saleIds,
+      saleIds: [],
       returnCount: bundle.returnIds.length,
       yarnCount: bundle.yarnGivenIds.length,
       netSettlement: Math.round(bundle.preview.netSettlement),
       lineItems: bundle.preview.lineItems,
       yarnDebits: bundle.preview.yarnDebits,
       zigDetails,
+      isBlocked: bundle.preview.isBlocked,
+      blockReasons: bundle.preview.blockReasons,
     };
   });
 
@@ -144,13 +134,8 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
   };
 }
 
-type BatchSnapshot = Awaited<ReturnType<typeof buildDetailedBatchSnapshot>>;
+export type BatchSnapshot = Awaited<ReturnType<typeof buildDetailedBatchSnapshot>>;
 
-/**
- * Adds `groupedReturns` (same fabric type merged into one line) next to the raw
- * per-return lines of every zig. Done when the snapshot is read, so older saved
- * snapshots get the merged layout too.
- */
 export function withGroupedReturns(snapshot: BatchSnapshot) {
   return {
     ...snapshot,
@@ -164,22 +149,18 @@ export function withGroupedReturns(snapshot: BatchSnapshot) {
   };
 }
 
-export async function createSettlementPreview(createdByUserId: number, cutoffDate?: Date | null) {
+export async function createSettlementPreview(
+  _createdByUserId: number,
+  cutoffDate?: Date | null,
+) {
   const snapshot = await buildDetailedBatchSnapshot(cutoffDate);
-  const previewId = await generateNextPreviewId();
-
-  const row = await prisma.settlementPreview.create({
-    data: {
-      previewId,
-      snapshot: snapshot as unknown as Prisma.InputJsonValue,
-      createdByUserId,
-    },
-  });
-
-  return { previewId: row.previewId, ...withGroupedReturns(snapshot) };
+  return {
+    previewId: `preview-${Date.now()}`,
+    ...withGroupedReturns(snapshot),
+  };
 }
 
-export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedBatchSnapshot>>): string {
+export function snapshotToCsv(snapshot: BatchSnapshot): string {
   const header = [
     "weaver_id",
     "weaver_name",
@@ -257,12 +238,6 @@ export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedB
     }
   }
 
-  // Empty spacer row
-  const emptyRow: Record<string, string> = {};
-  header.forEach((h) => {
-    emptyRow[h] = "";
-  });
-
   const lines: string[] = [
     `ቀን: ${snapshot.cutoffDate ? formatDateDDMMYY(snapshot.cutoffDate) : "____________________"}`,
     "",
@@ -280,10 +255,8 @@ export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedB
     );
   }
 
-  // Empty spacer row
   lines.push(header.map(() => "").join(","));
 
-  // Grand Totals row
   lines.push(
     [
       "",
@@ -305,7 +278,6 @@ export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedB
     ].join(","),
   );
 
-  // Amharic Amount Text row
   const amharicAmount = numberToAmharicWords(Math.round(grandNetProfit));
   lines.push(
     [
@@ -314,11 +286,9 @@ export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedB
     ].join(","),
   );
 
-  // 2 spacer rows
   lines.push(header.map(() => "").join(","));
   lines.push(header.map(() => "").join(","));
 
-  // Signature Block
   lines.push(
     [
       "",
@@ -334,113 +304,49 @@ export function snapshotToCsv(snapshot: Awaited<ReturnType<typeof buildDetailedB
   return `\uFEFF${lines.join("\n")}`;
 }
 
-function bundleFingerprint(bundle: {
-  returnIds: number[];
-  yarnGivenIds: number[];
-  netSettlement: number;
+export async function commitBatchSettlementPreview(params: {
+  recordedByUserId: number;
+  paymentMethod?: string;
+  cutoffDate?: Date | null;
 }) {
-  return {
-    returnIds: [...bundle.returnIds].sort((a, b) => a - b),
-    yarnGivenIds: [...bundle.yarnGivenIds].sort((a, b) => a - b),
-    netSettlement: bundle.netSettlement,
-  };
+  const bundles = await discoverReturnedSettlementBundles(params.cutoffDate);
+  const eligibleBundles = bundles.filter((b) => !b.preview.isBlocked);
+  return batchCommitSettlements({
+    bundles: eligibleBundles,
+    recordedByUserId: params.recordedByUserId,
+    paymentMethod: params.paymentMethod,
+  });
 }
 
-export async function commitSettlementPreview(
-  previewId: string,
-  recordedByUserId: number,
-  paymentMethod?: string,
-  cutoffDate?: Date | null,
-) {
-  const preview = await prisma.settlementPreview.findUnique({
-    where: { previewId },
-  });
-  if (!preview) {
-    throw new Error("NOT_FOUND:Settlement preview not found.");
-  }
-  if (preview.status !== "draft") {
-    throw new Error("CONFLICT:This preview was already committed.");
-  }
-
-  const snapshot = preview.snapshot as unknown as Awaited<
-    ReturnType<typeof buildDetailedBatchSnapshot>
-  >;
-
-  // Use stored cutoff date if not provided
-  const effectiveCutoff = cutoffDate ?? (snapshot.cutoffDate ? new Date(snapshot.cutoffDate) : null);
-  const current = await buildDetailedBatchSnapshot(effectiveCutoff);
-
-  if (current.weaverCount !== snapshot.weaverCount) {
-    throw new Error("CONFLICT:Settlement data changed since preview. Generate a new preview.");
-  }
-
-  for (const snapWeaver of snapshot.weavers) {
-    const cur = current.weavers.find((w) => w.weaverId === snapWeaver.weaverId);
-    if (!cur) {
-      throw new Error("CONFLICT:Weaver missing from current settlement. Regenerate preview.");
-    }
-    const a = bundleFingerprint(snapWeaver);
-    const b = bundleFingerprint(cur);
-    if (
-      JSON.stringify(a.returnIds) !== JSON.stringify(b.returnIds) ||
-      JSON.stringify(a.yarnGivenIds) !== JSON.stringify(b.yarnGivenIds) ||
-      Math.abs(a.netSettlement - b.netSettlement) > 0.01
-    ) {
-      throw new Error("CONFLICT:Settlement amounts changed since preview. Regenerate preview.");
-    }
-  }
-
-  const result = await batchCommitSettlements(
-    recordedByUserId,
-    paymentMethod,
-    previewId,
-    effectiveCutoff,
-  );
-
-  await prisma.settlementPreview.update({
-    where: { previewId },
-    data: { status: "committed", committedAt: new Date() },
-  });
-
-  return { previewId, ...result };
-}
-
-/**
- * History of confirmed batch settlements, newest first. Reads what is already stored:
- * the preview snapshot (totals, cutoff) and the payments linked to it (who confirmed, how).
- */
 export async function listCommittedSettlements() {
-  const rows = await prisma.settlementPreview.findMany({
-    where: { status: "committed" },
-    orderBy: { committedAt: "desc" },
+  const rows = await prisma.settlement.findMany({
+    where: { status: "paid" },
+    orderBy: { paidAt: "desc" },
     take: 200,
     include: {
+      weaver: { select: { fullName: true, username: true } },
       createdBy: { select: { username: true } },
-      payments: {
-        select: {
-          paymentId: true,
-          amount: true,
-          paymentMethod: true,
-          recordedBy: { select: { username: true } },
-        },
-      },
+      payments: true,
+      lines: true,
     },
   });
 
-  return rows.map((row) => {
-    const snapshot = row.snapshot as unknown as BatchSnapshot;
-    const firstPayment = row.payments[0];
-    return {
-      previewId: row.previewId,
-      createdAt: row.createdAt,
-      committedAt: row.committedAt,
-      cutoffDate: snapshot.cutoffDate ?? null,
-      weaverCount: snapshot.weaverCount,
-      grandTotal: snapshot.grandTotal,
-      paymentCount: row.payments.length,
-      paidTotal: row.payments.reduce((sum, payment) => sum + Number(payment.amount), 0),
-      paymentMethod: firstPayment?.paymentMethod ?? null,
-      confirmedBy: firstPayment?.recordedBy.username ?? row.createdBy.username,
-    };
-  });
+  return rows.map((row) => ({
+    settlementId: row.settlementId,
+    weaverUserId: row.weaverUserId,
+    weaverName: row.weaver.fullName,
+    createdAt: row.createdAt,
+    paidAt: row.paidAt,
+    netAmount: Number(row.netAmount),
+    grossFabricValue: Number(row.grossFabricValue),
+    totalDeductions: Number(row.totalDeductions),
+    totalYarnCost: Number(row.totalYarnCost),
+    paymentCount: row.payments.length,
+    payments: row.payments.map((p) => ({
+      paymentId: p.settlementPaymentId,
+      amount: Number(p.amount),
+      paymentMethod: p.paymentMethod,
+      paymentDate: p.paymentDate,
+    })),
+  }));
 }

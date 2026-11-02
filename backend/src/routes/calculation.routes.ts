@@ -8,7 +8,7 @@ import {
   calculateDeduction,
 } from "../services/calculation.service.js";
 import {
-  commitSettlementPreview,
+  commitBatchSettlementPreview,
   createSettlementPreview,
   listCommittedSettlements,
   snapshotToCsv,
@@ -21,27 +21,18 @@ export const calculationRouter = Router();
 
 const deductionSchema = z.object({
   fabricVariantId: z.number().int().positive().optional(),
+  fabricId: z.number().int().positive().optional(),
   avgWeight: z.number(),
   unitPrice: z.number(),
   quantity: z.number().int().positive(),
   minWeightThreshold: z.number().optional(),
-});
-
-const bonusSchema = z.object({
-  fabricVariantId: z.number().int().positive().optional(),
-  avgWeight: z.number(),
-  unitPrice: z.number(),
-  quantity: z.number().int().positive(),
-  minWeightThreshold: z.number().optional(),
-  bonusRatePerUnit: z.number().optional(),
-  maxBonusPerPiece: z.number().nullable().optional(),
 });
 
 const previewSchema = z.object({
-  weaverId: z.number().int().positive(),
+  weaverUserId: z.number().int().positive().optional(),
+  weaverId: z.number().int().positive().optional(), // alias
   returnIds: z.array(z.number().int().positive()).default([]),
   yarnGivenIds: z.array(z.number().int().positive()).default([]),
-  saleIds: z.array(z.number().int().positive()).default([]),
 });
 
 const commitSchema = previewSchema.extend({
@@ -63,20 +54,30 @@ calculationRouter.post("/deduction", async (req, res, next) => {
     const body = deductionSchema.parse(req.body);
 
     let threshold = body.minWeightThreshold;
-    if (body.fabricVariantId) {
-      const rule = await prisma.qualityRule.findUnique({
-        where: { fabricVariantId: body.fabricVariantId },
-      });
-      if (rule) {
-        threshold = Number(rule.minWeightThreshold);
+    if (!threshold) {
+      if (body.fabricId) {
+        const fabric = await prisma.fabric.findUnique({ where: { fabricId: body.fabricId } });
+        if (fabric) threshold = Number(fabric.standardWeightG);
+      } else if (body.fabricVariantId) {
+        const variant = await prisma.fabricVariant.findUnique({
+          where: { fabricVariantId: body.fabricVariantId },
+          include: { fabric: true },
+        });
+        if (variant) threshold = Number(variant.fabric.standardWeightG);
       }
     }
+
+    const weightRule = await prisma.qualityRule.findFirst({
+      where: { factor: "weight", isActive: true },
+    });
+    const rate = weightRule ? Number(weightRule.deductionPerUnit) : 10;
 
     const result = calculateDeduction({
       avgWeight: body.avgWeight,
       unitPrice: body.unitPrice,
       quantity: body.quantity,
       minWeightThreshold: threshold ?? 0,
+      deductionRatePerUnit: rate,
     });
 
     res.json(result);
@@ -85,35 +86,10 @@ calculationRouter.post("/deduction", async (req, res, next) => {
   }
 });
 
-calculationRouter.post("/bonus", async (req, res, next) => {
+// Legacy bonus endpoint - always returns disabled
+calculationRouter.post("/bonus", async (_req, res, next) => {
   try {
-    const body = bonusSchema.parse(req.body);
-
-    let threshold = body.minWeightThreshold;
-    let rate = body.bonusRatePerUnit;
-    let maxBonus = body.maxBonusPerPiece;
-
-    if (body.fabricVariantId) {
-      const rule = await prisma.bonusRule.findUnique({
-        where: { fabricVariantId: body.fabricVariantId },
-      });
-      if (rule) {
-        threshold = Number(rule.minWeightThreshold);
-        rate = Number(rule.bonusRatePerUnit);
-        maxBonus = rule.maxBonusPerPiece ? Number(rule.maxBonusPerPiece) : null;
-      }
-    }
-
-    const result = calculateBonus({
-      avgWeight: body.avgWeight,
-      unitPrice: body.unitPrice,
-      quantity: body.quantity,
-      minWeightThreshold: threshold ?? 0,
-      bonusRatePerUnit: rate,
-      maxBonusPerPiece: maxBonus,
-    });
-
-    res.json(result);
+    res.json(calculateBonus());
   } catch (error) {
     next(error);
   }
@@ -125,15 +101,12 @@ const batchPreviewSchema = z.object({
 
 function parseCutoff(str?: string): Date | null {
   if (!str || !str.trim()) return null;
-  // Handle DD/MM/YYYY or YYYY-MM-DD
   const parts = str.trim().split(/[\/\-]/);
   if (parts.length === 3) {
     if (parts[0].length === 4) {
-      // YYYY-MM-DD
       const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
       return isNaN(d.getTime()) ? null : d;
     } else {
-      // DD/MM/YYYY
       const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
       return isNaN(d.getTime()) ? null : d;
     }
@@ -171,84 +144,33 @@ calculationRouter.get(
   },
 );
 
-calculationRouter.get(
-  "/settlements/preview/:previewId",
-  authenticate,
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const previewId = String(req.params.previewId);
-      const row = await prisma.settlementPreview.findUnique({ where: { previewId } });
-      if (!row) {
-        res.status(404).json({ error: "Preview not found" });
-        return;
-      }
-      res.json({
-        previewId: row.previewId,
-        status: row.status,
-        committedAt: row.committedAt,
-        ...withGroupedReturns(row.snapshot as unknown as Parameters<typeof snapshotToCsv>[0]),
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-calculationRouter.get(
-  "/settlements/preview/:previewId/export",
-  authenticate,
-  requireAdmin,
-  async (req, res, next) => {
-    try {
-      const previewId = String(req.params.previewId);
-      const format = (req.query.format as string | undefined) ?? "csv";
-      const row = await prisma.settlementPreview.findUnique({ where: { previewId } });
-      if (!row) {
-        res.status(404).json({ error: "Preview not found" });
-        return;
-      }
-      const snapshot = row.snapshot as unknown as Parameters<typeof snapshotToCsv>[0];
-      if (format === "csv") {
-        const csv = snapshotToCsv(snapshot);
-        res.setHeader("Content-Type", "text/csv; charset=utf-8");
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename="settlement-preview-${previewId}.csv"`,
-        );
-        res.send(csv);
-        return;
-      }
-      res.status(400).json({ error: "Unsupported format. Use csv or open print view." });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-const batchCommitSchema = z.object({
-  previewId: z.string().regex(/^prev-[\w-]+$/),
-  paymentMethod: z.string().max(30).optional(),
-  cutoffDate: z.string().optional(),
-});
-
 calculationRouter.post(
   "/settlements/batch-commit",
   authenticate,
   requireAdmin,
   async (req, res, next) => {
     try {
-      const body = batchCommitSchema.parse(req.body);
+      const body = z
+        .object({
+          paymentMethod: z.string().max(30).optional(),
+          cutoffDate: z.string().optional(),
+        })
+        .parse(req.body ?? {});
+
       const cutoffDate = parseCutoff(body.cutoffDate);
-      const result = await commitSettlementPreview(
-        body.previewId,
-        req.user!.userId,
-        body.paymentMethod ?? "Recorded",
+      const results = await commitBatchSettlementPreview({
+        recordedByUserId: req.user!.userId,
+        paymentMethod: body.paymentMethod ?? "Recorded",
         cutoffDate,
-      );
+      });
+
+      const grandTotal = results.reduce((sum, r) => sum + r.amount, 0);
+
       res.status(201).json({
-        ...result,
-        amharicAmountInWords: numberToAmharicWords(Math.round(result.grandTotal)),
+        settlementCount: results.length,
+        results,
+        grandTotal,
+        amharicAmountInWords: numberToAmharicWords(Math.round(grandTotal)),
       });
     } catch (error) {
       next(error);
@@ -259,16 +181,20 @@ calculationRouter.post(
 calculationRouter.post("/settlements/preview", authenticate, requireAdmin, async (req, res, next) => {
   try {
     const body = previewSchema.parse(req.body);
+    const weaverUserId = body.weaverUserId ?? body.weaverId;
+    if (!weaverUserId) {
+      throw new Error("VALIDATION: weaverUserId (or weaverId) is required.");
+    }
 
     const returns = await prisma.fabricReturn.findMany({
       where: {
         returnId: { in: body.returnIds },
-        paymentId: null,
-        workOrder: { weaverId: body.weaverId },
+        settlementLineReturns: { none: {} },
+        workOrder: { weaverUserId },
       },
       include: {
         fabricVariant: {
-          include: { qualityRule: true, bonusRule: true },
+          include: { fabric: true },
         },
       },
     });
@@ -276,51 +202,47 @@ calculationRouter.post("/settlements/preview", authenticate, requireAdmin, async
     const yarnGiven = await prisma.yarnGiven.findMany({
       where: {
         yarnGivenId: { in: body.yarnGivenIds },
-        paymentId: null,
-        workOrder: { weaverId: body.weaverId },
+        workOrder: { weaverUserId },
       },
     });
 
-    const sales = await prisma.sale.findMany({
-      where: {
-        saleId: { in: body.saleIds },
-        paymentId: null,
-        weaverId: body.weaverId,
-      },
+    const zigIds = [...new Set(returns.map((r) => r.zigId))];
+    const yarnReturns = await prisma.yarnReturn.findMany({
+      where: { zigId: { in: zigIds } },
     });
+
+    const weightRule = await prisma.qualityRule.findFirst({
+      where: { factor: "weight", isActive: true },
+    });
+    const rate = weightRule ? Number(weightRule.deductionPerUnit) : 10;
 
     const preview = buildSettlementPreview({
       returns: returns.map((row) => ({
         returnId: row.returnId,
         zigId: row.zigId,
+        fabricId: row.fabricVariant.fabricId,
+        fabricName: row.fabricVariant.fabric.name,
         fabricVariantId: row.fabricVariantId,
         quantityReturned: row.quantityReturned,
         totalWeight: Number(row.totalWeight),
         unitPrice: Number(row.unitPrice),
-        qualityRule: row.fabricVariant.qualityRule
-          ? { minWeightThreshold: Number(row.fabricVariant.qualityRule.minWeightThreshold) }
-          : null,
-        bonusRule: row.fabricVariant.bonusRule
-          ? {
-              minWeightThreshold: Number(row.fabricVariant.bonusRule.minWeightThreshold),
-              bonusRatePerUnit: Number(row.fabricVariant.bonusRule.bonusRatePerUnit),
-              maxBonusPerPiece: row.fabricVariant.bonusRule.maxBonusPerPiece
-                ? Number(row.fabricVariant.bonusRule.maxBonusPerPiece)
-                : null,
-            }
-          : null,
+        standardWeightG: Number(row.fabricVariant.fabric.standardWeightG),
+        qualityRule: {
+          minWeightThreshold: Number(row.fabricVariant.fabric.standardWeightG),
+          deductionRatePerUnit: rate,
+        },
       })),
       yarnGiven: yarnGiven.map((row) => ({
         yarnGivenId: row.yarnGivenId,
         zigId: row.zigId,
+        yarnVariantId: row.yarnVariantId,
         quantity: Number(row.quantity),
         unitPrice: Number(row.unitPrice),
       })),
-      sales: sales.map((row) => ({
-        saleId: row.saleId,
-        movementType: row.movementType,
-        quantity: Number(row.quantity),
-        unitPrice: Number(row.unitPrice),
+      yarnReturns: yarnReturns.map((yr) => ({
+        yarnVariantId: yr.yarnVariantId,
+        zigId: yr.zigId,
+        quantity: Number(yr.quantity),
       })),
     });
 
@@ -336,11 +258,15 @@ calculationRouter.post("/settlements/preview", authenticate, requireAdmin, async
 calculationRouter.post("/settlements/commit", authenticate, requireAdmin, async (req, res, next) => {
   try {
     const body = commitSchema.parse(req.body);
+    const weaverUserId = body.weaverUserId ?? body.weaverId;
+    if (!weaverUserId) {
+      throw new Error("VALIDATION: weaverUserId (or weaverId) is required.");
+    }
+
     const result = await commitSettlement({
-      weaverId: body.weaverId,
+      weaverUserId,
       returnIds: body.returnIds,
       yarnGivenIds: body.yarnGivenIds,
-      saleIds: body.saleIds,
       paymentMethod: body.paymentMethod,
       notes: body.notes,
       recordedByUserId: req.user!.userId,
@@ -348,6 +274,7 @@ calculationRouter.post("/settlements/commit", authenticate, requireAdmin, async 
     });
 
     res.status(201).json({
+      settlementId: result.settlementId,
       paymentId: result.paymentId,
       amount: result.amount,
       reconciledZigIds: result.reconciledZigIds,

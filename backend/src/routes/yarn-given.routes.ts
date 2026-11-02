@@ -2,7 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
-import { adjustYarnGivenStock } from "../services/stock-adjustment.service.js";
 import { resolveTransactionLine } from "../services/transaction-line-resolver.service.js";
 
 export const yarnGivenRouter = Router();
@@ -11,6 +10,7 @@ yarnGivenRouter.use(authenticate, requireAdmin);
 
 const yarnLineSchema = z.object({
   yarnVariantId: z.number().int().positive().optional(),
+  yarnId: z.number().int().positive().optional(),
   yarnTypeId: z.number().int().positive().optional(),
   colorId: z.number().int().positive().optional(),
   supplierId: z.number().int().positive().optional(),
@@ -24,11 +24,12 @@ const createSchema = z.object({
 });
 
 const yarnInclude = {
-  yarnType: true,
+  yarn: true,
   color: true,
   supplier: true,
 };
 
+// GET /api/v1/yarn-given
 yarnGivenRouter.get("/", async (req, res, next) => {
   try {
     const zigId = req.query.zigId as string | undefined;
@@ -46,11 +47,20 @@ yarnGivenRouter.get("/", async (req, res, next) => {
   }
 });
 
+// POST /api/v1/yarn-given
 yarnGivenRouter.post("/", async (req, res, next) => {
   try {
     const body = createSchema.parse(req.body);
 
     const result = await prisma.$transaction(async (tx) => {
+      const order = await tx.workOrder.findUniqueOrThrow({
+        where: { zigId: body.zigId },
+      });
+
+      if (order.status === "reconciled" || order.status === "cancelled") {
+        throw new Error(`CONFLICT: Cannot issue yarn to a ${order.status} zig.`);
+      }
+
       const rows = [];
       const variantResolved = [];
 
@@ -71,6 +81,12 @@ yarnGivenRouter.post("/", async (req, res, next) => {
           },
         });
 
+        // Decrement yarn stock
+        await tx.yarnVariant.update({
+          where: { yarnVariantId: resolved.yarnVariantId! },
+          data: { stockSnapshot: { decrement: line.quantity } },
+        });
+
         rows.push(row);
         variantResolved.push({
           created: resolved.variantCreated,
@@ -78,70 +94,18 @@ yarnGivenRouter.post("/", async (req, res, next) => {
         });
       }
 
+      // Progress work order if still assigned
+      if (order.status === "assigned") {
+        await tx.workOrder.update({
+          where: { zigId: body.zigId },
+          data: { status: "in_progress" },
+        });
+      }
+
       return { rows, variantResolved };
     });
 
-    res.status(201).json({
-      rows: result.rows,
-      variantResolved: result.variantResolved,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-yarnGivenRouter.patch("/:yarnGivenId", async (req, res, next) => {
-  try {
-    const yarnGivenId = Number(req.params.yarnGivenId);
-    if (!Number.isInteger(yarnGivenId) || yarnGivenId <= 0) {
-      res.status(400).json({ error: "Invalid yarn delivery id." });
-      return;
-    }
-
-    const body = yarnLineSchema.parse(req.body);
-
-    const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.yarnGiven.findUnique({ where: { yarnGivenId } });
-      if (!existing) {
-        throw new Error("NOT_FOUND:Yarn delivery not found.");
-      }
-      if (existing.paymentId != null) {
-        throw new Error("FORBIDDEN:This yarn delivery is already settled and cannot be edited.");
-      }
-
-      const resolved = await resolveTransactionLine("yarn", body, tx);
-
-      await adjustYarnGivenStock(
-        tx,
-        existing.yarnVariantId,
-        existing.quantity,
-        resolved.yarnVariantId!,
-        body.quantity,
-      );
-
-      const row = await tx.yarnGiven.update({
-        where: { yarnGivenId },
-        data: {
-          yarnVariantId: resolved.yarnVariantId!,
-          quantity: body.quantity,
-          unitPrice: body.unitPrice,
-        },
-        include: {
-          yarnVariant: { include: yarnInclude },
-          workOrder: { include: { weaver: true } },
-        },
-      });
-
-      return {
-        row,
-        variantResolved: { created: resolved.variantCreated, sku: resolved.sku ?? "" },
-      };
-    });
-
-    res.json({
-      ...result.row,
-      variantResolved: result.variantResolved,
-    });
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }

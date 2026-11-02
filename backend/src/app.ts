@@ -13,7 +13,7 @@ import { workOrdersRouter } from "./routes/work-orders.routes.js";
 import { procurementRouter } from "./routes/procurement.routes.js";
 import { stockRouter } from "./routes/stock.routes.js";
 import { yarnGivenRouter } from "./routes/yarn-given.routes.js";
-import { transactionsRouter } from "./routes/transactions.routes.js";
+import { directTransactionsRouter } from "./routes/direct-transactions.routes.js";
 import { merchantsRouter } from "./routes/merchants.routes.js";
 
 export function createApp() {
@@ -39,7 +39,8 @@ export function createApp() {
   app.use("/api/v1/reports", reportsRouter);
   app.use("/api/v1/stock", stockRouter);
   app.use("/api/v1/procurement", procurementRouter);
-  app.use("/api/v1/transactions", transactionsRouter);
+  app.use("/api/v1/direct-transactions", directTransactionsRouter);
+  app.use("/api/v1/transactions", directTransactionsRouter);
   app.use("/api/v1/merchants", merchantsRouter);
 
   app.use(errorHandler);

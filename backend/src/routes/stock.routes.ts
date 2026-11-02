@@ -6,18 +6,19 @@ export const stockRouter = Router();
 
 stockRouter.use(authenticate, requireAdmin);
 
+// GET /api/v1/stock
 stockRouter.get("/", async (_req, res, next) => {
   try {
     const [yarnVariants, fabricVariants] = await Promise.all([
       prisma.yarnVariant.findMany({
         where: { isActive: true },
-        include: { yarnType: true, color: true, supplier: true },
+        include: { yarn: true, color: true, supplier: true },
         orderBy: { sku: "asc" },
       }),
       prisma.fabricVariant.findMany({
         where: { isActive: true },
         include: {
-          product: true,
+          fabric: true,
           warpColor: true,
           weftColor: true,
           design: true,
@@ -26,7 +27,16 @@ stockRouter.get("/", async (_req, res, next) => {
       }),
     ]);
 
-    res.json({ yarnVariants, fabricVariants });
+    res.json({
+      yarnVariants: yarnVariants.map((y) => ({
+        ...y,
+        yarnType: { yarnTypeId: y.yarnId, materialName: y.yarn.name }, // alias
+      })),
+      fabricVariants: fabricVariants.map((f) => ({
+        ...f,
+        product: f.fabric, // alias
+      })),
+    });
   } catch (error) {
     next(error);
   }
