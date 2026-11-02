@@ -32,21 +32,22 @@ export function LoginPage() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        {/* Logo mark */}
         <div className="auth-logo">
-          <div className="auth-logo-mark">🪡</div>
+          <div className="auth-logo-mark" aria-hidden="true">
+            🪡
+          </div>
           <h1 className="auth-title">ግባ / Sign In</h1>
           <p className="auth-subtitle">Awra Amba Textile Cooperative</p>
         </div>
 
         <div className="form">
           <label>
-            Username
+            <span>Username / መለያ ስም</span>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              placeholder="e.g. admin or weaver username"
               autoComplete="username"
               autoFocus
               required
@@ -54,7 +55,7 @@ export function LoginPage() {
           </label>
 
           <label>
-            Password
+            <span>Password / የይለፍ ቃል</span>
             <input
               type="password"
               value={password}
@@ -76,17 +77,19 @@ export function LoginPage() {
           type="submit"
           className="btn-primary"
           disabled={loading}
-          style={{ width: "100%", justifyContent: "center", minHeight: 42, fontSize: 15 }}
+          style={{ width: "100%", justifyContent: "center", minHeight: 44, fontSize: 14.5 }}
         >
-          {loading ? "Signing in…" : "Continue →"}
+          {loading ? "Signing in…" : "Continue / ግባ →"}
         </button>
 
         <p className="auth-footer">
-          New weaver? <Link to="/signup">Create account</Link>
+          New weaver? <Link to="/signup" style={{ fontWeight: 700 }}>Create account</Link>
           &ensp;·&ensp;
-          <Link to="/">Home</Link>
+          <Link to="/">Back to Home</Link>
         </p>
       </form>
     </div>
   );
 }
+
+export default LoginPage;

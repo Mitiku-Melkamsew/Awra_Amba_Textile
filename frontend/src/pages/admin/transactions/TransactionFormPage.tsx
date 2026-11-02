@@ -107,16 +107,17 @@ export function TransactionFormPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!txnType) return;
-
-    const lines = isFabric ? parseFabricLines(fabricLines) : parseYarnLines(yarnLines);
-    if (lines.length === 0) {
-      setError("Add at least one valid line.");
-      return;
-    }
-
     setSaving(true);
     setError("");
+
     try {
+      const lines = isFabric ? parseFabricLines(fabricLines) : parseYarnLines(yarnLines);
+      if (lines.length === 0) {
+        setError("Add at least one line with valid quantity and unit price.");
+        setSaving(false);
+        return;
+      }
+
       const txn = await transactionsApi.create({
         transactionId,
         type: txnType,
@@ -132,7 +133,7 @@ export function TransactionFormPage() {
       });
       navigate(`/admin/transactions/${txn.transactionId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : "Failed to save transaction");
     } finally {
       setSaving(false);
     }
@@ -140,41 +141,54 @@ export function TransactionFormPage() {
 
   if (!txnType) {
     return (
-      <section>
-        <p className="error">Invalid transaction type.</p>
-        <Link to="/admin/transactions">Back</Link>
-      </section>
+      <div className="page">
+        <div className="error-msg"><span>⚠️</span> Invalid transaction route or parameters.</div>
+        <Link to="/admin/transactions" className="back-link">Back to Transactions</Link>
+      </div>
     );
   }
 
   const title =
     txnType === "yarn_purchase"
-      ? "Buy Yarn"
+      ? "Buy Raw Yarn from Supplier"
       : txnType === "fabric_purchase"
-        ? "Buy Fabric from Weaver"
+        ? "Buy Handwoven Fabric from Weaver"
         : txnType === "yarn_sale"
-          ? "Sell Yarn"
-          : "Sell Fabric";
+          ? "Sell Yarn Cones to Merchant"
+          : "Sell Finished Fabric to Merchant";
 
   return (
-    <section>
-      <p>
-        <Link to={`/admin/transactions/new/${direction}`}>← Back</Link>
-      </p>
-      <p className="eyebrow">Step 4 of 4</p>
-      <h2>{title}</h2>
-      <p className="muted">
-        ID: {transactionId}
-        {isFabricPurchase &&
-          " · Describe fabric like a zig return — new variants are created automatically."}
-      </p>
+    <div className="page">
+      <Link to={`/admin/transactions/new/${direction}`} className="back-link">
+        ← Back to Step 2
+      </Link>
 
-      <form className="card form" onSubmit={handleSubmit}>
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">ደረጃ 3 ከ 3 / Final Step</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <h1 className="page-title">{title}</h1>
+            <span style={{ fontFamily: "monospace", fontWeight: 700, background: "var(--brand-light)", color: "var(--brand)", padding: "0.2rem 0.6rem", borderRadius: "8px" }}>
+              #{transactionId}
+            </span>
+          </div>
+          <p className="page-subtitle">
+            Configure counterparties, payment terms, and item lines. Stock adjusts automatically upon delivery confirmation.
+          </p>
+        </div>
+      </div>
+
+      <form className="card form" onSubmit={handleSubmit} style={{ maxWidth: 880 }}>
+        <h3 className="section-title" style={{ margin: 0 }}>
+          <span>📋</span> General Transaction Details
+        </h3>
+
         <label>
-          Payment terms
+          <span>Payment Terms / የክፍያ ሁኔታ</span>
           <select
             value={paymentTerms}
             onChange={(e) => setPaymentTerms(e.target.value as PaymentTerms)}
+            style={{ height: 42 }}
           >
             {Object.entries(PAYMENT_TERMS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -186,8 +200,8 @@ export function TransactionFormPage() {
 
         {txnType === "yarn_purchase" && (
           <label>
-            Supplier
-            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} required>
+            <span>Yarn Supplier / የጥጥ አቅራቢ</span>
+            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} required style={{ height: 42 }}>
               {catalogLookup.suppliers.map((s) => (
                 <option key={s.supplierId} value={s.supplierId}>
                   {s.name}
@@ -199,11 +213,11 @@ export function TransactionFormPage() {
 
         {txnType === "fabric_purchase" && (
           <label>
-            Weaver (seller)
-            <select value={weaverId} onChange={(e) => setWeaverId(e.target.value)} required>
+            <span>Artisan Weaver (Seller) / አሸጋይ</span>
+            <select value={weaverId} onChange={(e) => setWeaverId(e.target.value)} required style={{ height: 42 }}>
               {weavers.map((w) => (
                 <option key={w.weaverId} value={w.weaverId}>
-                  {w.firstName} {w.lastName}
+                  {w.firstName} {w.lastName} (#{w.weaverId})
                 </option>
               ))}
             </select>
@@ -213,8 +227,8 @@ export function TransactionFormPage() {
         {(txnType === "fabric_sale" || txnType === "yarn_sale") && (
           <>
             <label>
-              Merchant (buyer)
-              <select value={merchantId} onChange={(e) => setMerchantId(e.target.value)} required>
+              <span>Merchant (Buyer) / ገዢ ነጋዴ</span>
+              <select value={merchantId} onChange={(e) => setMerchantId(e.target.value)} required style={{ height: 42 }}>
                 {merchants.map((m) => (
                   <option key={m.merchantId} value={m.merchantId}>
                     {m.companyName ?? m.contactPhone}
@@ -222,57 +236,87 @@ export function TransactionFormPage() {
                 ))}
               </select>
             </label>
-            <div className="form-row">
-              <label>
-                New merchant name
-                <input
-                  value={newMerchantName}
-                  onChange={(e) => setNewMerchantName(e.target.value)}
-                  placeholder="Optional"
-                />
-              </label>
-              <label>
-                Phone
-                <input
-                  value={newMerchantPhone}
-                  onChange={(e) => setNewMerchantPhone(e.target.value)}
-                />
-              </label>
+
+            <div style={{ background: "var(--bg-subtle)", padding: "1rem", borderRadius: "10px", marginTop: "0.25rem" }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "0.5rem" }}>
+                + Add a New Merchant (if not in list)
+              </span>
+              <div className="form-row">
+                <label>
+                  <span>Company Name</span>
+                  <input
+                    value={newMerchantName}
+                    onChange={(e) => setNewMerchantName(e.target.value)}
+                    placeholder="e.g. Merkato Textile Wholesalers"
+                  />
+                </label>
+                <label>
+                  <span>Phone Number</span>
+                  <input
+                    value={newMerchantPhone}
+                    onChange={(e) => setNewMerchantPhone(e.target.value)}
+                    placeholder="+251 9xx xxx xxx"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={handleAddMerchant}
+                style={{ marginTop: "0.75rem" }}
+              >
+                + Register Merchant
+              </button>
             </div>
-            <button type="button" className="btn-secondary" onClick={handleAddMerchant}>
-              Add merchant
-            </button>
           </>
         )}
 
-        <h3 style={{ marginTop: "1rem" }}>Lines</h3>
-        {isFabric ? (
-          <FabricLinesEditor
-            lines={fabricLines}
-            onChange={setFabricLines}
-            lookup={catalogLookup}
-            fabricVariants={fabricVariants}
-            defaultEntryMode={isFabricPurchase ? "catalog" : "variant"}
-          />
-        ) : (
-          <YarnLinesEditor
-            lines={yarnLines}
-            onChange={setYarnLines}
-            lookup={catalogLookup}
-            yarnVariants={yarnVariants}
-          />
-        )}
+        <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.25rem", marginTop: "0.5rem" }}>
+          <h3 className="section-title">
+            <span>📦</span> Transaction Lines / የዕቃ ዝርዝር
+          </h3>
 
-        <label>
-          Notes
-          <input value={notes} onChange={(e) => setNotes(e.target.value)} />
+          {isFabric ? (
+            <FabricLinesEditor
+              lines={fabricLines}
+              onChange={setFabricLines}
+              lookup={catalogLookup}
+              fabricVariants={fabricVariants}
+              defaultEntryMode={isFabricPurchase ? "catalog" : "variant"}
+            />
+          ) : (
+            <YarnLinesEditor
+              lines={yarnLines}
+              onChange={setYarnLines}
+              lookup={catalogLookup}
+              yarnVariants={yarnVariants}
+            />
+          )}
+        </div>
+
+        <label style={{ marginTop: "0.5rem" }}>
+          <span>Internal Transaction Notes / ማስታወሻ (optional)</span>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add delivery location, terms, or reference notes…"
+            rows={2}
+          />
         </label>
 
-        {error && <p className="error">{error}</p>}
-        <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "Saving..." : "Create transaction"}
-        </button>
+        {error && <div className="error-msg"><span>⚠️</span> {error}</div>}
+
+        <div className="form-actions" style={{ marginTop: "1rem" }}>
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? "Creating Transaction…" : "✓ Create Transaction / መዝግብ"}
+          </button>
+          <Link to="/admin/transactions" className="btn-ghost">
+            Cancel
+          </Link>
+        </div>
       </form>
-    </section>
+    </div>
   );
 }
+
+export default TransactionFormPage;

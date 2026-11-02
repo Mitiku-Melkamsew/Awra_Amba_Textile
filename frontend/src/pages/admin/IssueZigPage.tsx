@@ -107,28 +107,44 @@ export function IssueZigPage() {
     }
   }
 
-  if (!weaver) return <p className="muted">Loading...</p>;
+  if (!weaver) {
+    return (
+      <div className="page">
+        <div className="loading"><span>⏳</span> Loading weaver details…</div>
+      </div>
+    );
+  }
 
   const selectedProduct = products.find((p) => String(p.productId) === productId);
 
   return (
-    <section>
-      <p>
-        <Link to={`/admin/weavers/${weaverId}`}>← Back to {weaver.firstName}</Link>
-      </p>
-      <h2>አዲስ ዝግ / Issue Zig</h2>
-      <p className="muted">
-        {weaver.firstName} {weaver.lastName} · Zig ID: {zigId}
-      </p>
-      <p className="muted" style={{ fontSize: "0.9rem" }}>
-        Issue fabric target and yarn in one step. Add multiple yarn variants if needed — leave
-        quantity at 0 to skip a line.
-      </p>
+    <div className="page">
+      <Link to={`/admin/weavers/${weaverId}`} className="back-link">
+        ← Back to {weaver.firstName} {weaver.lastName}
+      </Link>
 
-      <form className="card form" onSubmit={handleSubmit}>
-        <h3>Fabric / ጨርቅ</h3>
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">አዲስ ዝግ / Issue Work Order</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <h1 className="page-title">Issue New Zig</h1>
+            <span style={{ fontFamily: "monospace", fontWeight: 700, background: "var(--brand-light)", color: "var(--brand)", padding: "0.2rem 0.6rem", borderRadius: "8px" }}>
+              #{zigId}
+            </span>
+          </div>
+          <p className="page-subtitle">
+            Artisan: <strong>{weaver.firstName} {weaver.lastName}</strong> (#{weaver.weaverId}) &middot; Issue fabric target and initial yarn cones in one step.
+          </p>
+        </div>
+      </div>
+
+      <form className="card form" onSubmit={handleSubmit} style={{ maxWidth: 840 }}>
+        <h3 className="section-title" style={{ margin: 0 }}>
+          <span>🪢</span> Fabric Target / የሚመረተው ጨርቅ
+        </h3>
+
         <label>
-          Product / ዓይነት
+          <span>Fabric Product / ዓይነት</span>
           <select value={productId} onChange={(e) => handleProductChange(e.target.value)} required>
             {products.map((p) => (
               <option key={p.productId} value={p.productId}>
@@ -137,16 +153,17 @@ export function IssueZigPage() {
             ))}
           </select>
         </label>
+
         {selectedProduct && (
-          <p className="muted" style={{ fontSize: "0.85rem" }}>
-            Standard: {selectedProduct.standardWidthCm ?? "—"} ×{" "}
-            {selectedProduct.standardLengthCm ?? "—"} cm
-          </p>
+          <div style={{ fontSize: "12.5px", color: "var(--text-muted)", background: "var(--bg-subtle)", padding: "0.5rem 0.85rem", borderRadius: "8px" }}>
+            📏 Standard Dimensions: <strong>{selectedProduct.standardWidthCm ?? "—"} cm width</strong> × <strong>{selectedProduct.standardLengthCm ?? "—"} cm length</strong>
+          </div>
         )}
+
         <label>
-          Design / ዲዛይን
+          <span>Pattern Design / ዲዛይን</span>
           <select value={designId} onChange={(e) => setDesignId(e.target.value)}>
-            <option value="">None</option>
+            <option value="">None / መደበኛ</option>
             {designs.map((d) => (
               <option key={d.designId} value={d.designId}>
                 {d.name}
@@ -154,47 +171,64 @@ export function IssueZigPage() {
             ))}
           </select>
         </label>
+
         <div className="form-row">
           <label>
-            Warp color / ውርፍ
+            <span>Warp color / ውርፍ</span>
             <select value={warpColorId} onChange={(e) => setWarpColorId(e.target.value)} required>
               {colors.map((c) => (
                 <option key={c.colorId} value={c.colorId}>
-                  {c.name}
+                  {c.name} ({c.colorCode})
                 </option>
               ))}
             </select>
           </label>
           <label>
-            Weft color / ስፍ
+            <span>Weft color / ስፍ</span>
             <select value={weftColorId} onChange={(e) => setWeftColorId(e.target.value)} required>
               {colors.map((c) => (
                 <option key={c.colorId} value={c.colorId}>
-                  {c.name}
+                  {c.name} ({c.colorCode})
                 </option>
               ))}
             </select>
           </label>
         </div>
+
         <label>
-          Unit price / ዋጋ
+          <span>Piece Unit Price (ETB) / ዋጋ በቁራጭ</span>
           <input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
         </label>
 
-        <h3 style={{ marginTop: "1rem" }}>Yarn / ጥጥ</h3>
-        <YarnLinesEditor
-          lines={yarnLines}
-          onChange={setYarnLines}
-          lookup={yarnLookup}
-          yarnVariants={yarnVariants}
-          quantityHint="0 = skip this line"
-        />
+        <div style={{ borderTop: "1.5px solid var(--border)", paddingTop: "1.25rem", marginTop: "0.5rem" }}>
+          <h3 className="section-title">
+            <span>🧶</span> Yarn Given / የሚሰጥ ጥጥ
+          </h3>
+          <p style={{ fontSize: "12.5px", color: "var(--text-muted)", marginTop: "-0.5rem", marginBottom: "1rem" }}>
+            Add one or more yarn variants. Leave quantity at 0 to skip any unused line.
+          </p>
+          <YarnLinesEditor
+            lines={yarnLines}
+            onChange={setYarnLines}
+            lookup={yarnLookup}
+            yarnVariants={yarnVariants}
+            quantityHint="0 = skip this line"
+          />
+        </div>
 
-        {error && <p className="error">{error}</p>}
-        <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "Issuing..." : "Issue Zig"}
-        </button>
+        {error && <div className="error-msg"><span>⚠️</span> {error}</div>}
+
+        <div className="form-actions" style={{ marginTop: "1rem" }}>
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? "Issuing Zig…" : "✓ Confirm & Issue Zig / ዝግ ስጥ"}
+          </button>
+          <Link to={`/admin/weavers/${weaverId}`} className="btn-ghost">
+            Cancel
+          </Link>
+        </div>
       </form>
-    </section>
+    </div>
   );
 }
+
+export default IssueZigPage;

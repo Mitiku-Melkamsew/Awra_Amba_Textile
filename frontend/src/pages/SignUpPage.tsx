@@ -15,13 +15,13 @@ export function SignUpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (authLoading) return <div className="loading">Loading…</div>;
+  if (authLoading) return <div className="loading"><span>⏳</span> Loading…</div>;
   if (user) return <Navigate to={user.role === "weaver" ? "/weaver" : "/admin"} replace />;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError("Passwords do not match. Please verify.");
       return;
     }
     setLoading(true);
@@ -38,17 +38,19 @@ export function SignUpPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-card" onSubmit={handleSubmit}>
+      <form className="auth-card" onSubmit={handleSubmit} style={{ width: "min(460px, 100%)" }}>
         <div className="auth-logo">
-          <div className="auth-logo-mark">🪡</div>
+          <div className="auth-logo-mark" aria-hidden="true">
+            🧵
+          </div>
           <h1 className="auth-title">ተመዝገብ / Sign Up</h1>
-          <p className="auth-subtitle">Create your weaver account</p>
+          <p className="auth-subtitle">Create your Awra Amba Weaver Account</p>
         </div>
 
         <div className="form">
           <div className="form-row">
             <label>
-              First name
+              <span>First name / ስም</span>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -58,7 +60,7 @@ export function SignUpPage() {
               />
             </label>
             <label>
-              Last name
+              <span>Last name / የአባት ስም</span>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -69,7 +71,10 @@ export function SignUpPage() {
           </div>
 
           <label>
-            Phone <span style={{ fontWeight: 400, color: "var(--text-subtle)" }}>(optional)</span>
+            <span style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Phone number / ስልክ ቁጥር</span>
+              <span style={{ fontWeight: 400, color: "var(--text-subtle)", fontSize: "11px" }}>Optional</span>
+            </span>
             <input
               type="tel"
               value={phone}
@@ -79,7 +84,7 @@ export function SignUpPage() {
           </label>
 
           <label>
-            Username
+            <span>Username / መለያ ስም</span>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -89,49 +94,57 @@ export function SignUpPage() {
             />
           </label>
 
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              autoComplete="new-password"
-              required
-              minLength={6}
-            />
-          </label>
+          <div className="form-row">
+            <label>
+              <span>Password / የይለፍ ቃል</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 6 chars"
+                autoComplete="new-password"
+                required
+                minLength={6}
+              />
+            </label>
 
-          <label>
-            Confirm password
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Repeat password"
-              autoComplete="new-password"
-              required
-            />
-          </label>
+            <label>
+              <span>Confirm Password</span>
+              <input
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="Repeat password"
+                autoComplete="new-password"
+                required
+              />
+            </label>
+          </div>
         </div>
 
-        {error && <div className="error-msg"><span>⚠️</span> {error}</div>}
+        {error && (
+          <div className="error-msg">
+            <span>⚠️</span> {error}
+          </div>
+        )}
 
         <button
           type="submit"
           className="btn-primary"
           disabled={loading}
-          style={{ width: "100%", justifyContent: "center", minHeight: 42, fontSize: 15 }}
+          style={{ width: "100%", justifyContent: "center", minHeight: 44, fontSize: 14.5 }}
         >
-          {loading ? "Creating account…" : "Create Account →"}
+          {loading ? "Creating account…" : "Create Weaver Account →"}
         </button>
 
         <p className="auth-footer">
-          Already have an account? <Link to="/login">Sign in</Link>
+          Already registered? <Link to="/login" style={{ fontWeight: 700 }}>Sign in</Link>
           &ensp;·&ensp;
-          <Link to="/">Home</Link>
+          <Link to="/">Back to Home</Link>
         </p>
       </form>
     </div>
   );
 }
+
+export default SignUpPage;
