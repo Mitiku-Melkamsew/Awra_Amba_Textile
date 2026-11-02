@@ -48,6 +48,8 @@ authRouter.post("/login", async (req, res, next) => {
       roles,
       // Backwards-compatibility for existing frontend screens expecting single 'role':
       role: roles[0] ?? UserRole.weaver,
+      weaverId: roles.includes(UserRole.weaver) ? user.userId : null,
+      merchantId: roles.includes(UserRole.merchant) ? user.userId : null,
     };
 
     res.json({
@@ -98,6 +100,8 @@ authRouter.post("/signup", async (req, res, next) => {
       fullName: user.fullName,
       roles,
       role: roles[0] ?? UserRole.weaver,
+      weaverId: roles.includes(UserRole.weaver) ? user.userId : null,
+      merchantId: roles.includes(UserRole.merchant) ? user.userId : null,
     };
 
     res.status(201).json({
@@ -137,6 +141,8 @@ authRouter.get("/me", authenticate, async (req, res, next) => {
         email: user.email,
         roles,
         role: roles[0] ?? UserRole.weaver,
+        weaverId: roles.includes(UserRole.weaver) ? user.userId : null,
+        merchantId: roles.includes(UserRole.merchant) ? user.userId : null,
       },
     });
   } catch (error) {

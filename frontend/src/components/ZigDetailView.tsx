@@ -43,6 +43,17 @@ export function ZigDetailView({
   const [editingYarnId, setEditingYarnId] = useState<number | null>(null);
   const [editingYarnLines, setEditingYarnLines] = useState<YarnLineDraft[]>([]);
   const [editingFabricReturnId, setEditingFabricReturnId] = useState<number | null>(null);
+
+  // Redesign state: Unused Yarn Return & Fabric Return to Weaver
+  const [yarnReturnOpen, setYarnReturnOpen] = useState(false);
+  const [yarnReturnVariantId, setYarnReturnVariantId] = useState<number | "">("");
+  const [yarnReturnQty, setYarnReturnQty] = useState("");
+  const [yarnReturnRemark, setYarnReturnRemark] = useState("");
+
+  const [weaverReturnOpen, setWeaverReturnOpen] = useState(false);
+  const [weaverReturnQty, setWeaverReturnQty] = useState("");
+  const [weaverReturnRemark, setWeaverReturnRemark] = useState("");
+
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -56,6 +67,17 @@ export function ZigDetailView({
     (order.status === "assigned" ||
       order.status === "in_progress" ||
       order.status === "returned");
+
+  const canMarkReturned =
+    !readOnly &&
+    order.status !== "returned" &&
+    order.status !== "reconciled" &&
+    order.status !== "cancelled";
+
+  const canCancel =
+    !readOnly &&
+    order.status !== "reconciled" &&
+    order.status !== "cancelled";
 
   useEffect(() => {
     if (!canEdit) return;
@@ -130,16 +152,100 @@ export function ZigDetailView({
     }
   }
 
-  async function markReturned() {
+  async function handleMarkReturned() {
     setError("");
+    setMessage("");
     try {
-      await workOrdersApi.updateStatus(order.zigId, "returned");
-      setMessage("Marked as returned.");
+      await workOrdersApi.markReturned(order.zigId);
+      setMessage("Work order marked as returned.");
       onRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
+      setError(err instanceof Error ? err.message : "Failed to mark as returned");
     }
   }
+
+  async function handleCancelZig() {
+    if (!window.confirm(`Are you sure you want to cancel zig ${order.zigId}? This will cancel the work order.`)) {
+      return;
+    }
+    setError("");
+    setMessage("");
+    try {
+      await workOrdersApi.cancel(order.zigId);
+      setMessage("Work order cancelled successfully.");
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel zig");
+    }
+  }
+
+  async function handleYarnReturnSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!yarnReturnVariantId || !yarnReturnQty || parseFloat(yarnReturnQty) <= 0) {
+      setError("Please select a yarn variant and specify a positive quantity.");
+      return;
+    }
+    setError("");
+    setMessage("");
+    try {
+      await workOrdersApi.recordYarnReturn({
+        zigId: order.zigId,
+        yarnVariantId: Number(yarnReturnVariantId),
+        quantity: parseFloat(yarnReturnQty),
+        remark: yarnReturnRemark.trim() || undefined,
+      });
+      setMessage("Unused yarn return recorded. Settlement yarn cost updated.");
+      setYarnReturnQty("");
+      setYarnReturnRemark("");
+      setYarnReturnOpen(false);
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to record yarn return");
+    }
+  }
+
+  async function handleWeaverReturnSubmit(e: FormEvent) {
+    e.preventDefault();
+    const qty = parseInt(weaverReturnQty, 10);
+    if (!qty || qty <= 0) {
+      setError("Please specify a positive integer quantity for rejected fabric.");
+      return;
+    }
+    setError("");
+    setMessage("");
+    try {
+      await workOrdersApi.recordFabricReturnToWeaver({
+        zigId: order.zigId,
+        fabricVariantId: order.fabricVariantId,
+        quantity: qty,
+        remark: weaverReturnRemark.trim() || undefined,
+      });
+      setMessage("Fabric returned to weaver recorded. Excluded from settlement.");
+      setWeaverReturnQty("");
+      setWeaverReturnRemark("");
+      setWeaverReturnOpen(false);
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to record fabric return to weaver");
+    }
+  }
+
+  // Available yarn variants issued for return selection
+  const issuedYarnVariants = Array.from(
+    new Map(
+      order.yarnGiven.map((yg) => [
+        yg.yarnVariant.yarnVariantId,
+        {
+          yarnVariantId: yg.yarnVariant.yarnVariantId,
+          label: variantLabel([
+            yg.yarnVariant.yarn?.name ?? yg.yarnVariant.yarnType?.materialName ?? yg.yarnVariant.sku,
+            yg.yarnVariant.color?.name,
+            yg.yarnVariant.supplier?.name,
+          ]),
+        },
+      ]),
+    ).values(),
+  );
 
   return (
     <div className="page" style={{ gap: "0.875rem" }}>
@@ -165,11 +271,28 @@ export function ZigDetailView({
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
           <span className={`badge ${order.status}`}>{order.status.replace("_", " ")}</span>
-          {!readOnly && order.status === "in_progress" && (
-            <button type="button" className="btn-ghost" onClick={markReturned} style={{ fontSize: 12.5 }}>
-              ✓ Mark All Returned
-            </button>
-          )}
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {canMarkReturned && (
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={handleMarkReturned}
+                style={{ fontSize: 12.5, color: "var(--green)", borderColor: "var(--green)" }}
+              >
+                ✓ Mark as Returned
+              </button>
+            )}
+            {canCancel && (
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={handleCancelZig}
+                style={{ fontSize: 12.5, color: "var(--red)", borderColor: "#FCA5A5" }}
+              >
+                ✕ Cancel Zig
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -245,7 +368,7 @@ export function ZigDetailView({
                 onClick={() => setYarnOpen(!yarnOpen)}
               >
                 <span style={{ fontSize: 12 }}>{yarnOpen ? "▼" : "▶"}</span>
-                🧶 ጥጥ መስጠት / Record Yarn
+                🧶 ጥጥ መስጠት / Record Yarn Delivery
               </button>
               {yarnOpen && (
                 <form className="form" style={{ marginTop: "0.875rem" }} onSubmit={handleYarnSubmit}>
@@ -258,6 +381,124 @@ export function ZigDetailView({
                   <div className="form-actions">
                     <button type="submit" className="btn-primary">Save Yarn Deliveries</button>
                     <button type="button" className="btn-ghost" onClick={() => setYarnOpen(false)}>Cancel</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Record Unused Yarn Return (collapsible) */}
+          {canEdit && (
+            <div className="card card-sm">
+              <button
+                type="button"
+                className="collapse-toggle"
+                onClick={() => setYarnReturnOpen(!yarnReturnOpen)}
+              >
+                <span style={{ fontSize: 12 }}>{yarnReturnOpen ? "▼" : "▶"}</span>
+                ↩️ ጥጥ መመለስ / Record Unused Yarn Return
+              </button>
+              {yarnReturnOpen && (
+                <form className="form" style={{ marginTop: "0.875rem" }} onSubmit={handleYarnReturnSubmit}>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 0.5rem" }}>
+                    Unused yarn returned by the weaver decreases net settlement yarn costs.
+                  </p>
+                  <div className="form-group">
+                    <label>Yarn Variant</label>
+                    <select
+                      value={yarnReturnVariantId}
+                      onChange={(e) => setYarnReturnVariantId(Number(e.target.value) || "")}
+                      required
+                      className="input-field"
+                    >
+                      <option value="">Select issued yarn variant</option>
+                      {issuedYarnVariants.map((iv) => (
+                        <option key={iv.yarnVariantId} value={iv.yarnVariantId}>
+                          {iv.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Quantity Returned (kg)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={yarnReturnQty}
+                        onChange={(e) => setYarnReturnQty(e.target.value)}
+                        placeholder="e.g. 0.50"
+                        required
+                        className="input-field"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Remark / Notes</label>
+                      <input
+                        type="text"
+                        value={yarnReturnRemark}
+                        onChange={(e) => setYarnReturnRemark(e.target.value)}
+                        placeholder="Reason or condition"
+                        className="input-field"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="btn-primary">Record Yarn Return</button>
+                    <button type="button" className="btn-ghost" onClick={() => setYarnReturnOpen(false)}>Cancel</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* Record Fabric Return to Weaver (Rejected Fabric) (collapsible) */}
+          {canEdit && (
+            <div className="card card-sm">
+              <button
+                type="button"
+                className="collapse-toggle"
+                onClick={() => setWeaverReturnOpen(!weaverReturnOpen)}
+              >
+                <span style={{ fontSize: 12 }}>{weaverReturnOpen ? "▼" : "▶"}</span>
+                🚫 ጨርቅ ለሸማኔ መመለስ / Return Fabric to Weaver (Reject)
+              </button>
+              {weaverReturnOpen && (
+                <form className="form" style={{ marginTop: "0.875rem" }} onSubmit={handleWeaverReturnSubmit}>
+                  <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 0.5rem" }}>
+                    Defective or rejected fabric returned to the weaver is excluded from settlement payment.
+                  </p>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Quantity (pcs)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={weaverReturnQty}
+                        onChange={(e) => setWeaverReturnQty(e.target.value)}
+                        placeholder="e.g. 1"
+                        required
+                        className="input-field"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Rejection Reason / Remark</label>
+                      <input
+                        type="text"
+                        value={weaverReturnRemark}
+                        onChange={(e) => setWeaverReturnRemark(e.target.value)}
+                        placeholder="e.g. Torn border or uneven tension"
+                        className="input-field"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="btn-primary" style={{ background: "#DC2626" }}>
+                      Record Return to Weaver
+                    </button>
+                    <button type="button" className="btn-ghost" onClick={() => setWeaverReturnOpen(false)}>Cancel</button>
                   </div>
                 </form>
               )}
@@ -285,7 +526,7 @@ export function ZigDetailView({
                     <div className="record-main">
                       <div className="record-title">
                         {variantLabel([
-                          row.yarnVariant.yarnType?.materialName ?? row.yarnVariant.sku,
+                          row.yarnVariant.yarn?.name ?? row.yarnVariant.yarnType?.materialName ?? row.yarnVariant.sku,
                           row.yarnVariant.supplier?.name,
                           row.yarnVariant.color?.name,
                         ])}
@@ -312,6 +553,36 @@ export function ZigDetailView({
               </ul>
             )}
           </div>
+
+          {/* Unused Yarn Returns */}
+          {(order.yarnReturns && order.yarnReturns.length > 0) && (
+            <div className="card card-sm">
+              <p className="section-title">
+                ↩️ Unused Yarn Returns
+                <span className="count">{order.yarnReturns.length}</span>
+              </p>
+              <ul className="record-list">
+                {order.yarnReturns.map((row) => (
+                  <li key={row.yarnReturnId} className="record-item">
+                    <div className="record-main">
+                      <div className="record-title">
+                        {variantLabel([
+                          row.yarnVariant.yarn?.name ?? row.yarnVariant.yarnType?.materialName ?? row.yarnVariant.sku,
+                          row.yarnVariant.color?.name,
+                        ])}
+                      </div>
+                      <div className="record-meta">
+                        {row.quantity} kg returned &nbsp;·&nbsp;{formatDateDDMMYY(row.dateReturned)}
+                      </div>
+                      {row.remark && (
+                        <div className="record-meta" style={{ fontStyle: "italic" }}>{row.remark}</div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Fabric returns */}
           <div className="card card-sm">
@@ -370,8 +641,42 @@ export function ZigDetailView({
               </ul>
             )}
           </div>
+
+          {/* Fabric Returned to Weaver (Rejected) */}
+          {(order.fabricReturnsToWeaver && order.fabricReturnsToWeaver.length > 0) && (
+            <div className="card card-sm" style={{ borderColor: "#FECACA" }}>
+              <p className="section-title" style={{ color: "#DC2626" }}>
+                🚫 Fabric Returned to Weaver (Rejected)
+                <span className="count">{order.fabricReturnsToWeaver.length}</span>
+              </p>
+              <ul className="record-list">
+                {order.fabricReturnsToWeaver.map((row) => (
+                  <li key={row.fabricReturnToWeaverId} className="record-item">
+                    <div className="record-main">
+                      <div className="record-title">
+                        {variantLabel([
+                          row.fabricVariant.product.name,
+                          row.fabricVariant.design?.name,
+                        ])}
+                      </div>
+                      <div className="record-meta">
+                        {row.quantity} pcs rejected &nbsp;·&nbsp;{formatDateDDMMYY(row.dateReturned)}
+                      </div>
+                      {row.remark && (
+                        <div className="record-meta" style={{ fontStyle: "italic", color: "#DC2626" }}>
+                          {row.remark}
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
+export default ZigDetailView;

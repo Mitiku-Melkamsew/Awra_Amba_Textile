@@ -3,7 +3,9 @@ const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api/v1";
 export interface AuthUser {
   userId: number;
   username: string;
+  fullName?: string;
   role: "admin" | "weaver" | "merchant";
+  roles?: ("admin" | "weaver" | "merchant")[];
   weaverId: number | null;
   merchantId: number | null;
 }
@@ -102,8 +104,8 @@ export interface WorkOrder {
 export interface WorkOrderDetail extends WorkOrder {
   yarnGiven: Array<{
     yarnGivenId: number;
-    quantity: string;
-    unitPrice: string;
+    quantity: string | number;
+    unitPrice: string | number;
     dateGiven: string;
     paymentId: number | null;
     yarnVariant: {
@@ -113,6 +115,22 @@ export interface WorkOrderDetail extends WorkOrder {
       colorId?: number;
       supplierId?: number;
       yarnType?: { materialName: string; yarnTypeId?: number };
+      yarn?: { name: string; yarnId?: number };
+      supplier?: { name: string; supplierId?: number };
+      color?: { name: string; colorId?: number };
+    };
+  }>;
+  yarnReturns?: Array<{
+    yarnReturnId: number;
+    yarnVariantId: number;
+    quantity: string | number;
+    dateReturned: string;
+    remark: string | null;
+    yarnVariant: {
+      yarnVariantId: number;
+      sku: string;
+      yarnType?: { materialName: string; yarnTypeId?: number };
+      yarn?: { name: string; yarnId?: number };
       supplier?: { name: string; supplierId?: number };
       color?: { name: string; colorId?: number };
     };
@@ -120,13 +138,21 @@ export interface WorkOrderDetail extends WorkOrder {
   fabricReturns: Array<{
     returnId: number;
     quantityReturned: number;
-    totalWeight: string;
-    lengthCm: string | null;
-    widthCm: string | null;
-    unitPrice: string;
+    totalWeight: string | number;
+    lengthCm: string | number | null;
+    widthCm: string | number | null;
+    unitPrice: string | number;
     remark: string | null;
     dateReturned: string;
     paymentId: number | null;
+    fabricVariant: FabricVariant;
+  }>;
+  fabricReturnsToWeaver?: Array<{
+    fabricReturnToWeaverId: number;
+    fabricVariantId: number;
+    quantity: number;
+    dateReturned: string;
+    remark: string | null;
     fabricVariant: FabricVariant;
   }>;
 }
@@ -385,6 +411,30 @@ export const workOrdersApi = {
     api<WorkOrder>(`/work-orders/${zigId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
+    }),
+  markReturned: (zigId: string) =>
+    api<WorkOrder>(`/work-orders/${zigId}/mark-returned`, { method: "POST" }),
+  cancel: (zigId: string) =>
+    api<WorkOrder>(`/work-orders/${zigId}/cancel`, { method: "POST" }),
+  recordYarnReturn: (data: {
+    zigId: string;
+    yarnVariantId: number;
+    quantity: number;
+    remark?: string;
+  }) =>
+    api<unknown>("/work-orders/yarn-returns", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  recordFabricReturnToWeaver: (data: {
+    zigId: string;
+    fabricVariantId: number;
+    quantity: number;
+    remark?: string;
+  }) =>
+    api<unknown>("/work-orders/fabric-returns-to-weavers", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 };
 
@@ -725,4 +775,40 @@ export const calculationsApi = {
       "/calculations/settlements/commit",
       { method: "POST", body: JSON.stringify(body) },
     ),
+};
+
+export interface AvailableFabric {
+  fabricVariantId: number;
+  sku: string;
+  fabricId: number;
+  fabricName: string;
+  standardLengthCm: number;
+  standardWidthCm: number;
+  standardWeightG: number;
+  design: string;
+  warpColor: string;
+  weftColor: string;
+  sellingPrice: number;
+}
+
+export interface FabricPriceRow {
+  fabricPriceId: number;
+  fabricId: number;
+  sellingPrice: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+  fabric: {
+    fabricId: number;
+    name: string;
+    standardLengthCm: number;
+    standardWidthCm: number;
+    standardWeightG: number;
+  };
+}
+
+export const merchantApi = {
+  availableFabrics: () => api<AvailableFabric[]>("/stock/available-fabrics"),
+  prices: (fabricId?: number) =>
+    api<FabricPriceRow[]>(`/catalog/fabric-prices${fabricId ? `?fabricId=${fabricId}` : ""}`),
 };

@@ -12,7 +12,9 @@ export function RoleRoute({ role, redirectTo }: RoleRouteProps) {
 
   if (loading) return <div className="loading">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== role) return <Navigate to={redirectTo} replace />;
+
+  const hasRole = user.role === role || user.roles?.includes(role);
+  if (!hasRole) return <Navigate to={redirectTo} replace />;
 
   return <Outlet />;
 }

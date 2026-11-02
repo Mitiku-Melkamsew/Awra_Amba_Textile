@@ -1,0 +1,55 @@
+name: awra-new
+
+services:
+  postgres_redesign:
+    image: postgres:16-alpine
+    container_name: awra_new_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: awra_amba
+      POSTGRES_PASSWORD: awra_amba_dev
+      POSTGRES_DB: awra_amba_textile
+    ports:
+      - "5434:5432"
+    volumes:
+      - awra_new_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awra_amba -d awra_amba_textile"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend_redesign:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: awra-new-backend:latest
+    container_name: awra_new_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql://awra_amba:awra_amba_dev@postgres_redesign:5432/awra_amba_textile?schema=public"
+      PORT: "3001"
+      JWT_SECRET: "awra-amba-redesign-jwt-secret-2026"
+      CORS_ORIGIN: "*"
+    ports:
+      - "3002:3001"
+    depends_on:
+      postgres_redesign:
+        condition: service_healthy
+
+  frontend_redesign:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "http://localhost:3002/api/v1"
+    image: awra-new-frontend:latest
+    container_name: awra_new_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend_redesign
+
+volumes:
+  awra_new_postgres_data:

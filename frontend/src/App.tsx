@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RoleRoute } from "./components/RoleRoute";
 import { WeaverLayout } from "./components/WeaverLayout";
+import { MerchantLayout } from "./components/MerchantLayout";
 import { AuthProvider } from "./context/AuthContext";
 import { CalculatorPage } from "./pages/CalculatorPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -28,6 +29,8 @@ import { ZigDetailPage } from "./pages/admin/ZigDetailPage";
 import { WeaverPaymentsPage } from "./pages/weaver/WeaverPaymentsPage";
 import { WeaverPortalPage } from "./pages/weaver/WeaverPortalPage";
 import { WeaverZigDetailPage } from "./pages/weaver/WeaverZigDetailPage";
+import { MerchantFabricsPage } from "./pages/merchant/MerchantFabricsPage";
+import { MerchantPricesPage } from "./pages/merchant/MerchantPricesPage";
 import "./App.css";
 
 function App() {
@@ -77,11 +80,18 @@ function App() {
                 <Route path="/admin/calculator" element={<CalculatorPage />} />
               </Route>
             </Route>
-            <Route element={<RoleRoute role="weaver" redirectTo="/admin/weavers" />}>
+            <Route element={<RoleRoute role="weaver" redirectTo="/merchant" />}>
               <Route element={<WeaverLayout />}>
                 <Route path="/weaver" element={<WeaverPortalPage />} />
                 <Route path="/weaver/zigs/:zigId" element={<WeaverZigDetailPage />} />
                 <Route path="/weaver/payments" element={<WeaverPaymentsPage />} />
+              </Route>
+            </Route>
+            <Route element={<RoleRoute role="merchant" redirectTo="/admin/weavers" />}>
+              <Route element={<MerchantLayout />}>
+                <Route path="/merchant" element={<MerchantFabricsPage />} />
+                <Route path="/merchant/fabrics" element={<MerchantFabricsPage />} />
+                <Route path="/merchant/prices" element={<MerchantPricesPage />} />
               </Route>
             </Route>
           </Route>

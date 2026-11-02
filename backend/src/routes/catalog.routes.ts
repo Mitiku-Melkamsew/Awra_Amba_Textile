@@ -1,3 +1,4 @@
+import { UserRole } from "@prisma/client";
 import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
@@ -23,8 +24,9 @@ const fabricUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-catalogRouter.get("/fabrics", authenticate, async (_req, res, next) => {
+catalogRouter.get("/fabrics", authenticate, async (req, res, next) => {
   try {
+    const isOnlyMerchant = req.user?.roles?.includes(UserRole.merchant) && !req.user?.roles?.includes(UserRole.admin);
     const fabrics = await prisma.fabric.findMany({
       orderBy: { fabricId: "asc" },
       include: {
@@ -35,6 +37,22 @@ catalogRouter.get("/fabrics", authenticate, async (_req, res, next) => {
         },
       },
     });
+    if (isOnlyMerchant) {
+      const sanitized = fabrics.map((f) => ({
+        ...f,
+        prices: f.prices.map((p) => ({
+          fabricPriceId: p.fabricPriceId,
+          fabricId: p.fabricId,
+          sellingPrice: p.sellingPrice,
+          effectiveFrom: p.effectiveFrom,
+          effectiveTo: p.effectiveTo,
+          isActive: p.isActive,
+          createdAt: p.createdAt,
+        })),
+      }));
+      res.json(sanitized);
+      return;
+    }
     res.json(fabrics);
   } catch (error) {
     next(error);
@@ -410,6 +428,7 @@ const fabricPriceSchema = z.object({
 
 catalogRouter.get("/fabric-prices", authenticate, async (req, res, next) => {
   try {
+    const isOnlyMerchant = req.user?.roles?.includes(UserRole.merchant) && !req.user?.roles?.includes(UserRole.admin);
     const fabricId = req.query.fabricId ? Number(req.query.fabricId) : undefined;
     const prices = await prisma.fabricPrice.findMany({
       where: {
@@ -418,6 +437,20 @@ catalogRouter.get("/fabric-prices", authenticate, async (req, res, next) => {
       include: { fabric: true },
       orderBy: { effectiveFrom: "desc" },
     });
+    if (isOnlyMerchant) {
+      const sanitized = prices.map((p) => ({
+        fabricPriceId: p.fabricPriceId,
+        fabricId: p.fabricId,
+        fabric: p.fabric,
+        sellingPrice: p.sellingPrice,
+        effectiveFrom: p.effectiveFrom,
+        effectiveTo: p.effectiveTo,
+        isActive: p.isActive,
+        createdAt: p.createdAt,
+      }));
+      res.json(sanitized);
+      return;
+    }
     res.json(prices);
   } catch (error) {
     next(error);
@@ -449,7 +482,7 @@ const yarnPriceSchema = z.object({
   effectiveFrom: z.string().datetime().optional().or(z.string()),
 });
 
-catalogRouter.get("/yarn-prices", authenticate, async (req, res, next) => {
+catalogRouter.get("/yarn-prices", authenticate, requireAdmin, async (req, res, next) => {
   try {
     const yarnId = req.query.yarnId ? Number(req.query.yarnId) : undefined;
     const supplierId = req.query.supplierId ? Number(req.query.supplierId) : undefined;

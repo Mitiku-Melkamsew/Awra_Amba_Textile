@@ -1,0 +1,113 @@
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
+const links = [
+  { to: "/merchant", label: "Available Fabrics", icon: "🧣", amharic: "የሚገኙ ጨርቆች", end: true },
+  { to: "/merchant/prices", label: "Official Price List", icon: "🏷️", amharic: "የሽያጭ ዋጋ ዝርዝር" },
+];
+
+export function MerchantLayout() {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+
+  const currentLink = links.find((l) =>
+    l.end ? location.pathname === l.to : location.pathname.startsWith(l.to)
+  );
+
+  const initials = user?.username
+    ? user.username.slice(0, 2).toUpperCase()
+    : "MC";
+
+  return (
+    <div className="app-shell">
+      {/* ── Merchant Sidebar ── */}
+      <aside className="sidebar merchant-sidebar">
+        <div className="sidebar-brand">
+          <div
+            className="sidebar-brand-mark"
+            style={{ background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)" }}
+          >
+            🏬
+          </div>
+          <div className="sidebar-brand-info">
+            <p className="sidebar-brand-eyebrow">አውራ አምባ ቴክስታይል</p>
+            <p className="sidebar-brand-name">Merchant Portal</p>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav" aria-label="Merchant navigation">
+          <p className="sidebar-nav-label">Commercial Catalog / ካታሎግ</p>
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+            >
+              <span className="nav-icon" aria-hidden="true">{link.icon}</span>
+              <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
+                <span>{link.label}</span>
+                <span style={{ fontSize: "10.5px", opacity: 0.7, fontWeight: 400 }}>{link.amharic}</span>
+              </span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div
+              className="sidebar-user-avatar"
+              style={{ background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)" }}
+            >
+              {initials}
+            </div>
+            <div className="sidebar-user-details">
+              <span className="sidebar-user-name">{user?.fullName || user?.username || "Merchant Partner"}</span>
+              <span className="sidebar-user-role" style={{ color: "#7DD3FC" }}>Wholesale Buyer</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="nav-item"
+            style={{
+              width: "100%",
+              textAlign: "left",
+              fontSize: "12.5px",
+              background: "none",
+              color: "#FCA5A5",
+              opacity: 0.85,
+            }}
+          >
+            <span className="nav-icon" aria-hidden="true">🚪</span>
+            <span>Sign out / ውጣ</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main Content Area ── */}
+      <main className="main-content" style={{ background: "#F8FAFC" }}>
+        <header className="topbar" style={{ background: "rgba(255, 255, 255, 0.9)", borderColor: "#E2E8F0" }}>
+          <div className="topbar-left">
+            <span className="topbar-brand-chip" style={{ background: "#E0F2FE", color: "#0369A1" }}>
+              <span>🏬</span> Merchant Portal / የነጋዴ ፖርታል
+            </span>
+            <span className="topbar-title">
+              {currentLink ? `${currentLink.label} (${currentLink.amharic})` : "Portal"}
+            </span>
+          </div>
+
+          <div className="topbar-right">
+            <div className="topbar-status" style={{ background: "#F0F9FF", color: "#0284C7", borderColor: "#BAE6FD" }}>
+              Active Commercial Buyer
+            </div>
+          </div>
+        </header>
+
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+export default MerchantLayout;
