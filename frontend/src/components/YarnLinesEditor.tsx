@@ -1,4 +1,4 @@
-﻿import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { YarnCatalogLookup, YarnLineDraft, YarnVariantOption } from "../utils/yarnLines";
 import {
   applyYarnVariantToLine,
@@ -34,6 +34,24 @@ export function YarnLinesEditor({
   singleLine = false,
 }: YarnLinesEditorProps) {
   const labels = useMemo(() => yarnVariantLabels(yarnVariants), [yarnVariants]);
+
+  useEffect(() => {
+    if (lookup.yarnTypes.length === 0) return;
+    const needsUpdate = lines.some((l) => !l.yarnTypeId && l.entryMode !== "variant");
+    if (needsUpdate) {
+      onChange(
+        lines.map((l) => {
+          if (l.yarnTypeId || l.entryMode === "variant") return l;
+          return {
+            ...l,
+            yarnTypeId: String(lookup.yarnTypes[0]?.yarnTypeId ?? ""),
+            supplierId: l.supplierId || String(lookup.suppliers[0]?.supplierId ?? ""),
+            colorId: l.colorId || String(lookup.colors[0]?.colorId ?? ""),
+          };
+        }),
+      );
+    }
+  }, [lookup, lines, onChange]);
 
   function addLine() {
     onChange([...lines, createYarnLineDraft(lookup)]);

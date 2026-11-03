@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { catalogApi, workOrdersApi, yarnGivenApi } from "../api";
+import { catalogApi, fabricReturnsApi, workOrdersApi, yarnGivenApi } from "../api";
 import type { WorkOrderDetail } from "../api";
 import { formatDateDDMMYY } from "../utils/formatDate";
 import {
@@ -227,6 +227,39 @@ export function ZigDetailView({
       onRefresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to record fabric return to weaver");
+    }
+  }
+
+  async function handleDeleteFabricReturn(returnId: number) {
+    if (!window.confirm("Are you sure you want to delete this fabric return? Fabric stock will be adjusted.")) return;
+    try {
+      await fabricReturnsApi.delete(returnId);
+      setMessage("Fabric return removed.");
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete fabric return");
+    }
+  }
+
+  async function handleDeleteYarnReturn(yarnReturnId: number) {
+    if (!window.confirm("Are you sure you want to delete this yarn return record?")) return;
+    try {
+      await workOrdersApi.deleteYarnReturn(yarnReturnId);
+      setMessage("Yarn return removed.");
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete yarn return");
+    }
+  }
+
+  async function handleDeleteRejectedFabric(id: number) {
+    if (!window.confirm("Are you sure you want to delete this return-to-weaver record?")) return;
+    try {
+      await workOrdersApi.deleteFabricReturnToWeaver(id);
+      setMessage("Rejected fabric return removed.");
+      onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
     }
   }
 
@@ -578,6 +611,16 @@ export function ZigDetailView({
                         <div className="record-meta" style={{ fontStyle: "italic" }}>{row.remark}</div>
                       )}
                     </div>
+                    {canRecordFabric && (
+                      <button
+                        type="button"
+                        className="btn-link danger"
+                        onClick={() => handleDeleteYarnReturn(row.yarnReturnId)}
+                        style={{ fontSize: 12 }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -621,21 +664,31 @@ export function ZigDetailView({
                         <div className="record-meta" style={{ fontStyle: "italic" }}>{row.remark}</div>
                       )}
                     </div>
-                    {canRecordFabric &&
-                      row.paymentId == null &&
-                      editingFabricReturnId !== row.returnId && (
+                    {canRecordFabric && row.paymentId == null && (
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        {editingFabricReturnId !== row.returnId && (
+                          <button
+                            type="button"
+                            className="btn-link"
+                            onClick={() => {
+                              setEditingYarnId(null);
+                              setEditingFabricReturnId(row.returnId);
+                              setError("");
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
                           type="button"
-                          className="btn-link"
-                          onClick={() => {
-                            setEditingYarnId(null);
-                            setEditingFabricReturnId(row.returnId);
-                            setError("");
-                          }}
+                          className="btn-link danger"
+                          onClick={() => handleDeleteFabricReturn(row.returnId)}
+                          style={{ fontSize: 12 }}
                         >
-                          Edit
+                          Delete
                         </button>
-                      )}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -668,6 +721,16 @@ export function ZigDetailView({
                         </div>
                       )}
                     </div>
+                    {canRecordFabric && (
+                      <button
+                        type="button"
+                        className="btn-link danger"
+                        onClick={() => handleDeleteRejectedFabric(row.fabricReturnToWeaverId)}
+                        style={{ fontSize: 12 }}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

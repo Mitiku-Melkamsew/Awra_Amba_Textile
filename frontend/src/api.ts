@@ -44,9 +44,11 @@ export const authApi = {
   signup: (data: {
     firstName: string;
     lastName: string;
+    companyName?: string;
     phone?: string;
     username: string;
     password: string;
+    role?: "weaver" | "merchant";
   }) =>
     api<{ token: string; user: AuthUser }>("/auth/signup", {
       method: "POST",
@@ -589,6 +591,19 @@ export const workOrdersApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  updateYarnReturn: (id: number, data: { quantity?: number; remark?: string }) =>
+    api<unknown>(`/work-orders/yarn-returns/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  deleteYarnReturn: (id: number) =>
+    api<unknown>(`/work-orders/yarn-returns/${id}`, {
+      method: "DELETE",
+    }),
+  deleteFabricReturnToWeaver: (id: number) =>
+    api<unknown>(`/work-orders/fabric-returns-to-weavers/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 export const yarnGivenApi = {
@@ -621,6 +636,10 @@ export const yarnGivenApi = {
     api<unknown>(`/yarn-given/${yarnGivenId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    }),
+  delete: (yarnGivenId: number) =>
+    api<unknown>(`/yarn-given/${yarnGivenId}`, {
+      method: "DELETE",
     }),
 };
 
@@ -659,6 +678,10 @@ export const fabricReturnsApi = {
     api<unknown>(`/fabric-returns/${returnId}`, {
       method: "PATCH",
       body: JSON.stringify(data),
+    }),
+  delete: (returnId: number) =>
+    api<unknown>(`/fabric-returns/${returnId}`, {
+      method: "DELETE",
     }),
 };
 

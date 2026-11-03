@@ -10,7 +10,12 @@ paymentsRouter.use(authenticate);
 // GET /api/v1/payments
 paymentsRouter.get("/", async (req, res, next) => {
   try {
+    const isAdmin = req.user?.roles?.includes(UserRole.admin);
     const isWeaver = req.user?.roles?.includes(UserRole.weaver) && !req.user?.roles?.includes(UserRole.admin);
+    if (!isAdmin && !isWeaver) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const weaverUserId = isWeaver ? req.user?.userId : undefined;
     const filterUserId = req.query.weaverUserId
       ? Number(req.query.weaverUserId)
@@ -75,7 +80,12 @@ paymentsRouter.get("/:id", async (req, res, next) => {
       return;
     }
 
+    const isAdmin = req.user?.roles?.includes(UserRole.admin);
     const isWeaver = req.user?.roles?.includes(UserRole.weaver) && !req.user?.roles?.includes(UserRole.admin);
+    if (!isAdmin && !isWeaver) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     if (isWeaver && req.user?.userId !== payment.settlement.weaverUserId) {
       res.status(403).json({ error: "Insufficient permissions" });
       return;

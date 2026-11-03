@@ -43,6 +43,7 @@ const portals = [
     desc: "Browse authentic handcrafted fabrics, review physical specifications (dimensions and weight), and check current official cooperative selling prices.",
     link: "/merchant",
     loginState: "/login",
+    signupLink: "/signup?role=merchant",
     buttonText: "Browse Catalog & Prices",
     color: "#0284C7",
     bgGradient: "linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(3, 105, 161, 0.04) 100%)",
@@ -318,7 +319,9 @@ export function PublicHomePage() {
                       paddingTop: "0.25rem",
                     }}
                   >
-                    New Weaver? Register for an account
+                    {p.role === "merchant"
+                      ? "New Merchant? Register business account"
+                      : "New Weaver? Register for an account"}
                   </Link>
                 )}
               </div>

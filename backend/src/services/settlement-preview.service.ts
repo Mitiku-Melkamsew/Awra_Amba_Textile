@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
 import { formatDateDDMMYY } from "../utils/format-date.js";
@@ -150,13 +151,22 @@ export function withGroupedReturns(snapshot: BatchSnapshot) {
 }
 
 export async function createSettlementPreview(
-  _createdByUserId: number,
+  createdByUserId: number,
   cutoffDate?: Date | null,
 ) {
   const snapshot = await buildDetailedBatchSnapshot(cutoffDate);
+  const previewId = `preview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const persistedSnapshot = withGroupedReturns(snapshot);
+  await prisma.settlementPreview.create({
+    data: {
+      previewId,
+      snapshot: persistedSnapshot as unknown as Prisma.InputJsonValue,
+      createdByUserId,
+    },
+  });
   return {
-    previewId: `preview-${Date.now()}`,
-    ...withGroupedReturns(snapshot),
+    previewId,
+    ...persistedSnapshot,
   };
 }
 

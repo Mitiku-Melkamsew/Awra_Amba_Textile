@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { recordAudit } from "./audit.service.js";
 import {
   buildSettlementPreview,
   type LineOverride,
@@ -65,6 +66,9 @@ export async function commitSettlement(input: CommitSettlementInput) {
     const yarnReturns = await tx.yarnReturn.findMany({
       where: { zigId: { in: zigIds } },
     });
+    const fabricReturnsToWeaver = await tx.fabricReturnToWeaver.findMany({
+      where: { zigId: { in: zigIds } },
+    });
 
     // 4. Fetch global quality rules (for weight deduction rate)
     const weightRule = await tx.qualityRule.findFirst({
@@ -81,6 +85,10 @@ export async function commitSettlement(input: CommitSettlementInput) {
         fabricVariantId: r.fabricVariantId,
         quantityReturned: r.quantityReturned,
         totalWeight: Number(r.totalWeight),
+        excludedQuantity: fabricReturnsToWeaver
+          .filter((excluded) =>
+            excluded.zigId === r.zigId && excluded.fabricVariantId === r.fabricVariantId)
+          .reduce((sum, excluded) => sum + excluded.quantity, 0),
         unitPrice: Number(r.unitPrice),
         standardWeightG: Number(r.fabricVariant.fabric.standardWeightG),
         qualityRule: weightRule
@@ -189,6 +197,17 @@ export async function commitSettlement(input: CommitSettlementInput) {
       where: { zigId: { in: zigIds } },
       data: { status: "reconciled" },
     });
+
+    await recordAudit(
+      {
+        actorUserId: input.recordedByUserId,
+        action: "settlement.paid",
+        entityType: "settlement",
+        entityId: settlement.settlementId,
+        details: { weaverUserId: input.weaverUserId, amount: Number(preview.netSettlement) },
+      },
+      tx,
+    );
 
     return {
       settlementId: settlement.settlementId,

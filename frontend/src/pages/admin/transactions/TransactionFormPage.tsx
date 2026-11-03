@@ -68,15 +68,23 @@ export function TransactionFormPage() {
 
   useEffect(() => {
     if (!txnType) return;
-    Promise.all([
-      transactionsApi.nextId(),
-      catalogApi.lookup(),
-      weaversApi.list(),
-      merchantsApi.list(),
-      catalogApi.yarnVariants(),
-      catalogApi.fabricVariants(),
-    ])
-      .then(([next, lookup, w, m, y, f]) => {
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        const [next, lookup, w, m, y, f] = await Promise.all([
+          transactionsApi.nextId().catch(() => ({
+            transactionId: `TXN-${Date.now().toString().slice(-4)}`,
+          })),
+          catalogApi.lookup(),
+          weaversApi.list().catch(() => []),
+          merchantsApi.list().catch(() => []),
+          catalogApi.yarnVariants().catch(() => []),
+          catalogApi.fabricVariants().catch(() => []),
+        ]);
+
+        if (!isMounted) return;
+
         setTransactionId(next.transactionId);
         setCatalogLookup(lookup);
         setWeavers(w);
@@ -85,11 +93,20 @@ export function TransactionFormPage() {
         setFabricVariants(f);
         setYarnLines([createYarnLineDraft(lookup)]);
         setFabricLines([createFabricLineDraft(lookup, isFabricPurchase ? "catalog" : "variant")]);
-        if (lookup.suppliers[0]) setSupplierId(String(lookup.suppliers[0].supplierId));
-        if (w[0]) setWeaverId(String(w[0].weaverId));
-        if (m[0]) setMerchantId(String(m[0].merchantId));
-      })
-      .catch((err) => setError(err.message));
+
+        if (lookup.suppliers?.[0]) setSupplierId(String(lookup.suppliers[0].supplierId));
+        if (w?.[0]) setWeaverId(String(w[0].weaverId));
+        if (m?.[0]) setMerchantId(String(m[0].merchantId));
+      } catch (err) {
+        if (isMounted) setError(err instanceof Error ? err.message : "Failed to load transaction data");
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [txnType, isFabricPurchase]);
 
   async function handleAddMerchant() {
@@ -202,11 +219,15 @@ export function TransactionFormPage() {
           <label>
             <span>Yarn Supplier / የጥጥ አቅራቢ</span>
             <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} required style={{ height: 42 }}>
-              {catalogLookup.suppliers.map((s) => (
-                <option key={s.supplierId} value={s.supplierId}>
-                  {s.name}
-                </option>
-              ))}
+              {catalogLookup.suppliers.length === 0 ? (
+                <option value="">No active suppliers configured</option>
+              ) : (
+                catalogLookup.suppliers.map((s) => (
+                  <option key={s.supplierId} value={s.supplierId}>
+                    {s.name}
+                  </option>
+                ))
+              )}
             </select>
           </label>
         )}
@@ -215,11 +236,15 @@ export function TransactionFormPage() {
           <label>
             <span>Artisan Weaver (Seller) / አሸጋይ</span>
             <select value={weaverId} onChange={(e) => setWeaverId(e.target.value)} required style={{ height: 42 }}>
-              {weavers.map((w) => (
-                <option key={w.weaverId} value={w.weaverId}>
-                  {w.firstName} {w.lastName} (#{w.weaverId})
-                </option>
-              ))}
+              {weavers.length === 0 ? (
+                <option value="">No active weavers found</option>
+              ) : (
+                weavers.map((w) => (
+                  <option key={w.weaverId} value={w.weaverId}>
+                    {w.firstName} {w.lastName} (#{w.weaverId})
+                  </option>
+                ))
+              )}
             </select>
           </label>
         )}
@@ -229,11 +254,15 @@ export function TransactionFormPage() {
             <label>
               <span>Merchant (Buyer) / ገዢ ነጋዴ</span>
               <select value={merchantId} onChange={(e) => setMerchantId(e.target.value)} required style={{ height: 42 }}>
-                {merchants.map((m) => (
-                  <option key={m.merchantId} value={m.merchantId}>
-                    {m.companyName ?? m.contactPhone}
-                  </option>
-                ))}
+                {merchants.length === 0 ? (
+                  <option value="">No merchants registered yet — register below</option>
+                ) : (
+                  merchants.map((m) => (
+                    <option key={m.merchantId} value={m.merchantId}>
+                      {m.companyName ?? m.contactPhone}
+                    </option>
+                  ))
+                )}
               </select>
             </label>
 

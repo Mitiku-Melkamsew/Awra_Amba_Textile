@@ -23,7 +23,7 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
   if (zigIds.length === 0) return [];
 
   // 2. Fetch unsettled fabric returns and yarn given for these zigs
-  const [returns, yarnGiven, yarnReturns, qualityRules] = await Promise.all([
+  const [returns, yarnGiven, yarnReturns, qualityRules, fabricReturnsToWeaver] = await Promise.all([
     prisma.fabricReturn.findMany({
       where: {
         zigId: { in: zigIds },
@@ -48,6 +48,9 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
     }),
     prisma.qualityRule.findMany({
       where: { isActive: true },
+    }),
+    prisma.fabricReturnToWeaver.findMany({
+      where: { zigId: { in: zigIds } },
     }),
   ]);
 
@@ -128,6 +131,10 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
         fabricVariantId: r.fabricVariantId,
         quantityReturned: r.quantityReturned,
         totalWeight: Number(r.totalWeight),
+        excludedQuantity: fabricReturnsToWeaver
+          .filter((excluded) =>
+            excluded.zigId === r.zigId && excluded.fabricVariantId === r.fabricVariantId)
+          .reduce((sum, excluded) => sum + excluded.quantity, 0),
         unitPrice: Number(r.unitPrice),
         standardWeightG: Number(r.fabricVariant.fabric.standardWeightG),
         qualityRule: weightRule

@@ -154,6 +154,7 @@ calculationRouter.post(
         .object({
           paymentMethod: z.string().max(30).optional(),
           cutoffDate: z.string().optional(),
+          previewId: z.string().max(40).optional(),
         })
         .parse(req.body ?? {});
 
@@ -165,6 +166,13 @@ calculationRouter.post(
       });
 
       const grandTotal = results.reduce((sum, r) => sum + r.amount, 0);
+
+      if (body.previewId) {
+        await prisma.settlementPreview.update({
+          where: { previewId: body.previewId },
+          data: { status: "committed", committedAt: new Date() },
+        });
+      }
 
       res.status(201).json({
         settlementCount: results.length,
@@ -210,6 +218,9 @@ calculationRouter.post("/settlements/preview", authenticate, requireAdmin, async
     const yarnReturns = await prisma.yarnReturn.findMany({
       where: { zigId: { in: zigIds } },
     });
+    const fabricReturnsToWeaver = await prisma.fabricReturnToWeaver.findMany({
+      where: { zigId: { in: zigIds } },
+    });
 
     const weightRule = await prisma.qualityRule.findFirst({
       where: { factor: "weight", isActive: true },
@@ -225,6 +236,10 @@ calculationRouter.post("/settlements/preview", authenticate, requireAdmin, async
         fabricVariantId: row.fabricVariantId,
         quantityReturned: row.quantityReturned,
         totalWeight: Number(row.totalWeight),
+        excludedQuantity: fabricReturnsToWeaver
+          .filter((excluded) =>
+            excluded.zigId === row.zigId && excluded.fabricVariantId === row.fabricVariantId)
+          .reduce((sum, excluded) => sum + excluded.quantity, 0),
         unitPrice: Number(row.unitPrice),
         standardWeightG: Number(row.fabricVariant.fabric.standardWeightG),
         qualityRule: {

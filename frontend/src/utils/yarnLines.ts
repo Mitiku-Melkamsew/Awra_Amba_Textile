@@ -98,16 +98,16 @@ export function parseYarnLines(lines: YarnLineDraft[]): YarnLinePayload[] {
     .filter(
       (line) =>
         Number(line.quantity) > 0 &&
-        line.unitPrice &&
-        (usesVariant(line) || (line.yarnTypeId && line.colorId && line.supplierId)),
+        Number(line.unitPrice) >= 0 &&
+        (usesVariant(line) || Boolean(line.yarnTypeId)),
     )
     .map((line) => ({
       ...(usesVariant(line)
         ? { yarnVariantId: Number(line.yarnVariantId) }
         : {
             yarnTypeId: Number(line.yarnTypeId),
-            colorId: Number(line.colorId),
-            supplierId: Number(line.supplierId),
+            colorId: line.colorId ? Number(line.colorId) : undefined,
+            supplierId: line.supplierId ? Number(line.supplierId) : undefined,
           }),
       quantity: Number(line.quantity),
       unitPrice: Number(line.unitPrice),

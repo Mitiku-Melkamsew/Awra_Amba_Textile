@@ -2,6 +2,14 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import type { AuthUser } from "../api";
+
+function getLandingRoute(u?: AuthUser | null): string {
+  if (!u) return "/login";
+  if (u.roles?.includes("admin") || u.role === "admin") return "/admin/weavers";
+  if (u.roles?.includes("merchant") || u.role === "merchant") return "/merchant";
+  return "/weaver";
+}
 
 export function LoginPage() {
   const { user, login } = useAuth();
@@ -12,7 +20,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   if (user) {
-    return <Navigate to={user.role === "weaver" ? "/weaver" : "/admin/weavers"} replace />;
+    return <Navigate to={getLandingRoute(user)} replace />;
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -21,7 +29,7 @@ export function LoginPage() {
     setError("");
     try {
       const result = await login(username, password);
-      navigate(result?.role === "weaver" ? "/weaver" : "/admin/weavers");
+      navigate(getLandingRoute(result), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid credentials. Please try again.");
     } finally {
@@ -47,7 +55,7 @@ export function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. admin or weaver username"
+              placeholder="e.g. admin, weaver, or merchant"
               autoComplete="username"
               autoFocus
               required
@@ -82,11 +90,21 @@ export function LoginPage() {
           {loading ? "Signing in…" : "Continue / ግባ →"}
         </button>
 
-        <p className="auth-footer">
-          New weaver? <Link to="/signup" style={{ fontWeight: 700 }}>Create account</Link>
-          &ensp;·&ensp;
-          <Link to="/">Back to Home</Link>
-        </p>
+        <div className="auth-footer" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div>
+            Don't have an account?{" "}
+            <Link to="/signup?role=weaver" style={{ fontWeight: 700 }}>
+              Join as Weaver
+            </Link>
+            &ensp;·&ensp;
+            <Link to="/signup?role=merchant" style={{ fontWeight: 700, color: "#0284C7" }}>
+              Join as Merchant
+            </Link>
+          </div>
+          <div>
+            <Link to="/">← Back to Home</Link>
+          </div>
+        </div>
       </form>
     </div>
   );

@@ -16,9 +16,11 @@ interface AuthContextValue {
   signup: (data: {
     firstName: string;
     lastName: string;
+    companyName?: string;
     phone?: string;
     username: string;
     password: string;
+    role?: "weaver" | "merchant";
   }) => Promise<AuthUser>;
   logout: () => void;
 }
@@ -50,9 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signup(data: {
         firstName: string;
         lastName: string;
+        companyName?: string;
         phone?: string;
         username: string;
         password: string;
+        role?: "weaver" | "merchant";
       }) {
         const result = await authApi.signup(data);
         setToken(result.token);

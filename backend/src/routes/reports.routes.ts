@@ -51,14 +51,14 @@ reportsRouter.get("/hisab/batch/:previewId", async (req, res, next) => {
     const previewId = req.params.previewId;
     const format = (req.query.format as string) ?? "json";
 
-    const preview = await prisma.settlement.findMany({
-      where: { status: "paid" },
-      include: {
-        weaver: true,
-        lines: { include: { fabric: true } },
-        yarnLines: true,
-      },
+    const preview = await prisma.settlementPreview.findUnique({
+      where: { previewId },
     });
+
+    if (!preview) {
+      res.status(404).json({ error: "Settlement preview not found" });
+      return;
+    }
 
     if (format === "csv") {
       res.status(400).json({ error: "Use export on specific settlement." });
@@ -67,7 +67,10 @@ reportsRouter.get("/hisab/batch/:previewId", async (req, res, next) => {
 
     res.json({
       previewId,
-      settlements: preview,
+      status: preview.status,
+      createdAt: preview.createdAt,
+      committedAt: preview.committedAt,
+      snapshot: preview.snapshot,
     });
   } catch (error) {
     next(error);

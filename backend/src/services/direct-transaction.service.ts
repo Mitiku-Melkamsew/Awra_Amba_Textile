@@ -1,5 +1,6 @@
 import { DirectTxnStatus, DirectTxnType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { recordAudit } from "./audit.service.js";
 
 export interface CreateDirectTxnLineInput {
   fabricVariantId?: number | null;
@@ -52,6 +53,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
 
   // Validate line items & stock types
   let calculatedTotal = 0;
+  const eventDate = input.transactionDate ?? new Date();
   for (const line of input.lines) {
     if (line.quantity <= 0) {
       throw new Error("VALIDATION: Line quantity must be positive.");
@@ -76,6 +78,47 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       throw new Error("VALIDATION: Yarn variant is required for yarn transactions.");
     }
 
+    if (hasFabric) {
+      const variant = await prisma.fabricVariant.findUnique({
+        where: { fabricVariantId: line.fabricVariantId! },
+        include: { fabric: true },
+      });
+      if (!variant?.isActive || !variant.fabric.isActive) {
+        throw new Error("VALIDATION: Inactive fabric catalog items cannot be used.");
+      }
+      const activePrice = await prisma.fabricPrice.findFirst({
+        where: {
+          fabricId: variant.fabricId,
+          isActive: true,
+          effectiveFrom: { lte: eventDate },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gt: eventDate } }],
+        },
+      });
+      if (!activePrice) {
+        throw new Error("VALIDATION: No active fabric price exists for the transaction date.");
+      }
+    } else {
+      const variant = await prisma.yarnVariant.findUnique({
+        where: { yarnVariantId: line.yarnVariantId! },
+        include: { yarn: true },
+      });
+      if (!variant?.isActive || !variant.yarn.isActive) {
+        throw new Error("VALIDATION: Inactive yarn catalog items cannot be used.");
+      }
+      const activePrice = await prisma.yarnPrice.findFirst({
+        where: {
+          yarnId: variant.yarnId,
+          supplierId: variant.supplierId,
+          isActive: true,
+          effectiveFrom: { lte: eventDate },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gt: eventDate } }],
+        },
+      });
+      if (!activePrice) {
+        throw new Error("VALIDATION: No active yarn price exists for the transaction date.");
+      }
+    }
+
     calculatedTotal += computeLineTotal(line.quantity, line.unitPrice);
   }
 
@@ -96,7 +139,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         totalAmount: calculatedTotal,
         amountPaid: initialPaid,
         status,
-        transactionDate: input.transactionDate ?? new Date(),
+        transactionDate: eventDate,
         createdByUserId: input.createdByUserId,
         notes: input.notes,
       },
@@ -152,6 +195,17 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         },
       });
     }
+
+    await recordAudit(
+      {
+        actorUserId: input.createdByUserId,
+        action: "direct_transaction.created",
+        entityType: "direct_transaction",
+        entityId: txn.transactionId,
+        details: { type: input.type, totalAmount: calculatedTotal },
+      },
+      tx,
+    );
 
     return tx.directTransaction.findUniqueOrThrow({
       where: { transactionId: txn.transactionId },
@@ -219,5 +273,53 @@ export async function recordDirectTransactionPayment(params: {
     });
 
     return { payment, transaction: updatedTxn };
+  });
+}
+
+export async function cancelDirectTransaction(transactionId: number, actorUserId: number) {
+  return prisma.$transaction(async (tx) => {
+    const txn = await tx.directTransaction.findUniqueOrThrow({
+      where: { transactionId },
+      include: { lines: true, payments: true },
+    });
+    if (txn.status === DirectTxnStatus.cancelled) return txn;
+    if (txn.payments.length > 0 || Number(txn.amountPaid) > 0) {
+      throw new Error("CONFLICT: Paid direct transactions cannot be cancelled.");
+    }
+
+    for (const line of txn.lines) {
+      if (txn.type === DirectTxnType.fabric_purchase_from_weaver) {
+        await tx.fabricVariant.update({
+          where: { fabricVariantId: line.fabricVariantId! },
+          data: { stockSnapshot: { decrement: line.quantity } },
+        });
+      } else if (txn.type === DirectTxnType.fabric_sale_to_merchant) {
+        await tx.fabricVariant.update({
+          where: { fabricVariantId: line.fabricVariantId! },
+          data: { stockSnapshot: { increment: line.quantity } },
+        });
+      } else {
+        await tx.yarnVariant.update({
+          where: { yarnVariantId: line.yarnVariantId! },
+          data: { stockSnapshot: { increment: line.quantity } },
+        });
+      }
+    }
+
+    const cancelled = await tx.directTransaction.update({
+      where: { transactionId },
+      data: { status: DirectTxnStatus.cancelled },
+      include: { lines: true, payments: true },
+    });
+    await recordAudit(
+      {
+        actorUserId,
+        action: "direct_transaction.cancelled",
+        entityType: "direct_transaction",
+        entityId: transactionId,
+      },
+      tx,
+    );
+    return cancelled;
   });
 }

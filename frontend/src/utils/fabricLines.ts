@@ -84,15 +84,15 @@ export const DETAILS_EDITED = { entryMode: "catalog", fabricVariantId: "" } as c
 
 export function parseFabricLines(lines: FabricLineDraft[]): FabricLinePayload[] {
   return lines
-    .filter((line) => Number(line.quantity) > 0 && line.unitPrice)
-    .filter((line) => usesVariant(line) || (line.productId && line.warpColorId && line.weftColorId))
+    .filter((line) => Number(line.quantity) > 0 && Number(line.unitPrice) >= 0)
+    .filter((line) => usesVariant(line) || Boolean(line.productId))
     .map((line) => ({
       ...(usesVariant(line)
         ? { fabricVariantId: Number(line.fabricVariantId) }
         : {
             productId: Number(line.productId),
-            warpColorId: Number(line.warpColorId),
-            weftColorId: Number(line.weftColorId),
+            warpColorId: line.warpColorId ? Number(line.warpColorId) : undefined,
+            weftColorId: line.weftColorId ? Number(line.weftColorId) : undefined,
             designId: line.designId ? Number(line.designId) : null,
           }),
       quantity: Number(line.quantity),

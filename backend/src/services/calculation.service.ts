@@ -190,6 +190,7 @@ export function buildSettlementPreview(params: {
     fabricVariantId: number;
     quantityReturned: number;
     totalWeight: number;
+    excludedQuantity?: number;
     unitPrice: number;
     standardWeightG?: number;
     qualityRule?: { minWeightThreshold: number; deductionRatePerUnit?: number } | null;
@@ -231,6 +232,12 @@ export function buildSettlementPreview(params: {
   >();
 
   for (const row of params.returns) {
+    const quantity = Math.max(0, row.quantityReturned - (row.excludedQuantity ?? 0));
+    const weight =
+      row.quantityReturned > 0
+        ? row.totalWeight * (quantity / row.quantityReturned)
+        : 0;
+    if (quantity === 0) continue;
     const fabricId = row.fabricId ?? row.fabricVariantId;
     const key = `${row.zigId}::${fabricId}`;
     const standardWeight = Number(
@@ -252,9 +259,9 @@ export function buildSettlementPreview(params: {
       returnIds: [],
     };
 
-    group.quantity += row.quantityReturned;
-    group.weight += Number(row.totalWeight);
-    group.unitPriceSum += row.quantityReturned * Number(row.unitPrice);
+    group.quantity += quantity;
+    group.weight += Number(weight);
+    group.unitPriceSum += quantity * Number(row.unitPrice);
     group.returnIds.push(row.returnId);
     groups.set(key, group);
   }
@@ -294,16 +301,28 @@ export function buildSettlementPreview(params: {
   let totalDeductions = 0;
 
   const lineItems: SettlementLinePreview[] = params.returns.map((row) => {
+    const quantity = Math.max(0, row.quantityReturned - (row.excludedQuantity ?? 0));
+    const totalWeight =
+      row.quantityReturned > 0
+        ? row.totalWeight * (quantity / row.quantityReturned)
+        : 0;
     const fabricId = row.fabricId ?? row.fabricVariantId;
     const key = `${row.zigId}::${fabricId}`;
-    const group = groupDeductions.get(key)!;
+    const group = groupDeductions.get(key) ?? {
+      threshold: Number(row.standardWeightG ?? row.qualityRule?.minWeightThreshold ?? 0),
+      deductionPerPiece: 0,
+      ruleApplied: "excluded",
+      remark: "Return quantity excluded from settlement.",
+      mergedAvgWeight: 0,
+      weightedUnitPrice: Number(row.unitPrice),
+    };
     const override = overrideMap.get(row.returnId);
 
     const deductionPerPiece = override?.calculatedDeduction ?? group.deductionPerPiece;
     const unitPrice = Number(row.unitPrice);
-    const grossValue = unitPrice * row.quantityReturned;
-    const deductionAmount = deductionPerPiece * row.quantityReturned;
-    const netCredit = calculateNetCredit(unitPrice, deductionPerPiece, row.quantityReturned);
+    const grossValue = unitPrice * quantity;
+    const deductionAmount = deductionPerPiece * quantity;
+    const netCredit = calculateNetCredit(unitPrice, deductionPerPiece, quantity);
 
     grossFabricValue += grossValue;
     totalDeductions += deductionAmount;
@@ -315,15 +334,15 @@ export function buildSettlementPreview(params: {
       );
     }
 
-    const avgWeight = row.quantityReturned > 0 ? row.totalWeight / row.quantityReturned : 0;
+    const avgWeight = quantity > 0 ? totalWeight / quantity : 0;
 
     return {
       returnId: row.returnId,
       zigId: row.zigId,
       fabricId: row.fabricId,
       fabricVariantId: row.fabricVariantId,
-      quantity: row.quantityReturned,
-      totalWeight: row.totalWeight,
+      quantity,
+      totalWeight,
       avgWeight,
       deductionBasisAvgWeight: group.mergedAvgWeight,
       unitPrice,

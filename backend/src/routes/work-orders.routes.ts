@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authenticate, requireAdmin } from "../middleware/auth.js";
 import { prisma } from "../lib/prisma.js";
 import { resolveFabricVariant } from "../services/variant.service.js";
+import { recordAudit } from "../services/audit.service.js";
 
 export const workOrdersRouter = Router();
 
@@ -56,8 +57,13 @@ async function generateNextZigId(): Promise<string> {
 // GET /api/v1/work-orders
 workOrdersRouter.get("/", async (req, res, next) => {
   try {
+    const isAdmin = req.user?.roles?.includes("admin");
     const status = req.query.status as WorkOrderStatus | undefined;
     const isWeaver = req.user?.roles?.includes("weaver") && !req.user?.roles?.includes("admin");
+    if (!isAdmin && !isWeaver) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     const weaverUserId = isWeaver ? req.user?.userId : undefined;
     const filterUserId = req.query.weaverUserId
       ? Number(req.query.weaverUserId)
@@ -144,6 +150,10 @@ workOrdersRouter.get("/:zigId", async (req, res, next) => {
     }
 
     const isWeaver = req.user?.roles?.includes("weaver") && !req.user?.roles?.includes("admin");
+    if (!isWeaver && !req.user?.roles?.includes("admin")) {
+      res.status(403).json({ error: "Insufficient permissions" });
+      return;
+    }
     if (isWeaver && req.user?.userId !== workOrder.weaverUserId) {
       res.status(403).json({ error: "Insufficient permissions" });
       return;
@@ -294,6 +304,13 @@ workOrdersRouter.post("/:zigId/mark-returned", requireAdmin, async (req, res, ne
       data: { status: WorkOrderStatus.returned },
     });
 
+    await recordAudit({
+      actorUserId: req.user!.userId,
+      action: "work_order.returned",
+      entityType: "work_order",
+      entityId: zigId,
+    });
+
     res.json(updated);
   } catch (error) {
     next(error);
@@ -313,6 +330,13 @@ workOrdersRouter.post("/:zigId/cancel", requireAdmin, async (req, res, next) => 
     const updated = await prisma.workOrder.update({
       where: { zigId },
       data: { status: WorkOrderStatus.cancelled },
+    });
+
+    await recordAudit({
+      actorUserId: req.user!.userId,
+      action: "work_order.cancelled",
+      entityType: "work_order",
+      entityId: zigId,
     });
 
     res.json(updated);
@@ -422,6 +446,164 @@ workOrdersRouter.post("/fabric-returns-to-weavers", requireAdmin, async (req, re
     });
 
     res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PATCH /api/v1/work-orders/yarn-returns/:id
+workOrdersRouter.patch("/yarn-returns/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid yarn return ID" });
+      return;
+    }
+
+    const body = z
+      .object({
+        quantity: z.number().positive().optional(),
+        remark: z.string().optional().nullable(),
+      })
+      .parse(req.body);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.yarnReturn.findUnique({
+        where: { yarnReturnId: id },
+        include: { workOrder: true },
+      });
+
+      if (!existing) {
+        throw new Error("NOT_FOUND: Yarn return record not found.");
+      }
+
+      if (existing.workOrder.status === "reconciled" || existing.workOrder.status === "cancelled") {
+        throw new Error(`CONFLICT: Cannot edit yarn return for a ${existing.workOrder.status} zig.`);
+      }
+
+      const newQty = body.quantity ?? Number(existing.quantity);
+      if (newQty !== Number(existing.quantity)) {
+        // Verify against total issued
+        const yarnGivenTotal = await tx.yarnGiven.aggregate({
+          where: { zigId: existing.zigId, yarnVariantId: existing.yarnVariantId },
+          _sum: { quantity: true },
+        });
+        const issuedQty = Number(yarnGivenTotal._sum.quantity ?? 0);
+
+        const otherReturns = await tx.yarnReturn.aggregate({
+          where: {
+            zigId: existing.zigId,
+            yarnVariantId: existing.yarnVariantId,
+            yarnReturnId: { not: id },
+          },
+          _sum: { quantity: true },
+        });
+        const otherQty = Number(otherReturns._sum.quantity ?? 0);
+
+        if (otherQty + newQty > issuedQty) {
+          throw new Error(
+            `VALIDATION: Total returned yarn (${otherQty + newQty}) cannot exceed issued quantity (${issuedQty}).`,
+          );
+        }
+
+        const diff = newQty - Number(existing.quantity);
+        await tx.yarnVariant.update({
+          where: { yarnVariantId: existing.yarnVariantId },
+          data: { stockSnapshot: { increment: diff } },
+        });
+      }
+
+      const updated = await tx.yarnReturn.update({
+        where: { yarnReturnId: id },
+        data: {
+          quantity: newQty,
+          ...(body.remark !== undefined ? { remark: body.remark } : {}),
+        },
+        include: {
+          yarnVariant: { include: { yarn: true, color: true, supplier: true } },
+        },
+      });
+
+      return updated;
+    });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/v1/work-orders/yarn-returns/:id
+workOrdersRouter.delete("/yarn-returns/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid yarn return ID" });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.yarnReturn.findUnique({
+        where: { yarnReturnId: id },
+        include: { workOrder: true },
+      });
+
+      if (!existing) {
+        throw new Error("NOT_FOUND: Yarn return record not found.");
+      }
+
+      if (existing.workOrder.status === "reconciled" || existing.workOrder.status === "cancelled") {
+        throw new Error(`CONFLICT: Cannot delete yarn return for a ${existing.workOrder.status} zig.`);
+      }
+
+      // Decrement yarn stock (revert the return)
+      await tx.yarnVariant.update({
+        where: { yarnVariantId: existing.yarnVariantId },
+        data: { stockSnapshot: { decrement: existing.quantity } },
+      });
+
+      await tx.yarnReturn.delete({ where: { yarnReturnId: id } });
+    });
+
+    res.json({ success: true, message: "Yarn return removed." });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/v1/work-orders/fabric-returns-to-weavers/:id
+workOrdersRouter.delete("/fabric-returns-to-weavers/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid fabric rejection ID" });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.fabricReturnToWeaver.findUnique({
+        where: { fabricReturnToWeaverId: id },
+        include: { workOrder: true },
+      });
+
+      if (!existing) {
+        throw new Error("NOT_FOUND: Fabric return to weaver record not found.");
+      }
+
+      if (existing.workOrder.status === "reconciled" || existing.workOrder.status === "cancelled") {
+        throw new Error(`CONFLICT: Cannot delete rejected fabric return for a ${existing.workOrder.status} zig.`);
+      }
+
+      // Revert stock reduction (re-add to fabric stock)
+      await tx.fabricVariant.update({
+        where: { fabricVariantId: existing.fabricVariantId },
+        data: { stockSnapshot: { increment: existing.quantity } },
+      });
+
+      await tx.fabricReturnToWeaver.delete({ where: { fabricReturnToWeaverId: id } });
+    });
+
+    res.json({ success: true, message: "Fabric returned to weaver removed." });
   } catch (error) {
     next(error);
   }

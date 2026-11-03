@@ -16,9 +16,11 @@ const loginSchema = z.object({
 const signupSchema = z.object({
   firstName: z.string().min(1).max(80),
   lastName: z.string().min(1).max(80),
+  companyName: z.string().max(120).optional(),
   phone: z.string().max(30).optional(),
   username: z.string().min(3).max(60),
   password: z.string().min(6),
+  role: z.enum(["weaver", "merchant"]).optional().default("weaver"),
 });
 
 authRouter.post("/login", async (req, res, next) => {
@@ -41,13 +43,18 @@ authRouter.post("/login", async (req, res, next) => {
     }
 
     const roles = user.roles.map((r) => r.role);
+    const primaryRole = roles.includes(UserRole.admin)
+      ? UserRole.admin
+      : roles.includes(UserRole.merchant)
+        ? UserRole.merchant
+        : UserRole.weaver;
+
     const authUser = {
       userId: user.userId,
       username: user.username,
       fullName: user.fullName,
       roles,
-      // Backwards-compatibility for existing frontend screens expecting single 'role':
-      role: roles[0] ?? UserRole.weaver,
+      role: primaryRole,
       weaverId: roles.includes(UserRole.weaver) ? user.userId : null,
       merchantId: roles.includes(UserRole.merchant) ? user.userId : null,
     };
@@ -75,7 +82,10 @@ authRouter.post("/signup", async (req, res, next) => {
     }
 
     const passwordHash = await argon2.hash(body.password);
-    const fullName = `${body.firstName.trim()} ${body.lastName.trim()}`;
+    const chosenRole = body.role === "merchant" ? UserRole.merchant : UserRole.weaver;
+    const fullName =
+      body.companyName?.trim() ||
+      `${body.firstName.trim()} ${body.lastName.trim()}`.trim();
 
     const user = await prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
@@ -85,7 +95,7 @@ authRouter.post("/signup", async (req, res, next) => {
           phone: body.phone,
           passwordHash,
           roles: {
-            create: [{ role: UserRole.weaver }],
+            create: [{ role: chosenRole }],
           },
         },
         include: { roles: true },
@@ -94,12 +104,18 @@ authRouter.post("/signup", async (req, res, next) => {
     });
 
     const roles = user.roles.map((r) => r.role);
+    const primaryRole = roles.includes(UserRole.admin)
+      ? UserRole.admin
+      : roles.includes(UserRole.merchant)
+        ? UserRole.merchant
+        : UserRole.weaver;
+
     const authUser = {
       userId: user.userId,
       username: user.username,
       fullName: user.fullName,
       roles,
-      role: roles[0] ?? UserRole.weaver,
+      role: primaryRole,
       weaverId: roles.includes(UserRole.weaver) ? user.userId : null,
       merchantId: roles.includes(UserRole.merchant) ? user.userId : null,
     };

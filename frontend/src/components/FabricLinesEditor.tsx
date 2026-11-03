@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { FabricVariant } from "../api";
 import {
   applyFabricVariantToLine,
@@ -35,6 +36,27 @@ export function FabricLinesEditor({
   const fabricProducts = (lookup.products?.length ? lookup.products : []).filter(
     (p) => p.category === "fabric" || !p.category,
   );
+
+  useEffect(() => {
+    if (fabricProducts.length === 0) return;
+    const needsUpdate = lines.some((l) => !l.productId && l.entryMode !== "variant");
+    if (needsUpdate) {
+      const p0 = fabricProducts[0];
+      onChange(
+        lines.map((l) => {
+          if (l.productId || l.entryMode === "variant") return l;
+          return {
+            ...l,
+            productId: String(p0.productId),
+            warpColorId: l.warpColorId || (lookup.colors[0] ? String(lookup.colors[0].colorId) : ""),
+            weftColorId: l.weftColorId || (lookup.colors[0] ? String(lookup.colors[0].colorId) : ""),
+            designId: l.designId || (lookup.designs[0] ? String(lookup.designs[0].designId) : ""),
+            unitPrice: l.unitPrice || (p0.basePrice ? String(p0.basePrice) : ""),
+          };
+        }),
+      );
+    }
+  }, [lookup, fabricProducts, lines, onChange]);
 
   function addLine() {
     onChange([...lines, createFabricLineDraft(lookup, defaultEntryMode)]);
