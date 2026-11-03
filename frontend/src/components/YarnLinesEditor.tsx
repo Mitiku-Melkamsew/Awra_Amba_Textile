@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import type { YarnCatalogLookup, YarnLineDraft, YarnVariantOption } from "../utils/yarnLines";
 import {
   applyYarnVariantToLine,
@@ -64,7 +64,7 @@ export function YarnLinesEditor({
           </div>
 
           <VariantSearch
-            label="Find existing yarn / ክር ፈልግ"
+            label="Find existing yarn / áŠ­áˆ­ áˆáˆáŒ"
             placeholder="Type a name, e.g. cotton-white"
             items={yarnVariants}
             getId={(v) => String(v.yarnVariantId)}
@@ -82,7 +82,7 @@ export function YarnLinesEditor({
 
           <div className="form-row form-row-3">
             <label>
-              Type / ዓይነት
+              Type / á‹“á‹­áŠá‰µ
               <select
                 value={line.yarnTypeId}
                 onChange={(e) =>
@@ -112,7 +112,7 @@ export function YarnLinesEditor({
               </select>
             </label>
             <label>
-              Color / ቀለም
+              Color / á‰€áˆˆáˆ
               <select
                 value={line.colorId}
                 onChange={(e) =>

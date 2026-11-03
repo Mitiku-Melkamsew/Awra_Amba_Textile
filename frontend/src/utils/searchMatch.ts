@@ -1,9 +1,9 @@
-const normalize = (text: string) => text.toLowerCase().normalize("NFC");
+﻿const normalize = (text: string) => text.toLowerCase().normalize("NFC");
 
 /** Splits typed text into words; spaces, hyphens, slashes, dots and commas all separate words. */
 export const searchWords = (text: string) =>
   normalize(text)
-    .split(/[\s\-/·,.]+/)
+    .split(/[\s\-/Â·,.]+/)
     .filter(Boolean);
 
 export const searchHaystack = (text: string) => normalize(text);

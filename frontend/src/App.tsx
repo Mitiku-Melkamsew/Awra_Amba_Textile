@@ -69,6 +69,10 @@ function App() {
                   element={<Navigate to="/admin/transactions/new/buy/yarn" replace />}
                 />
                 <Route path="/admin/catalog" element={<CatalogPage />} />
+                <Route
+                  path="/admin/prices"
+                  element={<Navigate to="/admin/catalog?tab=fabricPrices" replace />}
+                />
                 <Route path="/admin/settlement" element={<SettlementPage />} />
                 <Route path="/admin/settlement/history" element={<SettlementHistoryPage />} />
                 <Route

@@ -32,7 +32,9 @@ export function FabricLinesEditor({
   fabricVariants,
   defaultEntryMode = "catalog",
 }: FabricLinesEditorProps) {
-  const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
+  const fabricProducts = (lookup.products?.length ? lookup.products : []).filter(
+    (p) => p.category === "fabric" || !p.category,
+  );
 
   function addLine() {
     onChange([...lines, createFabricLineDraft(lookup, defaultEntryMode)]);
@@ -62,7 +64,7 @@ export function FabricLinesEditor({
             </div>
 
             <VariantSearch
-              label="Find existing fabric / ጨርቅ ፈልግ"
+              label="Find existing fabric / áŒ¨áˆ­á‰… áˆáˆáŒ"
               placeholder="Type a name, e.g. medebegna-biret-geberdin"
               items={fabricVariants}
               getId={(v) => String(v.fabricVariantId)}
@@ -81,7 +83,7 @@ export function FabricLinesEditor({
             </p>
 
             <label>
-              Product / ዓይነት
+              Product / á‹“á‹­áŠá‰µ
               <select
                 value={line.productId}
                 onChange={(e) => {
@@ -103,7 +105,7 @@ export function FabricLinesEditor({
               </select>
             </label>
             <label>
-              Design / ዲዛይን
+              Design / á‹²á‹›á‹­áŠ•
               <select
                 value={line.designId}
                 onChange={(e) =>
@@ -120,7 +122,7 @@ export function FabricLinesEditor({
             </label>
             <div className="form-row">
               <label>
-                Warp / ውርፍ
+                Warp / á‹áˆ­á
                 <select
                   value={line.warpColorId}
                   onChange={(e) =>
@@ -135,7 +137,7 @@ export function FabricLinesEditor({
                 </select>
               </label>
               <label>
-                Weft / ስፍ
+                Weft / áˆµá
                 <select
                   value={line.weftColorId}
                   onChange={(e) =>
@@ -152,8 +154,8 @@ export function FabricLinesEditor({
             </div>
             {selectedProduct && (
               <p className="muted" style={{ fontSize: "0.85rem" }}>
-                Standard: {selectedProduct.standardWidthCm ?? "—"} ×{" "}
-                {selectedProduct.standardLengthCm ?? "—"} cm
+                Standard: {selectedProduct.standardWidthCm ?? "â€”"} Ã—{" "}
+                {selectedProduct.standardLengthCm ?? "â€”"} cm
               </p>
             )}
 

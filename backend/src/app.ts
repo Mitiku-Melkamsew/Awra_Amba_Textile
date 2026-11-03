@@ -18,10 +18,14 @@ import { merchantsRouter } from "./routes/merchants.routes.js";
 
 export function createApp() {
   const app = express();
+  const allowedOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+      origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins,
       credentials: true,
     }),
   );

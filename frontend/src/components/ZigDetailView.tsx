@@ -260,7 +260,7 @@ export function ZigDetailView({
           <h2 className="zig-detail-id">{order.zigId}</h2>
           <p className="zig-detail-info">
             {order.weaver.firstName} {order.weaver.lastName}
-            &nbsp;·&nbsp;{order.fabricVariant.product.name}
+            &nbsp;·&nbsp;{order.fabricVariant.fabric?.name ?? order.fabricVariant.product?.name ?? "Fabric"}
             {order.fabricVariant.warpColor && ` · warp: ${order.fabricVariant.warpColor.name}`}
             {order.fabricVariant.weftColor && ` · weft: ${order.fabricVariant.weftColor.name}`}
             {order.fabricVariant.design && ` · ${order.fabricVariant.design.name}`}
@@ -602,7 +602,7 @@ export function ZigDetailView({
                     <div className="record-main">
                       <div className="record-title">
                         {variantLabel([
-                          row.fabricVariant.product.name,
+                          row.fabricVariant.fabric?.name ?? row.fabricVariant.product?.name,
                           row.fabricVariant.warpColor ? `warp:${row.fabricVariant.warpColor.name}` : "",
                           row.fabricVariant.weftColor ? `weft:${row.fabricVariant.weftColor.name}` : "",
                           row.fabricVariant.design?.name,
@@ -655,7 +655,7 @@ export function ZigDetailView({
                     <div className="record-main">
                       <div className="record-title">
                         {variantLabel([
-                          row.fabricVariant.product.name,
+                          row.fabricVariant.fabric?.name ?? row.fabricVariant.product?.name,
                           row.fabricVariant.design?.name,
                         ])}
                       </div>

@@ -17,7 +17,7 @@ export function fabricNameFromParts(
 ): string {
   const parts = [productName];
   if (isReal(warpName) || isReal(weftName)) {
-    parts.push(warpName === weftName ? (warpName as string) : `${warpName ?? "—"}/${weftName ?? "—"}`);
+    parts.push(warpName === weftName ? (warpName as string) : `${warpName ?? "â€”"}/${weftName ?? "â€”"}`);
   }
   if (isReal(designName)) parts.push(designName);
   return parts.join("-");
@@ -25,7 +25,7 @@ export function fabricNameFromParts(
 
 export function fabricVariantName(variant: FabricVariant): string {
   return fabricNameFromParts(
-    variant.product.name,
+    variant.fabric?.name ?? variant.product?.name ?? "Fabric",
     variant.warpColor?.name,
     variant.weftColor?.name,
     variant.design?.name,

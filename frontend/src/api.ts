@@ -82,11 +82,20 @@ export interface Product {
 export interface FabricVariant {
   fabricVariantId: number;
   sku: string;
-  basePrice: string | null;
-  stockSnapshot: string;
-  product: Product;
-  warpColor?: { colorId: number; name: string; colorCode: string };
-  weftColor?: { colorId: number; name: string; colorCode: string };
+  fabricId?: number;
+  basePrice?: string | null;
+  stockSnapshot?: string;
+  isActive?: boolean;
+  fabric?: {
+    fabricId: number;
+    name: string;
+    standardLengthCm?: number | null;
+    standardWidthCm?: number | null;
+    standardWeightG?: number | null;
+  };
+  product?: Product;
+  warpColor?: { colorId: number; name: string; colorCode?: string };
+  weftColor?: { colorId: number; name: string; colorCode?: string };
   design?: { designId: number; name: string } | null;
 }
 
@@ -175,55 +184,199 @@ export const weaversApi = {
     ),
 };
 
+export interface QualityRuleRow {
+  qualityRuleId: number;
+  factor: string;
+  unit: string;
+  deductionPerUnit: string | number;
+  isActive: boolean;
+}
+
+export interface YarnPriceRow {
+  yarnPriceId: number;
+  yarnId: number;
+  supplierId: number;
+  purchasePrice: string | number;
+  sellingPrice: string | number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+  yarn?: { yarnId: number; name: string };
+  supplier?: { supplierId: number; name: string };
+}
+
 export const catalogApi = {
   lookup: () =>
     api<{
       colors: Array<{ colorId: number; colorCode: string; name: string }>;
       designs: Array<{ designId: number; name: string }>;
       products: Product[];
-      suppliers: Array<{ supplierId: number; name: string; contactPhone: string | null }>;
+      fabrics: Array<{
+        fabricId: number;
+        productId?: number;
+        name: string;
+        standardLengthCm: number;
+        standardWidthCm: number;
+        standardWeightG: number;
+        isActive: boolean;
+        category?: string;
+        basePrice?: number;
+        weaverRate?: number;
+        sellingPrice?: number;
+      }>;
+      suppliers: Array<{ supplierId: number; name: string; contactPhone: string | null; isActive?: boolean }>;
+      yarns: Array<{ yarnId: number; yarnTypeId?: number; name: string; materialName?: string; isActive?: boolean }>;
       yarnTypes: Array<{ yarnTypeId: number; materialName: string }>;
+      qualityRules: QualityRuleRow[];
     }>("/catalog/lookup"),
-  fabricVariants: () => api<FabricVariant[]>("/catalog/fabric-variants"),
-  yarnVariants: () =>
+  fabricVariants: (params?: { activeOnly?: boolean }) =>
+    api<FabricVariant[]>(`/catalog/fabric-variants${params?.activeOnly ? "?activeOnly=true" : ""}`),
+  yarnVariants: (params?: { activeOnly?: boolean }) =>
     api<
       Array<{
         yarnVariantId: number;
         sku: string;
         stockSnapshot: string;
         basePrice: string | null;
+        isActive?: boolean;
         yarnType: { materialName: string };
+        yarn?: { name: string };
         color: { name: string };
         supplier: { name: string };
       }>
-    >("/catalog/yarn-variants"),
+    >(`/catalog/yarn-variants${params?.activeOnly ? "?activeOnly=true" : ""}`),
   products: () => api<Product[]>("/catalog/products"),
+  fabrics: () =>
+    api<
+      Array<{
+        fabricId: number;
+        name: string;
+        standardLengthCm: number;
+        standardWidthCm: number;
+        standardWeightG: number;
+        isActive: boolean;
+        prices?: FabricPriceRow[];
+      }>
+    >("/catalog/fabrics"),
+  updateFabric: (
+    id: number,
+    data: { standardLengthCm?: number; standardWidthCm?: number; standardWeightG?: number; isActive?: boolean },
+  ) => api<unknown>(`/catalog/fabrics/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateFabric: (id: number) => api<unknown>(`/catalog/fabrics/${id}`, { method: "DELETE" }),
+
+  yarns: () =>
+    api<
+      Array<{
+        yarnId: number;
+        name: string;
+        isActive: boolean;
+        yarnPrices?: YarnPriceRow[];
+      }>
+    >("/catalog/yarns"),
+  updateYarn: (id: number, data: { name?: string; isActive?: boolean }) =>
+    api<unknown>(`/catalog/yarns/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateYarn: (id: number) => api<unknown>(`/catalog/yarns/${id}`, { method: "DELETE" }),
+
   colors: () => api<Array<{ colorId: number; colorCode: string; name: string }>>("/catalog/colors"),
-  designs: () => api<Array<{ designId: number; name: string }>>("/catalog/designs"),
-  suppliers: () =>
-    api<Array<{ supplierId: number; name: string; contactPhone: string | null }>>(
-      "/catalog/suppliers",
-    ),
-  yarnTypes: () => api<Array<{ yarnTypeId: number; materialName: string }>>("/catalog/yarn-types"),
-  createColor: (data: { colorCode: string; name: string }) =>
+  createColor: (data: { colorCode?: string; name: string }) =>
     api<unknown>("/catalog/colors", { method: "POST", body: JSON.stringify(data) }),
+  updateColor: (id: number, data: { name: string }) =>
+    api<unknown>(`/catalog/colors/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteColor: (id: number) => api<unknown>(`/catalog/colors/${id}`, { method: "DELETE" }),
+
+  designs: () => api<Array<{ designId: number; name: string }>>("/catalog/designs"),
   createDesign: (data: { name: string }) =>
     api<unknown>("/catalog/designs", { method: "POST", body: JSON.stringify(data) }),
-  createProduct: (data: {
-    name: string;
-    category: string;
-    basePrice: number;
-    standardLengthCm?: number;
-    standardWidthCm?: number;
-  }) => api<unknown>("/catalog/products", { method: "POST", body: JSON.stringify(data) }),
+  updateDesign: (id: number, data: { name: string }) =>
+    api<unknown>(`/catalog/designs/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteDesign: (id: number) => api<unknown>(`/catalog/designs/${id}`, { method: "DELETE" }),
+
+  suppliers: () =>
+    api<Array<{ supplierId: number; name: string; contactPhone: string | null; isActive: boolean }>>(
+      "/catalog/suppliers",
+    ),
   createSupplier: (data: { name: string; contactPhone?: string }) =>
     api<unknown>("/catalog/suppliers", { method: "POST", body: JSON.stringify(data) }),
+  updateSupplier: (id: number, data: { name?: string; contactPhone?: string | null; isActive?: boolean }) =>
+    api<unknown>(`/catalog/suppliers/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateSupplier: (id: number) => api<unknown>(`/catalog/suppliers/${id}`, { method: "DELETE" }),
+
+  yarnTypes: () => api<Array<{ yarnTypeId: number; materialName: string }>>("/catalog/yarn-types"),
+  createProduct: (data: {
+    name: string;
+    category?: string;
+    basePrice?: number;
+    standardLengthCm?: number;
+    standardWidthCm?: number;
+    standardWeightG?: number;
+  }) =>
+    api<unknown>("/catalog/fabrics", {
+      method: "POST",
+      body: JSON.stringify({
+        name: data.name,
+        standardLengthCm: data.standardLengthCm ?? 200,
+        standardWidthCm: data.standardWidthCm ?? 100,
+        standardWeightG: data.standardWeightG ?? 500,
+      }),
+    }),
   createYarnType: (data: { materialName: string }) =>
-    api<unknown>("/catalog/yarn-types", { method: "POST", body: JSON.stringify(data) }),
+    api<unknown>("/catalog/yarns", { method: "POST", body: JSON.stringify({ name: data.materialName }) }),
+
   createFabricVariant: (data: Record<string, unknown>) =>
     api<unknown>("/catalog/fabric-variants", { method: "POST", body: JSON.stringify(data) }),
+  updateFabricVariant: (id: number, data: { isActive: boolean }) =>
+    api<unknown>(`/catalog/fabric-variants/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateFabricVariant: (id: number) =>
+    api<unknown>(`/catalog/fabric-variants/${id}`, { method: "DELETE" }),
+
   createYarnVariant: (data: Record<string, unknown>) =>
     api<unknown>("/catalog/yarn-variants", { method: "POST", body: JSON.stringify(data) }),
+  updateYarnVariant: (id: number, data: { isActive: boolean }) =>
+    api<unknown>(`/catalog/yarn-variants/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateYarnVariant: (id: number) =>
+    api<unknown>(`/catalog/yarn-variants/${id}`, { method: "DELETE" }),
+
+  fabricPrices: (fabricId?: number) =>
+    api<FabricPriceRow[]>(`/catalog/fabric-prices${fabricId ? `?fabricId=${fabricId}` : ""}`),
+  createFabricPrice: (data: {
+    fabricId: number;
+    weaverRate: number;
+    sellingPrice: number;
+    effectiveFrom?: string;
+  }) => api<FabricPriceRow>("/catalog/fabric-prices", { method: "POST", body: JSON.stringify(data) }),
+  updateFabricPrice: (id: number, data: { isActive?: boolean; effectiveTo?: string | null }) =>
+    api<unknown>(`/catalog/fabric-prices/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateFabricPrice: (id: number) =>
+    api<unknown>(`/catalog/fabric-prices/${id}`, { method: "DELETE" }),
+
+  yarnPrices: (yarnId?: number, supplierId?: number) => {
+    const q = new URLSearchParams();
+    if (yarnId) q.set("yarnId", String(yarnId));
+    if (supplierId) q.set("supplierId", String(supplierId));
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return api<YarnPriceRow[]>(`/catalog/yarn-prices${qs}`);
+  },
+  createYarnPrice: (data: {
+    yarnId: number;
+    supplierId: number;
+    purchasePrice: number;
+    sellingPrice: number;
+    effectiveFrom?: string;
+  }) => api<YarnPriceRow>("/catalog/yarn-prices", { method: "POST", body: JSON.stringify(data) }),
+  updateYarnPrice: (id: number, data: { isActive?: boolean; effectiveTo?: string | null }) =>
+    api<unknown>(`/catalog/yarn-prices/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateYarnPrice: (id: number) =>
+    api<unknown>(`/catalog/yarn-prices/${id}`, { method: "DELETE" }),
+
+  qualityRules: () => api<QualityRuleRow[]>("/catalog/quality-rules"),
+  createQualityRule: (data: { factor: string; unit: string; deductionPerUnit: number }) =>
+    api<QualityRuleRow>("/catalog/quality-rules", { method: "POST", body: JSON.stringify(data) }),
+  updateQualityRule: (
+    id: number,
+    data: { factor?: string; unit?: string; deductionPerUnit?: number; isActive?: boolean },
+  ) => api<unknown>(`/catalog/quality-rules/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateQualityRule: (id: number) =>
+    api<unknown>(`/catalog/quality-rules/${id}`, { method: "DELETE" }),
 };
 
 export const stockApi = {
@@ -794,16 +947,17 @@ export interface AvailableFabric {
 export interface FabricPriceRow {
   fabricPriceId: number;
   fabricId: number;
-  sellingPrice: number;
+  weaverRate: number | string;
+  sellingPrice: number | string;
   effectiveFrom: string;
   effectiveTo: string | null;
   isActive: boolean;
-  fabric: {
+  fabric?: {
     fabricId: number;
     name: string;
-    standardLengthCm: number;
-    standardWidthCm: number;
-    standardWeightG: number;
+    standardLengthCm?: number;
+    standardWidthCm?: number;
+    standardWeightG?: number;
   };
 }
 

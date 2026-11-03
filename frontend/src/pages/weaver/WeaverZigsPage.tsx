@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { weaverPortalApi } from "../../api";
-
-interface ZigRow {
-  zigId: string;
-  status: string;
-  fabricVariant: { product: { name: string } };
-  _count?: { yarnGiven: number; fabricReturns: number };
-}
+import { weaverPortalApi, type WorkOrder } from "../../api";
 
 export function WeaverZigsPage() {
-  const [zigs, setZigs] = useState<ZigRow[]>([]);
+  const [zigs, setZigs] = useState<WorkOrder[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -41,7 +34,7 @@ export function WeaverZigsPage() {
             {zigs.map((zig) => (
               <tr key={zig.zigId}>
                 <td>{zig.zigId}</td>
-                <td>{zig.fabricVariant.product.name}</td>
+                <td>{zig.fabricVariant.fabric?.name ?? zig.fabricVariant.product?.name ?? "Handwoven Fabric"}</td>
                 <td>
                   <span className={`badge ${zig.status}`}>{zig.status}</span>
                 </td>

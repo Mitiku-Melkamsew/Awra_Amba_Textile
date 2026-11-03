@@ -36,7 +36,8 @@ export function createFabricLineDraft(
   lookup?: FabricCatalogLookup,
   entryMode: LineEntryMode = "catalog",
 ): FabricLineDraft {
-  const fabricProducts = lookup?.products.filter((p) => p.category === "fabric") ?? [];
+  const fabricProducts =
+    lookup?.products.filter((p) => p.category === "fabric" || !p.category) ?? [];
   const zigZagId = lookup ? findZigZagDesignId(lookup.designs) : null;
   return {
     id: `fabric-line-${++nextId}`,
@@ -55,17 +56,20 @@ export function applyFabricVariantToLine(
   line: FabricLineDraft,
   variant: FabricVariant,
 ): FabricLineDraft {
+  const productId = String(
+    variant.product?.productId ?? variant.fabricId ?? variant.fabric?.fabricId ?? "",
+  );
   return {
     ...line,
     entryMode: "variant",
     fabricVariantId: String(variant.fabricVariantId),
-    productId: String(variant.product.productId),
+    productId,
     warpColorId: variant.warpColor ? String(variant.warpColor.colorId) : line.warpColorId,
     weftColorId: variant.weftColor ? String(variant.weftColor.colorId) : line.weftColorId,
     designId: variant.design ? String(variant.design.designId) : "",
     unitPrice: variant.basePrice
       ? String(variant.basePrice)
-      : variant.product.basePrice
+      : variant.product?.basePrice
         ? String(variant.product.basePrice)
         : line.unitPrice,
   };

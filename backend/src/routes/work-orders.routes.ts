@@ -82,6 +82,18 @@ workOrdersRouter.get("/", async (req, res, next) => {
       workOrders.map((wo) => ({
         ...wo,
         weaverId: wo.weaverUserId, // alias
+        fabricVariant: {
+          ...wo.fabricVariant,
+          product: {
+            productId: wo.fabricVariant.fabric.fabricId,
+            name: wo.fabricVariant.fabric.name,
+            category: "fabric",
+            standardLengthCm: wo.fabricVariant.fabric.standardLengthCm,
+            standardWidthCm: wo.fabricVariant.fabric.standardWidthCm,
+            standardWeightG: wo.fabricVariant.fabric.standardWeightG,
+          },
+          fabric: wo.fabricVariant.fabric,
+        },
       })),
     );
   } catch (error) {
@@ -137,9 +149,31 @@ workOrdersRouter.get("/:zigId", async (req, res, next) => {
       return;
     }
 
+    const formatFabricVariant = (fv: typeof workOrder.fabricVariant) => ({
+      ...fv,
+      product: {
+        productId: fv.fabric.fabricId,
+        name: fv.fabric.name,
+        category: "fabric",
+        standardLengthCm: fv.fabric.standardLengthCm,
+        standardWidthCm: fv.fabric.standardWidthCm,
+        standardWeightG: fv.fabric.standardWeightG,
+      },
+      fabric: fv.fabric,
+    });
+
     res.json({
       ...workOrder,
       weaverId: workOrder.weaverUserId,
+      fabricVariant: formatFabricVariant(workOrder.fabricVariant),
+      fabricReturns: workOrder.fabricReturns.map((fr) => ({
+        ...fr,
+        fabricVariant: formatFabricVariant(fr.fabricVariant),
+      })),
+      fabricReturnsToWeaver: workOrder.fabricReturnsToWeaver.map((fr) => ({
+        ...fr,
+        fabricVariant: formatFabricVariant(fr.fabricVariant),
+      })),
     });
   } catch (error) {
     next(error);

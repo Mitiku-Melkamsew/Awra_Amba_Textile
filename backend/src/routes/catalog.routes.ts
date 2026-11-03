@@ -119,6 +119,19 @@ catalogRouter.patch("/fabrics/:id", authenticate, requireAdmin, async (req, res,
   }
 });
 
+catalogRouter.delete("/fabrics/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.fabric.update({
+      where: { fabricId: id },
+      data: { isActive: false },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ==========================================
 // YARNS (YARN TYPES)
 // ==========================================
@@ -128,6 +141,7 @@ const yarnCreateSchema = z.object({
 });
 
 const yarnUpdateSchema = z.object({
+  name: z.string().min(1).max(80).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -184,7 +198,23 @@ catalogRouter.patch("/yarns/:id", authenticate, requireAdmin, async (req, res, n
     const body = yarnUpdateSchema.parse(req.body);
     const updated = await prisma.yarn.update({
       where: { yarnId: id },
-      data: { isActive: body.isActive },
+      data: {
+        name: body.name ? body.name.trim() : undefined,
+        isActive: body.isActive,
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/yarns/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.yarn.update({
+      where: { yarnId: id },
+      data: { isActive: false },
     });
     res.json(updated);
   } catch (error) {
@@ -227,6 +257,30 @@ catalogRouter.post("/colors", authenticate, requireAdmin, async (req, res, next)
   }
 });
 
+catalogRouter.patch("/colors/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = colorSchema.parse(req.body);
+    const updated = await prisma.color.update({
+      where: { colorId: id },
+      data: { name: body.name.trim() },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/colors/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    await prisma.color.delete({ where: { colorId: id } });
+    res.json({ success: true });
+  } catch (_error) {
+    res.status(400).json({ error: "Cannot delete color: it is referenced by existing variants or production records." });
+  }
+});
+
 const designSchema = z.object({
   name: z.string().min(1).max(120),
 });
@@ -252,15 +306,44 @@ catalogRouter.post("/designs", authenticate, requireAdmin, async (req, res, next
   }
 });
 
+catalogRouter.patch("/designs/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = designSchema.parse(req.body);
+    const updated = await prisma.design.update({
+      where: { designId: id },
+      data: { name: body.name.trim() },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/designs/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    await prisma.design.delete({ where: { designId: id } });
+    res.json({ success: true });
+  } catch (_error) {
+    res.status(400).json({ error: "Cannot delete design: it is referenced by existing variants or production records." });
+  }
+});
+
 const supplierSchema = z.object({
   name: z.string().min(1).max(120),
   contactPhone: z.string().max(30).optional(),
 });
 
+const supplierUpdateSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  contactPhone: z.string().max(30).optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
 catalogRouter.get("/suppliers", authenticate, async (_req, res, next) => {
   try {
     const suppliers = await prisma.supplier.findMany({
-      where: { isActive: true },
       orderBy: { name: "asc" },
     });
     res.json(suppliers);
@@ -284,6 +367,37 @@ catalogRouter.post("/suppliers", authenticate, requireAdmin, async (req, res, ne
   }
 });
 
+catalogRouter.patch("/suppliers/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = supplierUpdateSchema.parse(req.body);
+    const updated = await prisma.supplier.update({
+      where: { supplierId: id },
+      data: {
+        name: body.name ? body.name.trim() : undefined,
+        contactPhone: body.contactPhone,
+        isActive: body.isActive,
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/suppliers/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.supplier.update({
+      where: { supplierId: id },
+      data: { isActive: false },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ==========================================
 // FABRIC VARIANTS & YARN VARIANTS
 // ==========================================
@@ -297,10 +411,11 @@ const fabricVariantSchema = z.object({
   sku: z.string().min(1).max(40).optional(),
 });
 
-catalogRouter.get("/fabric-variants", authenticate, async (_req, res, next) => {
+catalogRouter.get("/fabric-variants", authenticate, async (req, res, next) => {
   try {
+    const activeOnly = req.query.activeOnly === "true";
     const variants = await prisma.fabricVariant.findMany({
-      where: { isActive: true },
+      where: activeOnly ? { isActive: true } : undefined,
       include: {
         fabric: true,
         design: true,
@@ -354,6 +469,33 @@ catalogRouter.post("/fabric-variants", authenticate, requireAdmin, async (req, r
   }
 });
 
+catalogRouter.patch("/fabric-variants/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = z.object({ isActive: z.boolean().optional() }).parse(req.body);
+    const updated = await prisma.fabricVariant.update({
+      where: { fabricVariantId: id },
+      data: { isActive: body.isActive },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/fabric-variants/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.fabricVariant.update({
+      where: { fabricVariantId: id },
+      data: { isActive: false },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
 const yarnVariantSchema = z.object({
   yarnId: z.number().int().positive().optional(),
   yarnTypeId: z.number().int().positive().optional(), // alias
@@ -362,10 +504,11 @@ const yarnVariantSchema = z.object({
   sku: z.string().min(1).max(40).optional(),
 });
 
-catalogRouter.get("/yarn-variants", authenticate, async (_req, res, next) => {
+catalogRouter.get("/yarn-variants", authenticate, async (req, res, next) => {
   try {
+    const activeOnly = req.query.activeOnly === "true";
     const variants = await prisma.yarnVariant.findMany({
-      where: { isActive: true },
+      where: activeOnly ? { isActive: true } : undefined,
       include: {
         yarn: true,
         color: true,
@@ -410,6 +553,33 @@ catalogRouter.post("/yarn-variants", authenticate, requireAdmin, async (req, res
       },
     });
     res.status(201).json(variant);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.patch("/yarn-variants/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = z.object({ isActive: z.boolean().optional() }).parse(req.body);
+    const updated = await prisma.yarnVariant.update({
+      where: { yarnVariantId: id },
+      data: { isActive: body.isActive },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/yarn-variants/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.yarnVariant.update({
+      where: { yarnVariantId: id },
+      data: { isActive: false },
+    });
+    res.json(updated);
   } catch (error) {
     next(error);
   }
@@ -467,8 +637,45 @@ catalogRouter.post("/fabric-prices", authenticate, requireAdmin, async (req, res
         sellingPrice: body.sellingPrice,
         effectiveFrom: body.effectiveFrom ? new Date(body.effectiveFrom) : new Date(),
       },
+      include: { fabric: true },
     });
     res.status(201).json(price);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.patch("/fabric-prices/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = z
+      .object({
+        isActive: z.boolean().optional(),
+        effectiveTo: z.string().datetime().optional().nullable().or(z.string().nullable()),
+      })
+      .parse(req.body);
+    const updated = await prisma.fabricPrice.update({
+      where: { fabricPriceId: id },
+      data: {
+        isActive: body.isActive,
+        effectiveTo: body.effectiveTo ? new Date(body.effectiveTo) : body.effectiveTo === null ? null : undefined,
+      },
+      include: { fabric: true },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/fabric-prices/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.fabricPrice.update({
+      where: { fabricPriceId: id },
+      data: { isActive: false, effectiveTo: new Date() },
+    });
+    res.json(updated);
   } catch (error) {
     next(error);
   }
@@ -511,8 +718,45 @@ catalogRouter.post("/yarn-prices", authenticate, requireAdmin, async (req, res, 
         sellingPrice: body.sellingPrice,
         effectiveFrom: body.effectiveFrom ? new Date(body.effectiveFrom) : new Date(),
       },
+      include: { yarn: true, supplier: true },
     });
     res.status(201).json(price);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.patch("/yarn-prices/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = z
+      .object({
+        isActive: z.boolean().optional(),
+        effectiveTo: z.string().datetime().optional().nullable().or(z.string().nullable()),
+      })
+      .parse(req.body);
+    const updated = await prisma.yarnPrice.update({
+      where: { yarnPriceId: id },
+      data: {
+        isActive: body.isActive,
+        effectiveTo: body.effectiveTo ? new Date(body.effectiveTo) : body.effectiveTo === null ? null : undefined,
+      },
+      include: { yarn: true, supplier: true },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/yarn-prices/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.yarnPrice.update({
+      where: { yarnPriceId: id },
+      data: { isActive: false, effectiveTo: new Date() },
+    });
+    res.json(updated);
   } catch (error) {
     next(error);
   }
@@ -555,6 +799,45 @@ catalogRouter.post("/quality-rules", authenticate, requireAdmin, async (req, res
   }
 });
 
+catalogRouter.patch("/quality-rules/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const body = z
+      .object({
+        factor: z.string().min(1).max(30).optional(),
+        unit: z.string().min(1).max(20).optional(),
+        deductionPerUnit: z.number().positive().optional(),
+        isActive: z.boolean().optional(),
+      })
+      .parse(req.body);
+    const updated = await prisma.qualityRule.update({
+      where: { qualityRuleId: id },
+      data: {
+        factor: body.factor,
+        unit: body.unit,
+        deductionPerUnit: body.deductionPerUnit,
+        isActive: body.isActive,
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+catalogRouter.delete("/quality-rules/:id", authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const updated = await prisma.qualityRule.update({
+      where: { qualityRuleId: id },
+      data: { isActive: false },
+    });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ==========================================
 // CATALOG LOOKUP AGGREGATE
 // ==========================================
@@ -564,20 +847,47 @@ catalogRouter.get("/lookup", authenticate, async (_req, res, next) => {
     const [colors, designs, fabrics, suppliers, yarns, qualityRules] = await Promise.all([
       prisma.color.findMany({ orderBy: { name: "asc" } }),
       prisma.design.findMany({ orderBy: { name: "asc" } }),
-      prisma.fabric.findMany({ where: { isActive: true }, orderBy: { fabricId: "asc" } }),
+      prisma.fabric.findMany({
+        where: { isActive: true },
+        include: {
+          prices: {
+            where: { isActive: true },
+            orderBy: { effectiveFrom: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: { fabricId: "asc" },
+      }),
       prisma.supplier.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
       prisma.yarn.findMany({ where: { isActive: true }, orderBy: { yarnId: "asc" } }),
       prisma.qualityRule.findMany({ where: { isActive: true } }),
     ]);
 
+    const formattedFabrics = fabrics.map((f) => ({
+      ...f,
+      productId: f.fabricId,
+      category: "fabric",
+      basePrice: f.prices?.[0]?.weaverRate ? Number(f.prices[0].weaverRate) : 0,
+      weaverRate: f.prices?.[0]?.weaverRate ? Number(f.prices[0].weaverRate) : 0,
+      sellingPrice: f.prices?.[0]?.sellingPrice ? Number(f.prices[0].sellingPrice) : 0,
+    }));
+
     res.json({
       colors: colors.map((c) => ({ ...c, colorCode: c.name.slice(0, 6).toUpperCase() })),
       designs,
-      fabrics,
-      products: fabrics.map((f) => ({ ...f, productId: f.fabricId })),
+      fabrics: formattedFabrics,
+      products: formattedFabrics,
       suppliers,
-      yarns,
-      yarnTypes: yarns.map((y) => ({ yarnTypeId: y.yarnId, materialName: y.name })),
+      yarns: yarns.map((y) => ({
+        ...y,
+        yarnTypeId: y.yarnId,
+        materialName: y.name,
+      })),
+      yarnTypes: yarns.map((y) => ({
+        ...y,
+        yarnTypeId: y.yarnId,
+        materialName: y.name,
+      })),
       qualityRules,
     });
   } catch (error) {

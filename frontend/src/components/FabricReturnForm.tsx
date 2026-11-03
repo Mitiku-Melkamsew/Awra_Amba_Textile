@@ -25,11 +25,18 @@ interface FabricReturnFormProps {
 
 export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: FabricReturnFormProps) {
   const isEdit = Boolean(editReturn);
-  const product = order.fabricVariant.product;
+  const product = order.fabricVariant.product ?? {
+    productId: order.fabricVariant.fabric?.fabricId ?? 0,
+    name: order.fabricVariant.fabric?.name ?? "Fabric",
+    category: "fabric",
+    basePrice: "0",
+    standardLengthCm: order.fabricVariant.fabric?.standardLengthCm ? String(order.fabricVariant.fabric.standardLengthCm) : null,
+    standardWidthCm: order.fabricVariant.fabric?.standardWidthCm ? String(order.fabricVariant.fabric.standardWidthCm) : null,
+  };
   const fv = order.fabricVariant;
   const defaultLength = product.standardLengthCm ? Number(product.standardLengthCm) : "";
   const defaultWidth = product.standardWidthCm ? Number(product.standardWidthCm) : "";
-  const defaultPrice = fv.basePrice ? Number(fv.basePrice) : Number(product.basePrice);
+  const defaultPrice = fv.basePrice ? Number(fv.basePrice) : Number(product.basePrice || 0);
 
   const [lookup, setLookup] = useState<FabricCatalogLookup>({
     colors: [],
@@ -79,7 +86,9 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
     });
   }, [product.productId, fv, defaultPrice, editReturn]);
 
-  const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
+  const fabricProducts = (lookup.products?.length ? lookup.products : []).filter(
+    (p) => p.category === "fabric" || !p.category,
+  );
 
   /** Readable name of what is being saved: the chosen variant, or the typed details on the zig's product. */
   function savedFabricName(): string {
@@ -174,17 +183,17 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
   return (
     <form className="card form fabric-form" onSubmit={handleSubmit}>
       <h3>
-        {isEdit ? "ጨርቅ ማስተካከል / Edit Fabric Return" : "ጨርቅ መመዝገብ / Record Fabric"}
+        {isEdit ? "áŒ¨áˆ­á‰… áˆ›áˆµá‰°áŠ«áŠ¨áˆ / Edit Fabric Return" : "áŒ¨áˆ­á‰… áˆ˜áˆ˜á‹áŒˆá‰¥ / Record Fabric"}
       </h3>
       <p className="muted">
         From zig: {product.name}
-        {fv.warpColor && ` · warp: ${fv.warpColor.name}`}
-        {fv.weftColor && ` · weft: ${fv.weftColor.name}`}
-        {fv.design && ` · ${fv.design.name}`}
+        {fv.warpColor && ` Â· warp: ${fv.warpColor.name}`}
+        {fv.weftColor && ` Â· weft: ${fv.weftColor.name}`}
+        {fv.design && ` Â· ${fv.design.name}`}
       </p>
 
       <VariantSearch
-        label="Find existing fabric / ጨርቅ ፈልግ"
+        label="Find existing fabric / áŒ¨áˆ­á‰… áˆáˆáŒ"
         placeholder="Type a name, e.g. medebegna-biret-geberdin"
         items={fabricVariants}
         getId={(v) => String(v.fabricVariantId)}
@@ -203,7 +212,7 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
       </p>
 
       <label>
-        Fabric type / ዓይነት
+        Fabric type / á‹“á‹­áŠá‰µ
         <select
           value={line.productId}
           onChange={(e) => {

@@ -41,7 +41,8 @@ export function WeaverZigTabs({ weaver, zigLinkPrefix, issueZigLink }: WeaverZig
     return orders.filter(
       (o) =>
         o.zigId.toLowerCase().includes(q) ||
-        o.fabricVariant.product.name.toLowerCase().includes(q) ||
+        (o.fabricVariant.fabric?.name && o.fabricVariant.fabric.name.toLowerCase().includes(q)) ||
+        (o.fabricVariant.product?.name && o.fabricVariant.product.name.toLowerCase().includes(q)) ||
         (o.fabricVariant.warpColor?.name && o.fabricVariant.warpColor.name.toLowerCase().includes(q)) ||
         (o.fabricVariant.weftColor?.name && o.fabricVariant.weftColor.name.toLowerCase().includes(q))
     );

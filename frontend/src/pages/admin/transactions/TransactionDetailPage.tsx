@@ -14,7 +14,7 @@ function lineLabel(line: CommercialTransaction["lines"][0]): string {
   }
   if (line.fabricVariant) {
     const v = line.fabricVariant;
-    return [v.product.name, v.sku].filter(Boolean).join(" · ");
+    return [v.fabric?.name ?? v.product?.name ?? "Fabric", v.sku].filter(Boolean).join(" · ");
   }
   return line.description ?? "Line";
 }

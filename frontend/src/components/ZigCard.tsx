@@ -32,7 +32,9 @@ export function ZigCard({ order, to }: ZigCardProps) {
         </span>
       </div>
 
-      <p className="zig-card-product">{variant.product.name}</p>
+      <p className="zig-card-product">
+        {variant.fabric?.name ?? variant.product?.name ?? "Handwoven Fabric"}
+      </p>
 
       {(warp || weft || design) && (
         <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", margin: "0.4rem 0 0.5rem" }}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { weaversApi } from "../../api";
 import type { Weaver } from "../../api";
@@ -19,19 +19,19 @@ export function WeaverProfilePage() {
 
   if (!weaver && !error) return (
     <div className="page">
-      <p className="muted" style={{ fontSize: 13 }}>Loading weaver…</p>
+      <p className="muted" style={{ fontSize: 13 }}>Loading weaverâ€¦</p>
     </div>
   );
 
   if (!weaver) return (
     <div className="page">
-      <div className="error-msg"><span>⚠️</span> {error}</div>
+      <div className="error-msg"><span>âš ï¸</span> {error}</div>
     </div>
   );
 
   return (
     <div className="page">
-      <Link to="/admin/weavers" className="back-link">← All Weavers</Link>
+      <Link to="/admin/weavers" className="back-link">â† All Weavers</Link>
       <WeaverZigTabs
         weaver={weaver}
         zigLinkPrefix="/admin/zigs"

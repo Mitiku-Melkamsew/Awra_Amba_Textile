@@ -51,7 +51,19 @@ export function IssueZigPage() {
       .then(([w, lookup, next, yv]) => {
         setWeaver(w);
         setZigId(next.zigId);
-        const fabricProducts = lookup.products.filter((p) => p.category === "fabric");
+        const fabricProducts = (lookup.fabrics && lookup.fabrics.length > 0)
+          ? lookup.fabrics.map((f) => ({
+              productId: f.fabricId ?? f.productId ?? 0,
+              name: f.name,
+              category: "fabric",
+              basePrice: String(f.weaverRate ?? f.basePrice ?? 0),
+              standardLengthCm: f.standardLengthCm ? String(f.standardLengthCm) : null,
+              standardWidthCm: f.standardWidthCm ? String(f.standardWidthCm) : null,
+            }))
+          : lookup.products.map((p) => ({
+              ...p,
+              category: "fabric",
+            }));
         setProducts(fabricProducts);
         setColors(lookup.colors);
         setDesigns(lookup.designs);

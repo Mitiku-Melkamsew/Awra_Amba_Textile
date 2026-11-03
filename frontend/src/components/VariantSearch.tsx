@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { matchesAllWords, searchHaystack, searchWords } from "../utils/searchMatch";
 
 interface VariantSearchProps<T> {
@@ -78,7 +78,7 @@ export function VariantSearch<T>({
         <input
           type="search"
           value={query}
-          placeholder={placeholder ?? "Type a name…"}
+          placeholder={placeholder ?? "Type a nameâ€¦"}
           autoComplete="off"
           role="combobox"
           aria-expanded={open && results.length > 0}

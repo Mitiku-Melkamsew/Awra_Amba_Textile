@@ -46,7 +46,7 @@ export function StockPage() {
     [yarns]
   );
   const lowStockFabrics = useMemo(
-    () => fabrics.filter((f) => parseFloat(f.stockSnapshot) < 5),
+    () => fabrics.filter((f) => parseFloat(f.stockSnapshot ?? "0") < 5),
     [fabrics]
   );
 
@@ -67,7 +67,7 @@ export function StockPage() {
     return fabrics.filter(
       (f) =>
         f.sku.toLowerCase().includes(q) ||
-        f.product.name.toLowerCase().includes(q) ||
+        (f.fabric?.name ?? f.product?.name ?? "").toLowerCase().includes(q) ||
         (f.warpColor?.name && f.warpColor.name.toLowerCase().includes(q)) ||
         (f.weftColor?.name && f.weftColor.name.toLowerCase().includes(q))
     );
@@ -224,7 +224,7 @@ export function StockPage() {
                       <tr key={row.fabricVariantId}>
                         <td>
                           <div style={{ fontWeight: 700, fontSize: "13.5px", color: "var(--text)" }}>
-                            {row.product.name}
+                            {row.fabric?.name ?? row.product?.name ?? "Handwoven Fabric"}
                           </div>
                           {(row.warpColor || row.weftColor || row.design) && (
                             <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
@@ -238,8 +238,8 @@ export function StockPage() {
                           {row.sku}
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          <span className={`stock-qty ${qtyClass(row.stockSnapshot)}`}>
-                            {qty(row.stockSnapshot)} pcs
+                          <span className={`stock-qty ${qtyClass(row.stockSnapshot ?? "0")}`}>
+                            {qty(row.stockSnapshot ?? "0")} pcs
                           </span>
                         </td>
                       </tr>
