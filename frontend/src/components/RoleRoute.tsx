@@ -1,20 +1,21 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import type { AuthUser } from "../api";
+import type { UserRole } from "../domain/models";
 
 interface RoleRouteProps {
-  role: AuthUser["role"];
-  redirectTo: string;
+  role: UserRole;
+  redirectTo?: string;
 }
 
-export function RoleRoute({ role, redirectTo }: RoleRouteProps) {
-  const { user, loading } = useAuth();
+export function RoleRoute({ role, redirectTo = "/" }: RoleRouteProps) {
+  const { user, loading, hasRole } = useAuth();
 
   if (loading) return <div className="loading">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
 
-  const hasRole = user.role === role || user.roles?.includes(role);
-  if (!hasRole) return <Navigate to={redirectTo} replace />;
+  if (!hasRole(role)) {
+    return <Navigate to={redirectTo} replace />;
+  }
 
   return <Outlet />;
 }

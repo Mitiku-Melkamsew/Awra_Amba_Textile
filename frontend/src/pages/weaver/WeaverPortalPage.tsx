@@ -1,41 +1,72 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { weaverPortalApi } from "../../api";
-import type { Weaver } from "../../api";
+import { weaverPortalService } from "../../infrastructure/services";
+import type { Weaver } from "../../domain/models";
 import { WeaverZigTabs } from "../../components/WeaverZigTabs";
 
 export function WeaverPortalPage() {
   const { user } = useAuth();
   const [weaver, setWeaver] = useState<Weaver | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user?.weaverId) return;
-    weaverPortalApi
-      .profile(user.weaverId)
-      .then(setWeaver)
-      .catch((err) => setError(err.message));
-  }, [user?.weaverId]);
+    setLoading(true);
+    weaverPortalService
+      .getProfile()
+      .then((data) => {
+        setWeaver(data);
+        setError("");
+      })
+      .catch((err) => {
+        // Fallback: construct from user if profile endpoint returns 404 or other error
+        if (user) {
+          const parts = (user.fullName || user.username).split(" ");
+          setWeaver({
+            weaverId: user.weaverId ?? user.userId,
+            firstName: parts[0] || user.username,
+            lastName: parts.slice(1).join(" ") || "",
+            fullName: user.fullName || user.username,
+            phone: null,
+            email: null,
+            bankAccountNumber: null,
+          });
+        } else {
+          setError(err.message || "Failed to load weaver profile");
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [user]);
 
-  if (!weaver && !error) {
+  if (loading) {
     return (
-      <div className="page">
+      <div className="page" style={{ padding: "3rem", textAlign: "center" }}>
         <div className="loading"><span>⏳</span> Loading your artisan workspace…</div>
+      </div>
+    );
+  }
+
+  if (!weaver && error) {
+    return (
+      <div className="page" style={{ padding: "2rem" }}>
+        <div className="error-msg" style={{ background: "#fee2e2", color: "#b91c1c", padding: "1rem", borderRadius: "6px" }}>
+          <span>⚠️</span> {error}
+        </div>
       </div>
     );
   }
 
   if (!weaver) {
     return (
-      <div className="page">
-        <div className="error-msg"><span>⚠️</span> {error}</div>
+      <div className="page" style={{ padding: "2rem" }}>
+        <div className="error-msg">Artisan workspace profile not found.</div>
       </div>
     );
   }
 
   return (
-    <div className="page">
+    <div className="page" style={{ padding: "1.5rem" }}>
       {/* ── Weaver Welcome Banner ── */}
       <div
         className="card"
@@ -49,6 +80,7 @@ export function WeaverPortalPage() {
           gap: "1.5rem",
           flexWrap: "wrap",
           padding: "1.5rem 1.75rem",
+          borderRadius: "12px",
           boxShadow: "0 10px 25px -5px rgba(6, 46, 34, 0.4)",
         }}
       >
@@ -72,13 +104,16 @@ export function WeaverPortalPage() {
             color: "#fff",
             boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)",
             padding: "0.65rem 1.25rem",
+            borderRadius: "8px",
+            textDecoration: "none",
+            fontWeight: 600,
           }}
         >
           <span>💳</span> View Settlement History / የክፍያ ታሪክ →
         </Link>
       </div>
 
-      <WeaverZigTabs weaver={weaver} zigLinkPrefix="/weaver/zigs" />
+      <WeaverZigTabs weaver={weaver as any} zigLinkPrefix="/weaver/zigs" />
     </div>
   );
 }

@@ -1,6 +1,11 @@
 /** Birr deducted per piece for every unit of average weight below standard. */
 export const DEDUCTION_RATE_PER_UNIT = 10;
 
+/** Utility for standard financial rounding to 2 decimal places */
+export function roundCurrency(val: number): number {
+  return Math.round((val + Number.EPSILON) * 100) / 100;
+}
+
 export interface DeductionInput {
   avgWeight: number;
   unitPrice: number;
@@ -81,7 +86,7 @@ export function calculateDeduction(input: DeductionInput): DeductionResult {
     threshold: rule.threshold,
     deductionPerPiece: rule.deductionPerPiece,
     adjustedUnitPrice,
-    lineCredit: Math.round(adjustedUnitPrice * input.quantity),
+    lineCredit: roundCurrency(adjustedUnitPrice * input.quantity),
     ruleApplied: rule.ruleApplied,
     remark: rule.remark,
   };
@@ -109,7 +114,7 @@ export function calculateNetCredit(
   deductionPerPiece: number,
   quantity: number,
 ): number {
-  return Math.round((unitPrice - deductionPerPiece) * quantity);
+  return roundCurrency((unitPrice - deductionPerPiece) * quantity);
 }
 
 export interface LineOverride {
@@ -320,12 +325,12 @@ export function buildSettlementPreview(params: {
 
     const deductionPerPiece = override?.calculatedDeduction ?? group.deductionPerPiece;
     const unitPrice = Number(row.unitPrice);
-    const grossValue = unitPrice * quantity;
-    const deductionAmount = deductionPerPiece * quantity;
+    const grossValue = roundCurrency(unitPrice * quantity);
+    const deductionAmount = roundCurrency(deductionPerPiece * quantity);
     const netCredit = calculateNetCredit(unitPrice, deductionPerPiece, quantity);
 
-    grossFabricValue += grossValue;
-    totalDeductions += deductionAmount;
+    grossFabricValue = roundCurrency(grossFabricValue + grossValue);
+    totalDeductions = roundCurrency(totalDeductions + deductionAmount);
 
     // Check if deduction exceeds unit price
     if (deductionPerPiece > unitPrice) {
@@ -360,7 +365,11 @@ export function buildSettlementPreview(params: {
     const key = `${g.zigId}::${g.fabricId}`;
     const group = groupDeductions.get(key)!;
     const gross = g.unitPriceSum;
-    const deductionAmt = group.deductionPerPiece * g.quantity;
+    const groupItems = lineItems.filter(
+      (item) => item.zigId === g.zigId && (item.fabricId ?? item.fabricVariantId) === g.fabricId,
+    );
+    const net = roundCurrency(groupItems.reduce((sum, item) => sum + item.netCredit, 0));
+    const deductionAmt = roundCurrency(gross - net);
     return {
       zigId: g.zigId,
       fabricId: g.fabricId,
@@ -372,10 +381,10 @@ export function buildSettlementPreview(params: {
       unitPrice: group.weightedUnitPrice,
       deductionFactor: "weight",
       deductionUnit: "g",
-      deductionPerPiece: group.deductionPerPiece,
+      deductionPerPiece: g.quantity > 0 ? roundCurrency(deductionAmt / g.quantity) : group.deductionPerPiece,
       deductionAmount: deductionAmt,
       grossFabricValue: gross,
-      netFabricValue: gross - deductionAmt,
+      netFabricValue: net,
       returnIds: g.returnIds,
     };
   });
@@ -387,13 +396,31 @@ export function buildSettlementPreview(params: {
     yarnReturnsMap.set(key, (yarnReturnsMap.get(key) ?? 0) + Number(yr.quantity));
   }
 
+  const yarnIssuedMap = new Map<string, number>();
+  for (const yg of params.yarnGiven) {
+    const key = `${yg.zigId}::${yg.yarnVariantId ?? 0}`;
+    yarnIssuedMap.set(key, (yarnIssuedMap.get(key) ?? 0) + Number(yg.quantity));
+  }
+  for (const [key, returnedQty] of yarnReturnsMap) {
+    const issuedQty = yarnIssuedMap.get(key) ?? 0;
+    if (returnedQty > issuedQty + 0.0001) {
+      blockReasons.push(
+        `Returned yarn quantity (${returnedQty}) exceeds issued quantity (${issuedQty}) for ${key}. Settlement blocked for review.`,
+      );
+    }
+  }
+
   let totalYarnCost = 0;
+  const remainingYarnReturns = new Map(yarnReturnsMap);
   const yarnLines: SettlementYarnLinePreview[] = params.yarnGiven.map((yg) => {
     const key = `${yg.zigId}::${yg.yarnVariantId ?? 0}`;
-    const returnedQty = yarnReturnsMap.get(key) ?? 0;
-    const netQty = Math.max(0, yg.quantity - returnedQty);
-    const cost = Math.round(netQty * yg.unitPrice);
-    totalYarnCost += cost;
+    const issuedQty = Math.max(0, Number(yg.quantity));
+    const availableReturns = remainingYarnReturns.get(key) ?? 0;
+    const returnedQty = Math.min(issuedQty, Math.max(0, availableReturns));
+    remainingYarnReturns.set(key, Math.max(0, availableReturns - returnedQty));
+    const netQty = issuedQty - returnedQty;
+    const cost = roundCurrency(netQty * yg.unitPrice);
+    totalYarnCost = roundCurrency(totalYarnCost + cost);
 
     return {
       yarnGivenId: yg.yarnGivenId,
@@ -416,14 +443,14 @@ export function buildSettlementPreview(params: {
   // Backwards compatibility for tests with sales adjustments
   let salesAdjustmentTotal = 0;
   const saleAdjustments = (params.sales ?? []).map((sale) => {
-    const amount = Number(sale.quantity) * Number(sale.unitPrice);
+    const amount = roundCurrency(Number(sale.quantity) * Number(sale.unitPrice));
     const signedAmount =
       sale.movementType === "weaver_fabric_purchase" ? amount : -amount;
-    salesAdjustmentTotal += signedAmount;
+    salesAdjustmentTotal = roundCurrency(salesAdjustmentTotal + signedAmount);
     return { saleId: sale.saleId, signedAmount };
   });
 
-  const netFabricValue = grossFabricValue - totalDeductions;
+  const netFabricValue = roundCurrency(grossFabricValue - totalDeductions);
 
   // Check if yarn cost exceeds net fabric credit
   if (totalYarnCost > netFabricValue) {
@@ -432,7 +459,7 @@ export function buildSettlementPreview(params: {
     );
   }
 
-  const netSettlement = netFabricValue - totalYarnCost + salesAdjustmentTotal;
+  const netSettlement = roundCurrency(netFabricValue - totalYarnCost + salesAdjustmentTotal);
 
   return {
     lineItems,

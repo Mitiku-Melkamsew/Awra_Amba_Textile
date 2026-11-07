@@ -1,6 +1,6 @@
 import { DirectTxnStatus, DirectTxnType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { recordAudit } from "./audit.service.js";
+import { AuditService } from "../application/services/audit.service.js";
 
 export interface CreateDirectTxnLineInput {
   fabricVariantId?: number | null;
@@ -86,6 +86,14 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       if (!variant?.isActive || !variant.fabric.isActive) {
         throw new Error("VALIDATION: Inactive fabric catalog items cannot be used.");
       }
+      if (input.type === "fabric_sale_to_merchant") {
+        const currentStock = Number(variant.stockSnapshot ?? 0);
+        if (currentStock < line.quantity) {
+          throw new Error(
+            `INSUFFICIENT_STOCK: Cannot sell ${line.quantity} pieces of fabric "${variant.sku}". Available on-hand stock is ${currentStock} pieces.`,
+          );
+        }
+      }
       const activePrice = await prisma.fabricPrice.findFirst({
         where: {
           fabricId: variant.fabricId,
@@ -94,8 +102,8 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
           OR: [{ effectiveTo: null }, { effectiveTo: { gt: eventDate } }],
         },
       });
-      if (!activePrice) {
-        throw new Error("VALIDATION: No active fabric price exists for the transaction date.");
+      if (!activePrice && (!line.unitPrice || line.unitPrice <= 0)) {
+        throw new Error("VALIDATION: No active fabric price exists and valid unitPrice was not specified.");
       }
     } else {
       const variant = await prisma.yarnVariant.findUnique({
@@ -104,6 +112,14 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       });
       if (!variant?.isActive || !variant.yarn.isActive) {
         throw new Error("VALIDATION: Inactive yarn catalog items cannot be used.");
+      }
+      if (input.type === "yarn_sale_to_weaver") {
+        const currentStock = Number(variant.stockSnapshot ?? 0);
+        if (currentStock < line.quantity) {
+          throw new Error(
+            `INSUFFICIENT_STOCK: Cannot sell ${line.quantity} pieces of yarn "${variant.sku}". Available on-hand stock is ${currentStock} pieces.`,
+          );
+        }
       }
       const activePrice = await prisma.yarnPrice.findFirst({
         where: {
@@ -114,8 +130,8 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
           OR: [{ effectiveTo: null }, { effectiveTo: { gt: eventDate } }],
         },
       });
-      if (!activePrice) {
-        throw new Error("VALIDATION: No active yarn price exists for the transaction date.");
+      if (!activePrice && (!line.unitPrice || line.unitPrice <= 0)) {
+        throw new Error("VALIDATION: No active yarn price exists and valid unitPrice was not specified.");
       }
     }
 
@@ -168,13 +184,29 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
           data: { stockSnapshot: { increment: line.quantity } },
         });
       } else if (input.type === "fabric_sale_to_merchant") {
-        // Fabric stock decreases
+        // Fabric stock decreases - prohibit negative stock
+        const current = await tx.fabricVariant.findUniqueOrThrow({
+          where: { fabricVariantId: line.fabricVariantId! },
+        });
+        if (Number(current.stockSnapshot) < Number(line.quantity)) {
+          throw new Error(
+            `INSUFFICIENT_STOCK: Insufficient stock for fabric "${current.sku}". Available: ${current.stockSnapshot}, Requested: ${line.quantity}`,
+          );
+        }
         await tx.fabricVariant.update({
           where: { fabricVariantId: line.fabricVariantId! },
           data: { stockSnapshot: { decrement: line.quantity } },
         });
       } else if (input.type === "yarn_sale_to_weaver") {
-        // Yarn stock decreases
+        // Yarn stock decreases - prohibit negative stock
+        const current = await tx.yarnVariant.findUniqueOrThrow({
+          where: { yarnVariantId: line.yarnVariantId! },
+        });
+        if (Number(current.stockSnapshot) < Number(line.quantity)) {
+          throw new Error(
+            `INSUFFICIENT_STOCK: Insufficient stock for yarn "${current.sku}". Available: ${current.stockSnapshot}, Requested: ${line.quantity}`,
+          );
+        }
         await tx.yarnVariant.update({
           where: { yarnVariantId: line.yarnVariantId! },
           data: { stockSnapshot: { decrement: line.quantity } },
@@ -196,7 +228,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       });
     }
 
-    await recordAudit(
+    await AuditService.record(
       {
         actorUserId: input.createdByUserId,
         action: "direct_transaction.created",
@@ -289,6 +321,14 @@ export async function cancelDirectTransaction(transactionId: number, actorUserId
 
     for (const line of txn.lines) {
       if (txn.type === DirectTxnType.fabric_purchase_from_weaver) {
+        const current = await tx.fabricVariant.findUniqueOrThrow({
+          where: { fabricVariantId: line.fabricVariantId! },
+        });
+        if (Number(current.stockSnapshot) < Number(line.quantity)) {
+          throw new Error(
+            `INSUFFICIENT_STOCK: Cannot cancel transaction because current fabric stock (${current.stockSnapshot}) is less than quantity to reverse (${line.quantity}).`,
+          );
+        }
         await tx.fabricVariant.update({
           where: { fabricVariantId: line.fabricVariantId! },
           data: { stockSnapshot: { decrement: line.quantity } },
@@ -311,7 +351,7 @@ export async function cancelDirectTransaction(transactionId: number, actorUserId
       data: { status: DirectTxnStatus.cancelled },
       include: { lines: true, payments: true },
     });
-    await recordAudit(
+    await AuditService.record(
       {
         actorUserId,
         action: "direct_transaction.cancelled",

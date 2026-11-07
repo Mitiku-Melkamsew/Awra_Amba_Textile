@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { weaverPortalApi, type WorkOrder } from "../../api";
+import { weaverPortalApi } from "../../api";
 
 export function WeaverZigsPage() {
-  const [zigs, setZigs] = useState<WorkOrder[]>([]);
+  const [zigs, setZigs] = useState<any[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -31,20 +31,24 @@ export function WeaverZigsPage() {
             </tr>
           </thead>
           <tbody>
-            {zigs.map((zig) => (
-              <tr key={zig.zigId}>
-                <td>{zig.zigId}</td>
-                <td>{zig.fabricVariant.fabric?.name ?? zig.fabricVariant.product?.name ?? "Handwoven Fabric"}</td>
-                <td>
-                  <span className={`badge ${zig.status}`}>{zig.status}</span>
-                </td>
-                <td>{zig._count?.yarnGiven ?? 0}</td>
-                <td>{zig._count?.fabricReturns ?? 0}</td>
-                <td>
-                  <Link to={`/weaver/zigs/${zig.zigId}`}>View</Link>
-                </td>
-              </tr>
-            ))}
+            {zigs.map((zig: any) => {
+              const id = zig.zigId ?? zig.workOrderId;
+              const fabName = zig.fabricVariant?.fabric?.name ?? zig.fabric?.name ?? "Handwoven Fabric";
+              return (
+                <tr key={id}>
+                  <td>{id}</td>
+                  <td>{fabName}</td>
+                  <td>
+                    <span className={`badge ${zig.status}`}>{zig.status}</span>
+                  </td>
+                  <td>{zig._count?.yarnGiven ?? 0}</td>
+                  <td>{zig._count?.fabricReturns ?? 0}</td>
+                  <td>
+                    <Link to={`/weaver/zigs/${id}`}>View</Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {zigs.length === 0 && <p className="muted">No work orders yet.</p>}

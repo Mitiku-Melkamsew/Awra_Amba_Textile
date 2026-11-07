@@ -1,18 +1,15 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const links = [
-  { to: "/weaver",          label: "My Work Orders", icon: "🧵", amharic: "የኔ ዝግ", end: true },
-  { to: "/weaver/payments", label: "Settled Payments", icon: "💳", amharic: "ክፍያ" },
+  { to: "/weaver",            label: "My Work Orders", icon: "🧵", amharic: "የኔ ዝግ", end: true },
+  { to: "/weaver/rates",       label: "Piece Rates & Prices", icon: "🏷️", amharic: "የሥራ ተመን" },
+  { to: "/weaver/calculator",  label: "Wage Calculator", icon: "🧮", amharic: "የገቢ ስሌት" },
+  { to: "/weaver/payments",   label: "Settled Payments", icon: "💳", amharic: "ክፍያ" },
 ];
 
 export function WeaverLayout() {
   const { user, logout } = useAuth();
-  const location = useLocation();
-
-  const currentLink = links.find((l) =>
-    l.end ? location.pathname === l.to : location.pathname.startsWith(l.to)
-  );
 
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
@@ -51,6 +48,9 @@ export function WeaverLayout() {
         </nav>
 
         <div className="sidebar-footer">
+          <div className="sidebar-status-pill weaver">
+            <span className="status-indicator-dot" /> Active Artisan
+          </div>
           <div className="sidebar-user">
             <div className="sidebar-user-avatar" style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)" }}>
               {initials}
@@ -81,23 +81,6 @@ export function WeaverLayout() {
 
       {/* ── Main Content Area ── */}
       <main className="main-content" style={{ background: "#F4FDF8" }}>
-        <header className="topbar" style={{ background: "rgba(255, 255, 255, 0.9)", borderColor: "#D1FAE5" }}>
-          <div className="topbar-left">
-            <span className="topbar-brand-chip" style={{ background: "#D1FAE5", color: "#065F46" }}>
-              <span>🪡</span> Weaver Portal
-            </span>
-            <span className="topbar-title">
-              {currentLink ? `${currentLink.label} (${currentLink.amharic})` : "Portal"}
-            </span>
-          </div>
-
-          <div className="topbar-right">
-            <div className="topbar-status" style={{ background: "#ECFDF5", color: "#047857", borderColor: "#A7F3D0" }}>
-              Active Artisan
-            </div>
-          </div>
-        </header>
-
         <Outlet />
       </main>
     </div>

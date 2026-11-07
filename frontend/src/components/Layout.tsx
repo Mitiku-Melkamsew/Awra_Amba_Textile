@@ -1,22 +1,22 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const links = [
-  { to: "/admin/weavers",      label: "Weavers",      icon: "🧑‍🤝‍🧑", amharic: "አሸጋዮች" },
+  { to: "/admin/weavers",      label: "Weavers & Zigs", icon: "🧑‍🤝‍🧑", amharic: "አሸጋዮች" },
+  { to: "/admin/users",        label: "User Accounts",  icon: "👥", amharic: "ተጠቃሚዎች" },
   { to: "/admin/stock",        label: "Stock Inventory", icon: "📦", amharic: "ስቶክ" },
   { to: "/admin/transactions", label: "Transactions", icon: "🔄", amharic: "ግብይት" },
   { to: "/admin/catalog",      label: "Catalog & Specs", icon: "📋", amharic: "ካታሎግ" },
   { to: "/admin/prices",       label: "Price Management", icon: "🏷️", amharic: "የዋጋ አስተዳደር" },
+  { to: "/admin/quality-rules",label: "Quality Rules", icon: "⚖️", amharic: "የጥራት ህጎች" },
   { to: "/admin/settlement",   label: "Settlement & Payroll", icon: "💳", amharic: "ሂሳብ" },
   { to: "/admin/reports",      label: "Reports & HISAB", icon: "📊", amharic: "ሪፖርት" },
-  { to: "/admin/calculator",   label: "Calculator",   icon: "🧮", amharic: "ስሌት" },
+  { to: "/admin/audit-logs",   label: "Audit Logs", icon: "📜", amharic: "ኦዲት" },
 ];
 
 export function Layout() {
   const { user, logout } = useAuth();
-  const location = useLocation();
 
-  const currentLink = links.find((l) => location.pathname.startsWith(l.to));
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
     : "AD";
@@ -53,6 +53,9 @@ export function Layout() {
         </nav>
 
         <div className="sidebar-footer">
+          <div className="sidebar-status-pill">
+            <span className="status-indicator-dot" /> Live Production
+          </div>
           <div className="sidebar-user">
             <div className="sidebar-user-avatar">{initials}</div>
             <div className="sidebar-user-details">
@@ -71,6 +74,7 @@ export function Layout() {
               background: "none",
               color: "#FCA5A5",
               opacity: 0.85,
+              cursor: "pointer",
             }}
           >
             <span className="nav-icon" aria-hidden="true">🚪</span>
@@ -81,34 +85,8 @@ export function Layout() {
 
       {/* ── Main Content Area ── */}
       <main className="main-content">
-        <header className="topbar">
-          <div className="topbar-left">
-            <span className="topbar-brand-chip">
-              <span>🧵</span> Awra Amba
-            </span>
-            <span className="topbar-title">
-              {currentLink ? `${currentLink.label} (${currentLink.amharic})` : "Overview"}
-            </span>
-          </div>
-
-          <div className="topbar-right">
-            <div className="topbar-status">
-              Live Production
-            </div>
-            <NavLink
-              to="/admin/transactions/new"
-              className="btn btn-sm primary"
-              style={{ display: "inline-flex", textDecoration: "none" }}
-            >
-              + New Transaction
-            </NavLink>
-          </div>
-        </header>
-
         <Outlet />
       </main>
     </div>
   );
 }
-
-export default Layout;

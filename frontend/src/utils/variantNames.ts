@@ -17,7 +17,7 @@ export function fabricNameFromParts(
 ): string {
   const parts = [productName];
   if (isReal(warpName) || isReal(weftName)) {
-    parts.push(warpName === weftName ? (warpName as string) : `${warpName ?? "â€”"}/${weftName ?? "â€”"}`);
+    parts.push(warpName === weftName ? (warpName as string) : `${warpName ?? "-"}/${weftName ?? "-"}`);
   }
   if (isReal(designName)) parts.push(designName);
   return parts.join("-");

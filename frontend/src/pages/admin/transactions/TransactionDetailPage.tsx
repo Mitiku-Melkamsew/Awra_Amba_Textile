@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { transactionsApi, type CommercialTransaction } from "../../../api";
+import { transactionsApi } from "../../../api";
 import { formatDateDDMMYY } from "../../../utils/formatDate";
 import { TXN_STATUS_LABELS, TXN_TYPE_LABELS } from "../../../utils/transactionTypes";
 
-function lineLabel(line: CommercialTransaction["lines"][0]): string {
+function lineLabel(line: any): string {
   if (line.yarnVariant) {
     const v = line.yarnVariant;
-    return [v.yarnType?.materialName, v.color?.name, v.supplier?.name, v.sku]
+    return [v.yarn?.name ?? v.yarnType?.materialName, v.color?.name, v.supplier?.name, v.sku]
       .filter(Boolean)
       .join(" · ");
   }
@@ -21,7 +21,7 @@ function lineLabel(line: CommercialTransaction["lines"][0]): string {
 
 export function TransactionDetailPage() {
   const { transactionId } = useParams<{ transactionId: string }>();
-  const [txn, setTxn] = useState<CommercialTransaction | null>(null);
+  const [txn, setTxn] = useState<any | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [payAmount, setPayAmount] = useState("");
@@ -38,28 +38,10 @@ export function TransactionDetailPage() {
     load().catch((err) => setError(err.message));
   }, [load]);
 
-  const balance =
-    txn ? Math.max(0, Number(txn.totalAmount) - Number(txn.amountPaid)) : 0;
+  const total = Number(txn?.totalAmount || 0);
+  const paid = Number(txn?.amountPaid ?? txn?.paidAmount ?? 0);
+  const balance = Math.max(0, total - paid);
   const isStockTxn = txn && txn.type !== "weaver_payout";
-  const fullyDelivered =
-    txn &&
-    isStockTxn &&
-    txn.lines.every((l) => Number(l.deliveredQuantity) >= Number(l.quantity));
-
-  async function handleDeliver() {
-    if (!transactionId) return;
-    setBusy(true);
-    setError("");
-    try {
-      await transactionsApi.deliver(transactionId);
-      setMessage("Delivery confirmed. Inventory snapshots updated successfully.");
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Delivery failed");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handlePayment(event: FormEvent) {
     event.preventDefault();
@@ -123,21 +105,21 @@ export function TransactionDetailPage() {
 
       <div className="page-header">
         <div>
-          <p className="eyebrow">{TXN_TYPE_LABELS[txn.type]}</p>
+          <p className="eyebrow">{txn.type ? (TXN_TYPE_LABELS[txn.type] || txn.type) : (txn.transactionType || "Transaction")}</p>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <h1 className="page-title">Transaction #{txn.transactionId}</h1>
-            <span className={`badge ${txn.status}`}>
-              {TXN_STATUS_LABELS[txn.status] ?? txn.status}
+            <h1 className="page-title">Transaction #{txn.transactionId ?? txn.directTransactionId}</h1>
+            <span className={`badge ${txn.status ?? txn.paymentStatus}`}>
+              {TXN_STATUS_LABELS[txn.status ?? txn.paymentStatus] ?? (txn.status ?? txn.paymentStatus)}
             </span>
           </div>
           <p className="page-subtitle">
-            Created on {formatDateDDMMYY(txn.createdAt)}
+            Created on {formatDateDDMMYY(txn.transactionDate ?? txn.createdAt)}
             {txn.deliveredAt && ` · Delivered on ${formatDateDDMMYY(txn.deliveredAt)}`}
             {txn.notes && ` · Note: "${txn.notes}"`}
           </p>
         </div>
 
-        {txn.status !== "completed" && txn.status !== "cancelled" && (
+        {txn.status !== "paid" && txn.status !== "completed" && txn.status !== "cancelled" && (
           <button
             type="button"
             className="btn-danger btn-sm"
@@ -152,19 +134,54 @@ export function TransactionDetailPage() {
       {message && <div className="success-msg" style={{ marginBottom: "1rem" }}><span>✅</span> {message}</div>}
       {error && <div className="error-msg" style={{ marginBottom: "1rem" }}><span>⚠️</span> {error}</div>}
 
+      {/* Counterparty Information Card */}
+      {(txn.supplier || txn.weaver || txn.merchant) && (
+        <div className="card" style={{ marginBottom: "1.25rem", padding: "1rem 1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "2rem", flexWrap: "wrap" }}>
+            {txn.supplier && (
+              <div>
+                <span className="eyebrow" style={{ marginBottom: "0.2rem" }}>Raw Material Supplier / አቅራቢ</span>
+                <p style={{ margin: "0.2rem 0 0", fontWeight: 700, fontSize: "15px" }}>🏢 {txn.supplier.name}</p>
+                {txn.supplier.contactPhone && (
+                  <span style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>Phone: {txn.supplier.contactPhone}</span>
+                )}
+              </div>
+            )}
+            {txn.weaver && (
+              <div>
+                <span className="eyebrow" style={{ marginBottom: "0.2rem" }}>Artisan Weaver / አሸጋይ</span>
+                <p style={{ margin: "0.2rem 0 0", fontWeight: 700, fontSize: "15px" }}>🧑‍🤝‍🧑 {txn.weaver.fullName ?? `${txn.weaver.firstName ?? ""} ${txn.weaver.lastName ?? ""}`}</p>
+                {txn.weaver.phone && (
+                  <span style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>Phone: {txn.weaver.phone}</span>
+                )}
+              </div>
+            )}
+            {txn.merchant && (
+              <div>
+                <span className="eyebrow" style={{ marginBottom: "0.2rem" }}>Commercial Merchant / ነጋዴ</span>
+                <p style={{ margin: "0.2rem 0 0", fontWeight: 700, fontSize: "15px" }}>🏬 {txn.merchant.companyName ?? txn.merchant.fullName}</p>
+                {(txn.merchant.contactPhone || txn.merchant.phone) && (
+                  <span style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>Phone: {txn.merchant.contactPhone ?? txn.merchant.phone}</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Financial Overview Cards */}
       <div className="stats-row" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         <div className="stat-card">
           <span className="stat-card-label">Total Commercial Amount</span>
           <div className="stat-card-value">
-            {parseFloat(txn.totalAmount || "0").toLocaleString()} ETB
+            {parseFloat(String(txn.totalAmount || "0")).toLocaleString()} ETB
           </div>
         </div>
 
         <div className="stat-card">
           <span className="stat-card-label">Amount Paid to Date</span>
           <div className="stat-card-value" style={{ color: "var(--green)" }}>
-            {parseFloat(txn.amountPaid || "0").toLocaleString()} ETB
+            {parseFloat(String(txn.amountPaid ?? txn.paidAmount ?? "0")).toLocaleString()} ETB
           </div>
         </div>
 
@@ -182,7 +199,7 @@ export function TransactionDetailPage() {
           {/* Lines Table Card */}
           <div className="card">
             <h3 className="section-title" style={{ margin: "0 0 1rem" }}>
-              <span>📦</span> Line Items ({txn.lines.length})
+              <span>📦</span> Line Items ({(txn.lines || []).length})
             </h3>
             <div className="table-wrap" style={{ margin: 0 }}>
               <table>
@@ -196,7 +213,7 @@ export function TransactionDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {txn.lines.map((line) => {
+                  {(txn.lines || []).map((line: any) => {
                     const lineSubtotal = Number(line.quantity) * Number(line.unitPrice);
                     return (
                       <tr key={line.lineId}>
@@ -221,29 +238,15 @@ export function TransactionDetailPage() {
             </div>
           </div>
 
-          {/* Delivery Confirmation */}
-          {isStockTxn && txn.status !== "cancelled" && txn.status !== "completed" && (
-            <div className="card" style={{ background: fullyDelivered ? "var(--green-bg)" : "var(--surface)", border: fullyDelivered ? "1px solid var(--green-border)" : "1px solid var(--border)" }}>
+          {/* Stock note: stock is auto-adjusted upon transaction creation */}
+          {isStockTxn && (
+            <div className="card" style={{ background: "var(--green-bg)", border: "1px solid var(--green-border)" }}>
               <h3 className="section-title" style={{ margin: "0 0 0.5rem" }}>
-                <span>🚚</span> Physical Goods Delivery
+                <span>🏭</span> Stock & Inventory
               </h3>
-              <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "0 0 1rem" }}>
-                Confirming physical delivery immediately updates on-hand inventory snapshots in the Stock module.
+              <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>
+                Inventory is automatically adjusted when this transaction is created. No manual delivery confirmation required.
               </p>
-              {!fullyDelivered ? (
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleDeliver}
-                  disabled={busy}
-                >
-                  ✓ Confirm Delivery & Adjust Stock / ዕቃውን ተረከብ
-                </button>
-              ) : (
-                <span className="badge badge-green" style={{ fontSize: "13px", padding: "0.4rem 0.85rem" }}>
-                  ✓ All inventory lines successfully delivered & updated in stock
-                </span>
-              )}
             </div>
           )}
         </div>
@@ -253,6 +256,7 @@ export function TransactionDetailPage() {
           {/* Payment Form */}
           {txn.type !== "weaver_payout" &&
             txn.status !== "cancelled" &&
+            txn.status !== "paid" &&
             txn.status !== "completed" && (
               <form className="card form" onSubmit={handlePayment}>
                 <h3 className="section-title" style={{ margin: 0 }}>
@@ -305,17 +309,17 @@ export function TransactionDetailPage() {
           <div className="card">
             <h3 className="section-title" style={{ margin: "0 0 0.85rem" }}>
               <span>📜</span> Recorded Payments
-              <span className="count">{txn.payments.length}</span>
+              <span className="count">{(txn.payments || []).length}</span>
             </h3>
 
-            {txn.payments.length === 0 ? (
+            {(txn.payments || []).length === 0 ? (
               <div className="empty-state" style={{ padding: "1.5rem" }}>
                 <span className="empty-icon" style={{ fontSize: "1.5rem" }}>💸</span>
                 <span style={{ fontSize: "13px" }}>No payments recorded yet.</span>
               </div>
             ) : (
               <ul className="record-list">
-                {txn.payments.map((p) => (
+                {(txn.payments || []).map((p: any) => (
                   <li key={p.installmentId} className="record-item">
                     <div className="record-main">
                       <div className="record-title" style={{ color: "var(--green)" }}>

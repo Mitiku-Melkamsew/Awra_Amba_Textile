@@ -1,51 +1,48 @@
 import { useEffect, useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { catalogApi } from "../../api";
-import type { FabricVariant, FabricPriceRow, YarnPriceRow, QualityRuleRow } from "../../api";
-import { formatDateDDMMYY } from "../../utils/formatDate";
+import type { FabricVariant } from "../../api";
 
 type CatalogTab =
   | "fabrics"
-  | "fabricPrices"
   | "fabricVariants"
   | "yarns"
-  | "yarnPrices"
   | "yarnVariants"
   | "colors"
   | "designs"
-  | "suppliers"
-  | "qualityRules";
+  | "suppliers";
 
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get("tab") as CatalogTab) || "fabrics";
+  const rawTab = searchParams.get("tab");
+  const initialTab: CatalogTab =
+    rawTab === "fabricVariants" ||
+    rawTab === "yarns" ||
+    rawTab === "yarnVariants" ||
+    rawTab === "colors" ||
+    rawTab === "designs" ||
+    rawTab === "suppliers"
+      ? rawTab
+      : "fabrics";
   const [tab, setTab] = useState<CatalogTab>(initialTab);
 
+  useEffect(() => {
+    if (rawTab === "fabricPrices" || rawTab === "yarnPrices") {
+      window.location.replace("/admin/prices");
+    } else if (rawTab === "qualityRules") {
+      window.location.replace("/admin/quality-rules");
+    }
+  }, [rawTab]);
+
   // Data states
-  const [fabrics, setFabrics] = useState<
-    Array<{
-      fabricId: number;
-      name: string;
-      standardLengthCm: number;
-      standardWidthCm: number;
-      standardWeightG: number;
-      isActive: boolean;
-      prices?: FabricPriceRow[];
-    }>
+  const [fabrics, setFabrics] = useState<any[]>([]);
+  const [yarns, setYarns] = useState<any[]>([]);
+  const [colors, setColors] = useState<any[]>([]);
+  const [designs, setDesigns] = useState<
+    Array<{ designId: number; name: string }>
   >([]);
-  const [yarns, setYarns] = useState<
-    Array<{
-      yarnId: number;
-      name: string;
-      isActive: boolean;
-    }>
-  >([]);
-  const [colors, setColors] = useState<Array<{ colorId: number; colorCode: string; name: string }>>([]);
-  const [designs, setDesigns] = useState<Array<{ designId: number; name: string }>>([]);
-  const [suppliers, setSuppliers] = useState<
-    Array<{ supplierId: number; name: string; contactPhone: string | null; isActive: boolean }>
-  >([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [fabricVariants, setFabricVariants] = useState<FabricVariant[]>([]);
   const [yarnVariants, setYarnVariants] = useState<
     Array<{
@@ -60,9 +57,6 @@ export function CatalogPage() {
       supplier: { name: string };
     }>
   >([]);
-  const [fabricPrices, setFabricPrices] = useState<FabricPriceRow[]>([]);
-  const [yarnPrices, setYarnPrices] = useState<YarnPriceRow[]>([]);
-  const [qualityRules, setQualityRules] = useState<QualityRuleRow[]>([]);
 
   // Search & Filter
   const [search, setSearch] = useState("");
@@ -81,12 +75,6 @@ export function CatalogPage() {
   const [fabricWidth, setFabricWidth] = useState("");
   const [fabricWeight, setFabricWeight] = useState("");
 
-  // Fabric Prices
-  const [priceFabricId, setPriceFabricId] = useState("");
-  const [priceWeaverRate, setPriceWeaverRate] = useState("");
-  const [priceSellingPrice, setPriceSellingPrice] = useState("");
-  const [priceEffectiveDate, setPriceEffectiveDate] = useState("");
-
   // Fabric Variants
   const [fvFabricId, setFvFabricId] = useState("");
   const [fvWarpColorId, setFvWarpColorId] = useState("");
@@ -96,13 +84,6 @@ export function CatalogPage() {
 
   // Yarns
   const [yarnName, setYarnName] = useState("");
-
-  // Yarn Prices
-  const [priceYarnId, setPriceYarnId] = useState("");
-  const [priceYarnSupplierId, setPriceYarnSupplierId] = useState("");
-  const [priceYarnPurchasePrice, setPriceYarnPurchasePrice] = useState("");
-  const [priceYarnSellingPrice, setPriceYarnSellingPrice] = useState("");
-  const [priceYarnEffectiveDate, setPriceYarnEffectiveDate] = useState("");
 
   // Yarn Variants
   const [yvYarnId, setYvYarnId] = useState("");
@@ -115,11 +96,6 @@ export function CatalogPage() {
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
 
-  // Quality Rules
-  const [ruleFactor, setRuleFactor] = useState("weight");
-  const [ruleUnit, setRuleUnit] = useState("g");
-  const [ruleDeduction, setRuleDeduction] = useState("");
-
   // Inline Editing State
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Record<string, any>>({});
@@ -127,19 +103,23 @@ export function CatalogPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [fabList, yarnList, colList, desList, supList, fvList, yvList, fpList, ypList, qrList] =
-        await Promise.all([
-          catalogApi.fabrics(),
-          catalogApi.yarns(),
-          catalogApi.colors(),
-          catalogApi.designs(),
-          catalogApi.suppliers(),
-          catalogApi.fabricVariants(),
-          catalogApi.yarnVariants(),
-          catalogApi.fabricPrices(),
-          catalogApi.yarnPrices(),
-          catalogApi.qualityRules(),
-        ]);
+      const [
+        fabList,
+        yarnList,
+        colList,
+        desList,
+        supList,
+        fvList,
+        yvList,
+      ] = await Promise.all([
+        catalogApi.fabrics(),
+        catalogApi.yarns(),
+        catalogApi.colors(),
+        catalogApi.designs(),
+        catalogApi.suppliers(),
+        catalogApi.fabricVariants(),
+        catalogApi.yarnVariants(),
+      ]);
 
       setFabrics(fabList);
       setYarns(yarnList);
@@ -148,25 +128,22 @@ export function CatalogPage() {
       setSuppliers(supList);
       setFabricVariants(fvList);
       setYarnVariants(yvList);
-      setFabricPrices(fpList);
-      setYarnPrices(ypList);
-      setQualityRules(qrList);
 
       // Set default form selections
-      if (fabList[0] && !priceFabricId) setPriceFabricId(String(fabList[0].fabricId));
       if (fabList[0] && !fvFabricId) setFvFabricId(String(fabList[0].fabricId));
       if (colList[0] && !fvWarpColorId) {
         setFvWarpColorId(String(colList[0].colorId));
         setFvWeftColorId(String(colList[0].colorId));
       }
       if (desList[0] && !fvDesignId) setFvDesignId(String(desList[0].designId));
-      if (yarnList[0] && !priceYarnId) setPriceYarnId(String(yarnList[0].yarnId));
       if (yarnList[0] && !yvYarnId) setYvYarnId(String(yarnList[0].yarnId));
-      if (supList[0] && !priceYarnSupplierId) setPriceYarnSupplierId(String(supList[0].supplierId));
-      if (supList[0] && !yvSupplierId) setYvSupplierId(String(supList[0].supplierId));
+      if (supList[0] && !yvSupplierId)
+        setYvSupplierId(String(supList[0].supplierId));
       if (colList[0] && !yvColorId) setYvColorId(String(colList[0].colorId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load catalog data");
+      setError(
+        err instanceof Error ? err.message : "Failed to load catalog data",
+      );
     } finally {
       setLoading(false);
     }
@@ -205,19 +182,8 @@ export function CatalogPage() {
         setFabricWidth("");
         setFabricWeight("");
         setMessage("Fabric created successfully.");
-      } else if (tab === "fabricPrices") {
-        await catalogApi.createFabricPrice({
-          fabricId: Number(priceFabricId),
-          weaverRate: Number(priceWeaverRate),
-          sellingPrice: Number(priceSellingPrice),
-          effectiveFrom: priceEffectiveDate || undefined,
-        });
-        setPriceWeaverRate("");
-        setPriceSellingPrice("");
-        setPriceEffectiveDate("");
-        setMessage("Fabric price version added.");
       } else if (tab === "fabricVariants") {
-        await catalogApi.createFabricVariant({
+        await (catalogApi.createFabricVariant as any)({
           fabricId: Number(fvFabricId),
           warpColorId: Number(fvWarpColorId),
           weftColorId: Number(fvWeftColorId),
@@ -230,18 +196,6 @@ export function CatalogPage() {
         await catalogApi.createYarnType({ materialName: yarnName.trim() });
         setYarnName("");
         setMessage("Yarn material added.");
-      } else if (tab === "yarnPrices") {
-        await catalogApi.createYarnPrice({
-          yarnId: Number(priceYarnId),
-          supplierId: Number(priceYarnSupplierId),
-          purchasePrice: Number(priceYarnPurchasePrice),
-          sellingPrice: Number(priceYarnSellingPrice),
-          effectiveFrom: priceYarnEffectiveDate || undefined,
-        });
-        setPriceYarnPurchasePrice("");
-        setPriceYarnSellingPrice("");
-        setPriceYarnEffectiveDate("");
-        setMessage("Yarn price schedule updated.");
       } else if (tab === "yarnVariants") {
         await catalogApi.createYarnVariant({
           yarnId: Number(yvYarnId),
@@ -265,14 +219,6 @@ export function CatalogPage() {
         setSupplierName("");
         setSupplierPhone("");
         setMessage("Supplier registered.");
-      } else if (tab === "qualityRules") {
-        await catalogApi.createQualityRule({
-          factor: ruleFactor,
-          unit: ruleUnit,
-          deductionPerUnit: Number(ruleDeduction),
-        });
-        setRuleDeduction("");
-        setMessage("Quality rule created.");
       }
 
       await loadAll();
@@ -284,7 +230,11 @@ export function CatalogPage() {
   }
 
   // Toggle deactivation for entities
-  async function toggleActive(type: string, id: number, currentActive: boolean) {
+  async function toggleActive(
+    type: string,
+    id: number,
+    currentActive: boolean,
+  ) {
     setError("");
     setMessage("");
     try {
@@ -296,22 +246,19 @@ export function CatalogPage() {
         setMessage(`Yarn ${currentActive ? "deactivated" : "reactivated"}.`);
       } else if (type === "supplier") {
         await catalogApi.updateSupplier(id, { isActive: !currentActive });
-        setMessage(`Supplier ${currentActive ? "deactivated" : "reactivated"}.`);
+        setMessage(
+          `Supplier ${currentActive ? "deactivated" : "reactivated"}.`,
+        );
       } else if (type === "fabricVariant") {
         await catalogApi.updateFabricVariant(id, { isActive: !currentActive });
-        setMessage(`Fabric variant ${currentActive ? "deactivated" : "reactivated"}.`);
+        setMessage(
+          `Fabric variant ${currentActive ? "deactivated" : "reactivated"}.`,
+        );
       } else if (type === "yarnVariant") {
         await catalogApi.updateYarnVariant(id, { isActive: !currentActive });
-        setMessage(`Yarn variant ${currentActive ? "deactivated" : "reactivated"}.`);
-      } else if (type === "fabricPrice") {
-        await catalogApi.updateFabricPrice(id, { isActive: !currentActive });
-        setMessage(`Fabric price ${currentActive ? "closed" : "reactivated"}.`);
-      } else if (type === "yarnPrice") {
-        await catalogApi.updateYarnPrice(id, { isActive: !currentActive });
-        setMessage(`Yarn price ${currentActive ? "closed" : "reactivated"}.`);
-      } else if (type === "qualityRule") {
-        await catalogApi.updateQualityRule(id, { isActive: !currentActive });
-        setMessage(`Quality rule ${currentActive ? "deactivated" : "reactivated"}.`);
+        setMessage(
+          `Yarn variant ${currentActive ? "deactivated" : "reactivated"}.`,
+        );
       }
       await loadAll();
     } catch (err) {
@@ -320,8 +267,13 @@ export function CatalogPage() {
   }
 
   // Delete entity (Color or Design)
-  async function handleDelete(type: "color" | "design", id: number, name: string) {
-    if (!window.confirm(`Are you sure you want to delete ${type} "${name}"?`)) return;
+  async function handleDelete(
+    type: "color" | "design",
+    id: number,
+    name: string,
+  ) {
+    if (!window.confirm(`Are you sure you want to delete ${type} "${name}"?`))
+      return;
     setError("");
     setMessage("");
     try {
@@ -361,12 +313,6 @@ export function CatalogPage() {
           contactPhone: editValues.phone || null,
         });
         setMessage("Supplier updated.");
-      } else if (type === "qualityRule") {
-        await catalogApi.updateQualityRule(id, {
-          deductionPerUnit: Number(editValues.deduction),
-          unit: editValues.unit,
-        });
-        setMessage("Quality rule updated.");
       }
       setEditingId(null);
       await loadAll();
@@ -385,14 +331,6 @@ export function CatalogPage() {
       return f.name.toLowerCase().includes(q) || String(f.fabricId).includes(q);
     });
   }, [fabrics, showInactive, q]);
-
-  const filteredFabricPrices = useMemo(() => {
-    return fabricPrices.filter((p) => {
-      if (!showInactive && !p.isActive) return false;
-      if (!q) return true;
-      return p.fabric?.name?.toLowerCase().includes(q) || String(p.fabricId).includes(q);
-    });
-  }, [fabricPrices, showInactive, q]);
 
   const filteredFabricVariants = useMemo(() => {
     return fabricVariants.filter((v) => {
@@ -416,18 +354,6 @@ export function CatalogPage() {
       return y.name.toLowerCase().includes(q) || String(y.yarnId).includes(q);
     });
   }, [yarns, showInactive, q]);
-
-  const filteredYarnPrices = useMemo(() => {
-    return yarnPrices.filter((p) => {
-      if (!showInactive && !p.isActive) return false;
-      if (!q) return true;
-      return (
-        p.yarn?.name?.toLowerCase().includes(q) ||
-        p.supplier?.name?.toLowerCase().includes(q) ||
-        String(p.yarnId).includes(q)
-      );
-    });
-  }, [yarnPrices, showInactive, q]);
 
   const filteredYarnVariants = useMemo(() => {
     return yarnVariants.filter((v) => {
@@ -461,29 +387,41 @@ export function CatalogPage() {
     return suppliers.filter((s) => {
       if (!showInactive && !s.isActive) return false;
       if (!q) return true;
-      return s.name.toLowerCase().includes(q) || (s.contactPhone && s.contactPhone.includes(q));
+      return (
+        s.name.toLowerCase().includes(q) ||
+        (s.contactPhone && s.contactPhone.includes(q))
+      );
     });
   }, [suppliers, showInactive, q]);
 
-  const filteredQualityRules = useMemo(() => {
-    return qualityRules.filter((r) => {
-      if (!showInactive && !r.isActive) return false;
-      if (!q) return true;
-      return r.factor.toLowerCase().includes(q) || r.unit.toLowerCase().includes(q);
-    });
-  }, [qualityRules, showInactive, q]);
-
-  const tabs: Array<{ key: CatalogTab; label: string; icon: string; count: number }> = [
+  const tabs: Array<{
+    key: CatalogTab;
+    label: string;
+    icon: string;
+    count: number;
+  }> = [
     { key: "fabrics", label: "Fabrics", icon: "🧣", count: fabrics.length },
-    { key: "fabricPrices", label: "Fabric Prices", icon: "🏷️", count: fabricPrices.length },
-    { key: "fabricVariants", label: "Fabric Variants", icon: "🪢", count: fabricVariants.length },
+    {
+      key: "fabricVariants",
+      label: "Fabric Variants",
+      icon: "🪢",
+      count: fabricVariants.length,
+    },
     { key: "yarns", label: "Yarns", icon: "🧶", count: yarns.length },
-    { key: "yarnPrices", label: "Yarn Prices", icon: "💵", count: yarnPrices.length },
-    { key: "yarnVariants", label: "Yarn Variants", icon: "🧵", count: yarnVariants.length },
+    {
+      key: "yarnVariants",
+      label: "Yarn Variants",
+      icon: "🧵",
+      count: yarnVariants.length,
+    },
     { key: "colors", label: "Colors", icon: "🎨", count: colors.length },
     { key: "designs", label: "Designs", icon: "✨", count: designs.length },
-    { key: "suppliers", label: "Suppliers", icon: "🏢", count: suppliers.length },
-    { key: "qualityRules", label: "Quality Rules", icon: "⚖️", count: qualityRules.length },
+    {
+      key: "suppliers",
+      label: "Suppliers",
+      icon: "🏢",
+      count: suppliers.length,
+    },
   ];
 
   return (
@@ -491,18 +429,31 @@ export function CatalogPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <p className="eyebrow">ካታሎግ እና የዋጋ አስተዳደር / Master Catalog & Rates</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <h1 className="page-title">Catalog & Price Management</h1>
+          <p className="eyebrow">ካታሎግ / Master Catalog & Specs</p>
+          <div
+            style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
+          >
+            <h1 className="page-title">Catalog & Material Specifications</h1>
           </div>
           <p className="page-subtitle">
-            Configure textile products, standard dimensions, weaver rates, commercial selling prices, yarns, and quality deduction schedules.
+            Configure textile products, standard dimensions, yarns, colors, designs, and suppliers.
           </p>
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+          <Link to="/admin/prices" className="btn-secondary" style={{ fontSize: "12.5px" }}>
+            🏷️ Price Management →
+          </Link>
+          <Link to="/admin/quality-rules" className="btn-secondary" style={{ fontSize: "12.5px" }}>
+            ⚖️ Quality Rules →
+          </Link>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="tab-bar" style={{ overflowX: "auto", flexWrap: "nowrap" }}>
+      <div
+        className="tab-bar"
+        style={{ overflowX: "auto", flexWrap: "nowrap" }}
+      >
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -519,12 +470,37 @@ export function CatalogPage() {
       </div>
 
       {/* Notifications */}
-      {message && <div className="success-msg"><span>✅</span> {message}</div>}
-      {error && <div className="error-msg"><span>⚠️</span> {error}</div>}
+      {message && (
+        <div className="success-msg">
+          <span>✅</span> {message}
+        </div>
+      )}
+      {error && (
+        <div className="error-msg">
+          <span>⚠️</span> {error}
+        </div>
+      )}
 
       {/* Search and Filter Toolbar */}
-      <div className="card" style={{ padding: "0.85rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: "1 1 300px" }}>
+      <div
+        className="card"
+        style={{
+          padding: "0.85rem 1.25rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            flex: "1 1 300px",
+          }}
+        >
           <span style={{ fontSize: "16px" }}>🔍</span>
           <input
             type="text"
@@ -532,10 +508,23 @@ export function CatalogPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input-field"
-            style={{ width: "100%", padding: "0.45rem 0.85rem", fontSize: "13.5px" }}
+            style={{
+              width: "100%",
+              padding: "0.45rem 0.85rem",
+              fontSize: "13.5px",
+            }}
           />
         </div>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", fontSize: "13px", cursor: "pointer", userSelect: "none" }}>
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            fontSize: "13px",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+        >
           <input
             type="checkbox"
             checked={showInactive}
@@ -603,53 +592,7 @@ export function CatalogPage() {
           </>
         )}
 
-        {/* Tab 2: Fabric Prices */}
-        {tab === "fabricPrices" && (
-          <div className="form-row">
-            <label>
-              <span>Fabric / ጨርቅ</span>
-              <select value={priceFabricId} onChange={(e) => setPriceFabricId(e.target.value)} required>
-                {fabrics.map((f) => (
-                  <option key={f.fabricId} value={f.fabricId}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Weaver Rate (ETB) / የሸማኔ ዋጋ</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={priceWeaverRate}
-                onChange={(e) => setPriceWeaverRate(e.target.value)}
-                placeholder="e.g. 350.00"
-                required
-              />
-            </label>
-            <label>
-              <span>Selling Price (ETB) / የሽያጭ ዋጋ</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={priceSellingPrice}
-                onChange={(e) => setPriceSellingPrice(e.target.value)}
-                placeholder="e.g. 850.00"
-                required
-              />
-            </label>
-            <label>
-              <span>Effective From (Date)</span>
-              <input
-                type="date"
-                value={priceEffectiveDate}
-                onChange={(e) => setPriceEffectiveDate(e.target.value)}
-              />
-            </label>
-          </div>
-        )}
+
 
         {/* Tab 3: Fabric Variants */}
         {tab === "fabricVariants" && (
@@ -657,7 +600,11 @@ export function CatalogPage() {
             <div className="form-row">
               <label>
                 <span>Fabric / ጨርቅ</span>
-                <select value={fvFabricId} onChange={(e) => setFvFabricId(e.target.value)} required>
+                <select
+                  value={fvFabricId}
+                  onChange={(e) => setFvFabricId(e.target.value)}
+                  required
+                >
                   {fabrics.map((f) => (
                     <option key={f.fabricId} value={f.fabricId}>
                       {f.name}
@@ -667,7 +614,11 @@ export function CatalogPage() {
               </label>
               <label>
                 <span>Design Pattern / ዲዛይን</span>
-                <select value={fvDesignId} onChange={(e) => setFvDesignId(e.target.value)} required>
+                <select
+                  value={fvDesignId}
+                  onChange={(e) => setFvDesignId(e.target.value)}
+                  required
+                >
                   {designs.map((d) => (
                     <option key={d.designId} value={d.designId}>
                       {d.name}
@@ -679,7 +630,11 @@ export function CatalogPage() {
             <div className="form-row">
               <label>
                 <span>Warp Color / ውርፍ</span>
-                <select value={fvWarpColorId} onChange={(e) => setFvWarpColorId(e.target.value)} required>
+                <select
+                  value={fvWarpColorId}
+                  onChange={(e) => setFvWarpColorId(e.target.value)}
+                  required
+                >
                   {colors.map((c) => (
                     <option key={c.colorId} value={c.colorId}>
                       {c.name}
@@ -689,7 +644,11 @@ export function CatalogPage() {
               </label>
               <label>
                 <span>Weft Color / ስፍ</span>
-                <select value={fvWeftColorId} onChange={(e) => setFvWeftColorId(e.target.value)} required>
+                <select
+                  value={fvWeftColorId}
+                  onChange={(e) => setFvWeftColorId(e.target.value)}
+                  required
+                >
                   {colors.map((c) => (
                     <option key={c.colorId} value={c.colorId}>
                       {c.name}
@@ -722,70 +681,18 @@ export function CatalogPage() {
           </label>
         )}
 
-        {/* Tab 5: Yarn Prices */}
-        {tab === "yarnPrices" && (
-          <div className="form-row">
-            <label>
-              <span>Yarn / ጥጥ</span>
-              <select value={priceYarnId} onChange={(e) => setPriceYarnId(e.target.value)} required>
-                {yarns.map((y) => (
-                  <option key={y.yarnId} value={y.yarnId}>
-                    {y.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Supplier / አቅራቢ</span>
-              <select value={priceYarnSupplierId} onChange={(e) => setPriceYarnSupplierId(e.target.value)} required>
-                {suppliers.map((s) => (
-                  <option key={s.supplierId} value={s.supplierId}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Purchase Price (ETB/kg)</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={priceYarnPurchasePrice}
-                onChange={(e) => setPriceYarnPurchasePrice(e.target.value)}
-                placeholder="e.g. 450.00"
-                required
-              />
-            </label>
-            <label>
-              <span>Selling Price (ETB/kg)</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={priceYarnSellingPrice}
-                onChange={(e) => setPriceYarnSellingPrice(e.target.value)}
-                placeholder="e.g. 520.00"
-                required
-              />
-            </label>
-            <label>
-              <span>Effective Date</span>
-              <input
-                type="date"
-                value={priceYarnEffectiveDate}
-                onChange={(e) => setPriceYarnEffectiveDate(e.target.value)}
-              />
-            </label>
-          </div>
-        )}
+
 
         {/* Tab 6: Yarn Variants */}
         {tab === "yarnVariants" && (
           <div className="form-row">
             <label>
               <span>Yarn Material / ዓይነት</span>
-              <select value={yvYarnId} onChange={(e) => setYvYarnId(e.target.value)} required>
+              <select
+                value={yvYarnId}
+                onChange={(e) => setYvYarnId(e.target.value)}
+                required
+              >
                 {yarns.map((y) => (
                   <option key={y.yarnId} value={y.yarnId}>
                     {y.name}
@@ -795,7 +702,11 @@ export function CatalogPage() {
             </label>
             <label>
               <span>Supplier / አቅራቢ</span>
-              <select value={yvSupplierId} onChange={(e) => setYvSupplierId(e.target.value)} required>
+              <select
+                value={yvSupplierId}
+                onChange={(e) => setYvSupplierId(e.target.value)}
+                required
+              >
                 {suppliers.map((s) => (
                   <option key={s.supplierId} value={s.supplierId}>
                     {s.name}
@@ -805,7 +716,11 @@ export function CatalogPage() {
             </label>
             <label>
               <span>Color / ቀለም</span>
-              <select value={yvColorId} onChange={(e) => setYvColorId(e.target.value)} required>
+              <select
+                value={yvColorId}
+                onChange={(e) => setYvColorId(e.target.value)}
+                required
+              >
                 {colors.map((c) => (
                   <option key={c.colorId} value={c.colorId}>
                     {c.name}
@@ -866,41 +781,6 @@ export function CatalogPage() {
           </div>
         )}
 
-        {/* Tab 10: Quality Rules */}
-        {tab === "qualityRules" && (
-          <div className="form-row">
-            <label>
-              <span>Quality Factor / ሁኔታ</span>
-              <select value={ruleFactor} onChange={(e) => setRuleFactor(e.target.value)} required>
-                <option value="weight">Weight (ክብደት)</option>
-                <option value="length">Length (ቁመት)</option>
-                <option value="width">Width (ስፋት)</option>
-              </select>
-            </label>
-            <label>
-              <span>Measurement Unit / መለኪያ</span>
-              <input
-                value={ruleUnit}
-                onChange={(e) => setRuleUnit(e.target.value)}
-                placeholder="e.g. g or cm"
-                required
-              />
-            </label>
-            <label>
-              <span>Deduction Rate (ETB / unit)</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={ruleDeduction}
-                onChange={(e) => setRuleDeduction(e.target.value)}
-                placeholder="e.g. 1.00"
-                required
-              />
-            </label>
-          </div>
-        )}
-
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={saving}>
             {saving ? "Saving…" : "Add to Catalog / መዝግብ"}
@@ -911,7 +791,10 @@ export function CatalogPage() {
       {/* Catalog Table Card */}
       <div className="table-wrap">
         {loading ? (
-          <div className="loading" style={{ padding: "2rem", textAlign: "center" }}>
+          <div
+            className="loading"
+            style={{ padding: "2rem", textAlign: "center" }}
+          >
             <span>⏳</span> Loading catalog data…
           </div>
         ) : (
@@ -943,7 +826,12 @@ export function CatalogPage() {
                             <input
                               type="number"
                               value={editValues.length ?? f.standardLengthCm}
-                              onChange={(e) => setEditValues({ ...editValues, length: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  length: e.target.value,
+                                })
+                              }
                               style={{ width: 80 }}
                             />
                           ) : (
@@ -955,7 +843,12 @@ export function CatalogPage() {
                             <input
                               type="number"
                               value={editValues.width ?? f.standardWidthCm}
-                              onChange={(e) => setEditValues({ ...editValues, width: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  width: e.target.value,
+                                })
+                              }
                               style={{ width: 80 }}
                             />
                           ) : (
@@ -967,7 +860,12 @@ export function CatalogPage() {
                             <input
                               type="number"
                               value={editValues.weight ?? f.standardWeightG}
-                              onChange={(e) => setEditValues({ ...editValues, weight: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  weight: e.target.value,
+                                })
+                              }
                               style={{ width: 80 }}
                             />
                           ) : (
@@ -978,20 +876,28 @@ export function CatalogPage() {
                           {latestPrice ? `${latestPrice.weaverRate} ETB` : "—"}
                         </td>
                         <td style={{ fontWeight: 600, color: "#0284C7" }}>
-                          {latestPrice ? `${latestPrice.sellingPrice} ETB` : "—"}
+                          {latestPrice
+                            ? `${latestPrice.sellingPrice} ETB`
+                            : "—"}
                         </td>
                         <td>
-                          <span className={`badge ${f.isActive ? "badge-green" : "badge-gray"}`}>
+                          <span
+                            className={`badge ${f.isActive ? "badge-green" : "badge-gray"}`}
+                          >
                             {f.isActive ? "Active" : "Deactivated"}
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {isEditing ? (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-sm primary"
-                                onClick={() => saveInlineEdit("fabric", f.fabricId)}
+                                onClick={() =>
+                                  saveInlineEdit("fabric", f.fabricId)
+                                }
                               >
                                 Save
                               </button>
@@ -1004,7 +910,9 @@ export function CatalogPage() {
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-link"
@@ -1022,8 +930,14 @@ export function CatalogPage() {
                               <button
                                 type="button"
                                 className="btn-link"
-                                style={{ color: f.isActive ? "var(--red)" : "var(--green)" }}
-                                onClick={() => toggleActive("fabric", f.fabricId, f.isActive)}
+                                style={{
+                                  color: f.isActive
+                                    ? "var(--red)"
+                                    : "var(--green)",
+                                }}
+                                onClick={() =>
+                                  toggleActive("fabric", f.fabricId, f.isActive)
+                                }
                               >
                                 {f.isActive ? "Deactivate" : "Activate"}
                               </button>
@@ -1033,53 +947,6 @@ export function CatalogPage() {
                       </tr>
                     );
                   })}
-                </tbody>
-              </table>
-            )}
-
-            {/* Tab 2 Table: Fabric Prices */}
-            {tab === "fabricPrices" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fabric</th>
-                    <th>Weaver Rate (ETB)</th>
-                    <th>Selling Price (ETB)</th>
-                    <th>Effective From</th>
-                    <th>Effective To</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFabricPrices.map((p) => (
-                    <tr key={p.fabricPriceId}>
-                      <td style={{ fontWeight: 700 }}>{p.fabric?.name ?? `Fabric #${p.fabricId}`}</td>
-                      <td style={{ fontWeight: 700, color: "var(--accent)" }}>
-                        {Number(p.weaverRate).toLocaleString()} ETB
-                      </td>
-                      <td style={{ fontWeight: 700, color: "#0284C7" }}>
-                        {Number(p.sellingPrice).toLocaleString()} ETB
-                      </td>
-                      <td>{formatDateDDMMYY(p.effectiveFrom)}</td>
-                      <td>{p.effectiveTo ? formatDateDDMMYY(p.effectiveTo) : "Active"}</td>
-                      <td>
-                        <span className={`badge ${p.isActive ? "badge-green" : "badge-gray"}`}>
-                          {p.isActive ? "Active" : "Closed"}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <button
-                          type="button"
-                          className="btn-link"
-                          style={{ color: p.isActive ? "var(--red)" : "var(--green)" }}
-                          onClick={() => toggleActive("fabricPrice", p.fabricPriceId, p.isActive)}
-                        >
-                          {p.isActive ? "Close Rate" : "Reopen Rate"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
                 </tbody>
               </table>
             )}
@@ -1101,15 +968,25 @@ export function CatalogPage() {
                 <tbody>
                   {filteredFabricVariants.map((v) => (
                     <tr key={v.fabricVariantId}>
-                      <td style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--accent)" }}>
+                      <td
+                        style={{
+                          fontFamily: "monospace",
+                          fontWeight: 700,
+                          color: "var(--accent)",
+                        }}
+                      >
                         {v.sku}
                       </td>
-                      <td style={{ fontWeight: 700 }}>{v.fabric?.name ?? v.product?.name ?? "Fabric"}</td>
+                      <td style={{ fontWeight: 700 }}>
+                        {v.fabric?.name ?? v.product?.name ?? "Fabric"}
+                      </td>
                       <td>{v.warpColor?.name ?? "—"}</td>
                       <td>{v.weftColor?.name ?? "—"}</td>
                       <td>{v.design?.name ?? "—"}</td>
                       <td>
-                        <span className={`badge ${v.isActive !== false ? "badge-green" : "badge-gray"}`}>
+                        <span
+                          className={`badge ${v.isActive !== false ? "badge-green" : "badge-gray"}`}
+                        >
                           {v.isActive !== false ? "Active" : "Deactivated"}
                         </span>
                       </td>
@@ -1117,8 +994,19 @@ export function CatalogPage() {
                         <button
                           type="button"
                           className="btn-link"
-                          style={{ color: v.isActive !== false ? "var(--red)" : "var(--green)" }}
-                          onClick={() => toggleActive("fabricVariant", v.fabricVariantId, v.isActive !== false)}
+                          style={{
+                            color:
+                              v.isActive !== false
+                                ? "var(--red)"
+                                : "var(--green)",
+                          }}
+                          onClick={() =>
+                            toggleActive(
+                              "fabricVariant",
+                              v.fabricVariantId,
+                              v.isActive !== false,
+                            )
+                          }
                         >
                           {v.isActive !== false ? "Deactivate" : "Activate"}
                         </button>
@@ -1149,20 +1037,29 @@ export function CatalogPage() {
                             <input
                               type="text"
                               value={editValues.name ?? y.name}
-                              onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  name: e.target.value,
+                                })
+                              }
                             />
                           ) : (
                             y.name
                           )}
                         </td>
                         <td>
-                          <span className={`badge ${y.isActive ? "badge-green" : "badge-gray"}`}>
+                          <span
+                            className={`badge ${y.isActive ? "badge-green" : "badge-gray"}`}
+                          >
                             {y.isActive ? "Active" : "Deactivated"}
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {isEditing ? (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-sm primary"
@@ -1179,7 +1076,9 @@ export function CatalogPage() {
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-link"
@@ -1193,8 +1092,14 @@ export function CatalogPage() {
                               <button
                                 type="button"
                                 className="btn-link"
-                                style={{ color: y.isActive ? "var(--red)" : "var(--green)" }}
-                                onClick={() => toggleActive("yarn", y.yarnId, y.isActive)}
+                                style={{
+                                  color: y.isActive
+                                    ? "var(--red)"
+                                    : "var(--green)",
+                                }}
+                                onClick={() =>
+                                  toggleActive("yarn", y.yarnId, y.isActive)
+                                }
                               >
                                 {y.isActive ? "Deactivate" : "Activate"}
                               </button>
@@ -1208,53 +1113,6 @@ export function CatalogPage() {
               </table>
             )}
 
-            {/* Tab 5 Table: Yarn Prices */}
-            {tab === "yarnPrices" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Yarn Material</th>
-                    <th>Supplier</th>
-                    <th>Purchase Price (ETB/kg)</th>
-                    <th>Selling Price (ETB/kg)</th>
-                    <th>Effective From</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredYarnPrices.map((p) => (
-                    <tr key={p.yarnPriceId}>
-                      <td style={{ fontWeight: 700 }}>{p.yarn?.name ?? `Yarn #${p.yarnId}`}</td>
-                      <td>{p.supplier?.name ?? `Supplier #${p.supplierId}`}</td>
-                      <td style={{ fontWeight: 700, color: "var(--accent)" }}>
-                        {Number(p.purchasePrice).toLocaleString()} ETB
-                      </td>
-                      <td style={{ fontWeight: 700, color: "#0284C7" }}>
-                        {Number(p.sellingPrice).toLocaleString()} ETB
-                      </td>
-                      <td>{formatDateDDMMYY(p.effectiveFrom)}</td>
-                      <td>
-                        <span className={`badge ${p.isActive ? "badge-green" : "badge-gray"}`}>
-                          {p.isActive ? "Active" : "Closed"}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <button
-                          type="button"
-                          className="btn-link"
-                          style={{ color: p.isActive ? "var(--red)" : "var(--green)" }}
-                          onClick={() => toggleActive("yarnPrice", p.yarnPriceId, p.isActive)}
-                        >
-                          {p.isActive ? "Close Rate" : "Reopen Rate"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
             {/* Tab 6 Table: Yarn Variants */}
             {tab === "yarnVariants" && (
               <table>
@@ -1264,7 +1122,7 @@ export function CatalogPage() {
                     <th>Material</th>
                     <th>Supplier</th>
                     <th>Color</th>
-                    <th>Stock (kg)</th>
+                    <th>Stock (pieces)</th>
                     <th>Status</th>
                     <th style={{ textAlign: "right" }}>Action</th>
                   </tr>
@@ -1272,15 +1130,27 @@ export function CatalogPage() {
                 <tbody>
                   {filteredYarnVariants.map((v) => (
                     <tr key={v.yarnVariantId}>
-                      <td style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--accent)" }}>
+                      <td
+                        style={{
+                          fontFamily: "monospace",
+                          fontWeight: 700,
+                          color: "var(--accent)",
+                        }}
+                      >
                         {v.sku}
                       </td>
-                      <td style={{ fontWeight: 700 }}>{v.yarn?.name ?? v.yarnType?.materialName}</td>
+                      <td style={{ fontWeight: 700 }}>
+                        {v.yarn?.name ?? v.yarnType?.materialName}
+                      </td>
                       <td>{v.supplier?.name ?? "—"}</td>
                       <td>{v.color?.name ?? "—"}</td>
-                      <td style={{ fontWeight: 700 }}>{v.stockSnapshot ?? 0} kg</td>
+                      <td style={{ fontWeight: 700 }}>
+                        {v.stockSnapshot ?? 0} pieces
+                      </td>
                       <td>
-                        <span className={`badge ${v.isActive !== false ? "badge-green" : "badge-gray"}`}>
+                        <span
+                          className={`badge ${v.isActive !== false ? "badge-green" : "badge-gray"}`}
+                        >
                           {v.isActive !== false ? "Active" : "Deactivated"}
                         </span>
                       </td>
@@ -1288,8 +1158,19 @@ export function CatalogPage() {
                         <button
                           type="button"
                           className="btn-link"
-                          style={{ color: v.isActive !== false ? "var(--red)" : "var(--green)" }}
-                          onClick={() => toggleActive("yarnVariant", v.yarnVariantId, v.isActive !== false)}
+                          style={{
+                            color:
+                              v.isActive !== false
+                                ? "var(--red)"
+                                : "var(--green)",
+                          }}
+                          onClick={() =>
+                            toggleActive(
+                              "yarnVariant",
+                              v.yarnVariantId,
+                              v.isActive !== false,
+                            )
+                          }
                         >
                           {v.isActive !== false ? "Deactivate" : "Activate"}
                         </button>
@@ -1319,7 +1200,12 @@ export function CatalogPage() {
                             <input
                               type="text"
                               value={editValues.name ?? c.name}
-                              onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  name: e.target.value,
+                                })
+                              }
                             />
                           ) : (
                             c.name
@@ -1327,11 +1213,15 @@ export function CatalogPage() {
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {isEditing ? (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-sm primary"
-                                onClick={() => saveInlineEdit("color", c.colorId)}
+                                onClick={() =>
+                                  saveInlineEdit("color", c.colorId)
+                                }
                               >
                                 Save
                               </button>
@@ -1344,7 +1234,9 @@ export function CatalogPage() {
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-link"
@@ -1359,7 +1251,9 @@ export function CatalogPage() {
                                 type="button"
                                 className="btn-link"
                                 style={{ color: "var(--red)" }}
-                                onClick={() => handleDelete("color", c.colorId, c.name)}
+                                onClick={() =>
+                                  handleDelete("color", c.colorId, c.name)
+                                }
                               >
                                 Delete
                               </button>
@@ -1392,7 +1286,12 @@ export function CatalogPage() {
                             <input
                               type="text"
                               value={editValues.name ?? d.name}
-                              onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  name: e.target.value,
+                                })
+                              }
                             />
                           ) : (
                             d.name
@@ -1400,11 +1299,15 @@ export function CatalogPage() {
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {isEditing ? (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-sm primary"
-                                onClick={() => saveInlineEdit("design", d.designId)}
+                                onClick={() =>
+                                  saveInlineEdit("design", d.designId)
+                                }
                               >
                                 Save
                               </button>
@@ -1417,7 +1320,9 @@ export function CatalogPage() {
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-link"
@@ -1432,7 +1337,9 @@ export function CatalogPage() {
                                 type="button"
                                 className="btn-link"
                                 style={{ color: "var(--red)" }}
-                                onClick={() => handleDelete("design", d.designId, d.name)}
+                                onClick={() =>
+                                  handleDelete("design", d.designId, d.name)
+                                }
                               >
                                 Delete
                               </button>
@@ -1467,7 +1374,12 @@ export function CatalogPage() {
                             <input
                               type="text"
                               value={editValues.name ?? s.name}
-                              onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  name: e.target.value,
+                                })
+                              }
                             />
                           ) : (
                             s.name
@@ -1478,24 +1390,35 @@ export function CatalogPage() {
                             <input
                               type="tel"
                               value={editValues.phone ?? s.contactPhone ?? ""}
-                              onChange={(e) => setEditValues({ ...editValues, phone: e.target.value })}
+                              onChange={(e) =>
+                                setEditValues({
+                                  ...editValues,
+                                  phone: e.target.value,
+                                })
+                              }
                             />
                           ) : (
-                            s.contactPhone ?? "—"
+                            (s.contactPhone ?? "—")
                           )}
                         </td>
                         <td>
-                          <span className={`badge ${s.isActive ? "badge-green" : "badge-gray"}`}>
+                          <span
+                            className={`badge ${s.isActive ? "badge-green" : "badge-gray"}`}
+                          >
                             {s.isActive ? "Active" : "Deactivated"}
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {isEditing ? (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-sm primary"
-                                onClick={() => saveInlineEdit("supplier", s.supplierId)}
+                                onClick={() =>
+                                  saveInlineEdit("supplier", s.supplierId)
+                                }
                               >
                                 Save
                               </button>
@@ -1508,13 +1431,18 @@ export function CatalogPage() {
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                            <div
+                              style={{ display: "inline-flex", gap: "0.4rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn-link"
                                 onClick={() => {
                                   setEditingId(s.supplierId);
-                                  setEditValues({ name: s.name, phone: s.contactPhone ?? "" });
+                                  setEditValues({
+                                    name: s.name,
+                                    phone: s.contactPhone ?? "",
+                                  });
                                 }}
                               >
                                 Edit
@@ -1522,109 +1450,20 @@ export function CatalogPage() {
                               <button
                                 type="button"
                                 className="btn-link"
-                                style={{ color: s.isActive ? "var(--red)" : "var(--green)" }}
-                                onClick={() => toggleActive("supplier", s.supplierId, s.isActive)}
+                                style={{
+                                  color: s.isActive
+                                    ? "var(--red)"
+                                    : "var(--green)",
+                                }}
+                                onClick={() =>
+                                  toggleActive(
+                                    "supplier",
+                                    s.supplierId,
+                                    s.isActive,
+                                  )
+                                }
                               >
                                 {s.isActive ? "Deactivate" : "Activate"}
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-
-            {/* Tab 10 Table: Quality Rules */}
-            {tab === "qualityRules" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Factor / Dimension</th>
-                    <th>Unit</th>
-                    <th>Deduction Rate (ETB / unit)</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredQualityRules.map((r) => {
-                    const isEditing = editingId === r.qualityRuleId;
-                    return (
-                      <tr key={r.qualityRuleId}>
-                        <td style={{ fontWeight: 700, textTransform: "capitalize" }}>{r.factor}</td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editValues.unit ?? r.unit}
-                              onChange={(e) => setEditValues({ ...editValues, unit: e.target.value })}
-                              style={{ width: 60 }}
-                            />
-                          ) : (
-                            r.unit
-                          )}
-                        </td>
-                        <td style={{ fontWeight: 700, color: "var(--red)" }}>
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editValues.deduction ?? r.deductionPerUnit}
-                              onChange={(e) => setEditValues({ ...editValues, deduction: e.target.value })}
-                              style={{ width: 90 }}
-                            />
-                          ) : (
-                            `${r.deductionPerUnit} ETB`
-                          )}
-                        </td>
-                        <td>
-                          <span className={`badge ${r.isActive ? "badge-green" : "badge-gray"}`}>
-                            {r.isActive ? "Active" : "Deactivated"}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {isEditing ? (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
-                              <button
-                                type="button"
-                                className="btn-sm primary"
-                                onClick={() => saveInlineEdit("qualityRule", r.qualityRuleId)}
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-sm ghost"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                onClick={() => {
-                                  setEditingId(r.qualityRuleId);
-                                  setEditValues({
-                                    deduction: r.deductionPerUnit,
-                                    unit: r.unit,
-                                  });
-                                }}
-                              >
-                                Edit Rate
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                style={{ color: r.isActive ? "var(--red)" : "var(--green)" }}
-                                onClick={() => toggleActive("qualityRule", r.qualityRuleId, r.isActive)}
-                              >
-                                {r.isActive ? "Deactivate" : "Activate"}
                               </button>
                             </div>
                           )}

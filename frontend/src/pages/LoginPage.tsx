@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import type { AuthUser } from "../api";
+import type { AuthUser } from "../domain/models";
 
 function getLandingRoute(u?: AuthUser | null): string {
   if (!u) return "/login";
@@ -23,18 +23,22 @@ export function LoginPage() {
     return <Navigate to={getLandingRoute(user)} replace />;
   }
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function handleLogin(u: string, p: string) {
     setLoading(true);
     setError("");
     try {
-      const result = await login(username, password);
+      const result = await login(u, p);
       navigate(getLandingRoute(result), { replace: true });
-    } catch (err) {
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    handleLogin(username, password);
   }
 
   return (
@@ -46,6 +50,36 @@ export function LoginPage() {
           </div>
           <h1 className="auth-title">ግባ / Sign In</h1>
           <p className="auth-subtitle">Awra Amba Textile Cooperative</p>
+        </div>
+
+        {/* Quick Demo Logins Bar */}
+        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.75rem", marginBottom: "1rem" }}>
+          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", marginBottom: "0.5rem", textAlign: "center", textTransform: "uppercase" }}>
+            ⚡ 1-Click Quick Demo Login
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.4rem" }}>
+            <button
+              type="button"
+              onClick={() => handleLogin("admin", "admin123")}
+              style={{ padding: "0.4rem", fontSize: "0.75rem", borderRadius: "4px", border: "1px solid #fed7aa", background: "#fff7ed", color: "#c2410c", fontWeight: 600, cursor: "pointer" }}
+            >
+              👑 Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLogin("weaver1", "weaver123")}
+              style={{ padding: "0.4rem", fontSize: "0.75rem", borderRadius: "4px", border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#15803d", fontWeight: 600, cursor: "pointer" }}
+            >
+              🪢 Weaver
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLogin("merchant1", "merchant123")}
+              style={{ padding: "0.4rem", fontSize: "0.75rem", borderRadius: "4px", border: "1px solid #bae6fd", background: "#f0f9ff", color: "#0369a1", fontWeight: 600, cursor: "pointer" }}
+            >
+              🏬 Merchant
+            </button>
+          </div>
         </div>
 
         <div className="form">
@@ -76,7 +110,7 @@ export function LoginPage() {
         </div>
 
         {error && (
-          <div className="error-msg">
+          <div className="error-msg" style={{ margin: "0.75rem 0", color: "#b91c1c", fontSize: "0.85rem" }}>
             <span>⚠️</span> {error}
           </div>
         )}
@@ -85,12 +119,12 @@ export function LoginPage() {
           type="submit"
           className="btn-primary"
           disabled={loading}
-          style={{ width: "100%", justifyContent: "center", minHeight: 44, fontSize: 14.5 }}
+          style={{ width: "100%", justifyContent: "center", minHeight: 44, fontSize: 14.5, marginTop: "0.75rem" }}
         >
           {loading ? "Signing in…" : "Continue / ግባ →"}
         </button>
 
-        <div className="auth-footer" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <div className="auth-footer" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" }}>
           <div>
             Don't have an account?{" "}
             <Link to="/signup?role=weaver" style={{ fontWeight: 700 }}>
@@ -102,7 +136,9 @@ export function LoginPage() {
             </Link>
           </div>
           <div>
-            <Link to="/">← Back to Home</Link>
+            <Link to="/" style={{ color: "var(--text-subtle)", fontSize: 13 }}>
+              ← Back to Overview
+            </Link>
           </div>
         </div>
       </form>

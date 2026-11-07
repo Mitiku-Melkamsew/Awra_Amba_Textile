@@ -3,7 +3,7 @@
 /** Splits typed text into words; spaces, hyphens, slashes, dots and commas all separate words. */
 export const searchWords = (text: string) =>
   normalize(text)
-    .split(/[\s\-/Â·,.]+/)
+    .split(/[\s\-/·,.]+/)
     .filter(Boolean);
 
 export const searchHaystack = (text: string) => normalize(text);

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 // snapshotToCsv is pure, but its module also imports the database client; stub that out.
 vi.mock("../lib/prisma.js", () => ({ prisma: {} }));
 
-import { snapshotToCsv } from "./settlement-preview.service.js";
+import { snapshotToCsv, summarizeYarnLines } from "./settlement-preview.service.js";
 
 type Snapshot = Parameters<typeof snapshotToCsv>[0];
 
@@ -79,5 +79,20 @@ describe("snapshotToCsv", () => {
     const csv = snapshotToCsv(snapshot);
     expect(csv.split("\n").filter((l) => l.includes("f-01"))).toHaveLength(1);
     expect(csv).toContain("zig-2");
+  });
+});
+
+describe("summarizeYarnLines", () => {
+  it("uses calculator net quantities and costs after returned yarn", () => {
+    const summary = summarizeYarnLines(
+      [
+        { zigId: "zig-1", netQuantity: 0, totalCost: 0 },
+        { zigId: "zig-1", netQuantity: 3, totalCost: 600 },
+        { zigId: "zig-2", netQuantity: 9, totalCost: 900 },
+      ],
+      "zig-1",
+    );
+
+    expect(summary).toEqual({ quantity: 3, total: 600, averagePrice: 200 });
   });
 });

@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { weaversApi } from "../../api";
 import type { Weaver } from "../../api";
 import { WeaverCard } from "../../components/WeaverCard";
+import { WeaverRatesTransparency } from "../../components/WeaverRatesTransparency";
+import { WeaverWageCalculator } from "../../components/WeaverWageCalculator";
 
 export function WeaversPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const tab: "roster" | "rates" | "calculator" =
+    rawTab === "rates" || rawTab === "calculator" ? rawTab : "roster";
+
   const [weavers, setWeavers] = useState<Weaver[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"name" | "id">(() =>
@@ -61,153 +69,195 @@ export function WeaversPage() {
     }
   }
 
+  function handleTabChange(newTab: "roster" | "rates" | "calculator") {
+    setSearchParams(newTab === "roster" ? {} : { tab: newTab });
+  }
+
   return (
     <div className="page">
       {/* Header */}
       <div className="page-header">
         <div>
-          <p className="eyebrow">አሸጋዮች / Weavers Roster</p>
+          <p className="eyebrow">አሸጋዮች / Artisans & Work Orders</p>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <h1 className="page-title">Weaver Management</h1>
-            <span className="badge badge-green">{weavers.length} Active</span>
+            <h1 className="page-title">Weaver Management & Piece Rates</h1>
+            <span className="badge badge-green">{weavers.length} Active Artisans</span>
           </div>
           <p className="page-subtitle">
-            Manage cooperative artisans, assign work orders (Zigs), and track handwoven production.
+            Manage cooperative artisans, review live fabric piece rates, and calculate quality deduction earnings.
           </p>
         </div>
+        {tab === "roster" && (
+          <button
+            type="button"
+            className={showAdd ? "btn-ghost" : "btn-primary"}
+            onClick={() => {
+              setShowAdd(!showAdd);
+              setAddError("");
+            }}
+          >
+            {showAdd ? "✕ Cancel" : "+ አዲስ አሸጋይ / Add Weaver"}
+          </button>
+        )}
+      </div>
+
+      {/* Navigation Sub-Tabs */}
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
         <button
           type="button"
-          className={showAdd ? "btn-ghost" : "btn-primary"}
-          onClick={() => {
-            setShowAdd(!showAdd);
-            setAddError("");
-          }}
+          className={tab === "roster" ? "tab-pill active" : "tab-pill"}
+          onClick={() => handleTabChange("roster")}
         >
-          {showAdd ? "✕ Cancel" : "+ አዲስ አሸጋይ / Add Weaver"}
+          🧑‍🤝‍🧑 Artisans Roster ({weavers.length})
+        </button>
+        <button
+          type="button"
+          className={tab === "rates" ? "tab-pill active" : "tab-pill"}
+          onClick={() => handleTabChange("rates")}
+        >
+          🏷️ Piece Rates & Pricing Transparency
+        </button>
+        <button
+          type="button"
+          className={tab === "calculator" ? "tab-pill active" : "tab-pill"}
+          onClick={() => handleTabChange("calculator")}
+        >
+          🧮 Wage & Deduction Calculator
         </button>
       </div>
 
-      {/* Add weaver inline form */}
-      {showAdd && (
-        <div className="card" style={{ marginBottom: "1.5rem", border: "1.5px solid var(--accent)", boxShadow: "var(--shadow-md)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <h3 className="section-title" style={{ margin: 0 }}>
-              <span>➕</span> Register New Artisan Weaver
-            </h3>
-            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>All fields except phone/bank are required</span>
-          </div>
-          <form className="form" onSubmit={handleCreate}>
-            <div className="form-row">
-              <label>
-                <span>First name / ስም</span>
-                <input
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="e.g. Abebe"
-                  autoFocus
-                  required
-                />
-              </label>
-              <label>
-                <span>Last name / የአባት ስም</span>
-                <input
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="e.g. Alemu"
-                  required
-                />
-              </label>
-            </div>
+      {/* Tab 2: Rates & Transparency */}
+      {tab === "rates" && <WeaverRatesTransparency />}
 
-            <div className="form-row">
-              <label>
-                <span>Phone number / ስልክ (optional)</span>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+251 9xx xxx xxx"
-                />
-              </label>
-              <label>
-                <span>Bank account number (optional)</span>
-                <input
-                  value={bankAccount}
-                  onChange={(e) => setBankAccount(e.target.value)}
-                  placeholder="e.g. CBE 100012345678"
-                />
-              </label>
-            </div>
+      {/* Tab 3: Wage & Deduction Calculator */}
+      {tab === "calculator" && <WeaverWageCalculator />}
 
-            {addError && (
-              <div className="error-msg">
-                <span>⚠️</span> {addError}
+      {/* Tab 1: Artisans Roster */}
+      {tab === "roster" && (
+        <>
+          {/* Add weaver inline form */}
+          {showAdd && (
+            <div className="card" style={{ marginBottom: "1.5rem", border: "1.5px solid var(--accent)", boxShadow: "var(--shadow-md)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                <h3 className="section-title" style={{ margin: 0 }}>
+                  <span>➕</span> Register New Artisan Weaver
+                </h3>
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>All fields except phone/bank are required</span>
               </div>
-            )}
+              <form className="form" onSubmit={handleCreate}>
+                <div className="form-row">
+                  <label>
+                    <span>First name / ስም</span>
+                    <input
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="e.g. Abebe"
+                      autoFocus
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span>Last name / የአባት ስም</span>
+                    <input
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="e.g. Alemu"
+                      required
+                    />
+                  </label>
+                </div>
 
-            <div className="form-actions">
-              <button type="submit" className="btn-primary" disabled={saving}>
-                {saving ? "Creating…" : "Create Weaver / መዝግብ"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => setShowAdd(false)}
-              >
-                Cancel
-              </button>
+                <div className="form-row">
+                  <label>
+                    <span>Phone number / ስልክ (optional)</span>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+251 9xx xxx xxx"
+                    />
+                  </label>
+                  <label>
+                    <span>Bank account number (optional)</span>
+                    <input
+                      value={bankAccount}
+                      onChange={(e) => setBankAccount(e.target.value)}
+                      placeholder="e.g. CBE 100012345678"
+                    />
+                  </label>
+                </div>
+
+                {addError && (
+                  <div className="error-msg">
+                    <span>⚠️</span> {addError}
+                  </div>
+                )}
+
+                <div className="form-actions">
+                  <button type="submit" className="btn-primary" disabled={saving}>
+                    {saving ? "Creating…" : "Create Weaver / መዝግብ"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => setShowAdd(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
             </div>
-          </form>
-        </div>
-      )}
+          )}
 
-      {/* Toolbar */}
-      <div className="toolbar">
-        <input
-          className="search-input"
-          placeholder="🔍  Search by weaver name, phone number, or ID…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as "name" | "id")}
-          style={{ height: 42, width: 160 }}
-        >
-          <option value="name">Sort: Name (A–Z)</option>
-          <option value="id">Sort: Weaver ID</option>
-        </select>
-      </div>
-
-      {/* Error banner */}
-      {error && (
-        <div className="error-msg" style={{ marginBottom: "1rem" }}>
-          <span>⚠️</span> {error}
-        </div>
-      )}
-
-      {/* Weaver list */}
-      <div className="weaver-list">
-        {weavers.length === 0 && !error ? (
-          <div className="empty-state">
-            <span className="empty-icon">🧑‍🤝‍🧑</span>
-            <p style={{ fontWeight: 600, color: "var(--text)" }}>
-              {search ? "No artisans match your search criteria." : "No weavers registered yet."}
-            </p>
-            <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-              {search ? "Try searching for a different name or phone." : "Click '+ Add Weaver' above to register the first artisan."}
-            </span>
-          </div>
-        ) : (
-          weavers.map((weaver) => (
-            <WeaverCard
-              key={weaver.weaverId}
-              weaver={weaver}
-              to={`/admin/weavers/${weaver.weaverId}`}
+          {/* Toolbar */}
+          <div className="toolbar">
+            <input
+              className="search-input"
+              placeholder="🔍  Search by weaver name, phone number, or ID…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
-          ))
-        )}
-      </div>
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as "name" | "id")}
+              style={{ height: 42, width: 160 }}
+            >
+              <option value="name">Sort: Name (A–Z)</option>
+              <option value="id">Sort: Weaver ID</option>
+            </select>
+          </div>
+
+          {/* Error banner */}
+          {error && (
+            <div className="error-msg" style={{ marginBottom: "1rem" }}>
+              <span>⚠️</span> {error}
+            </div>
+          )}
+
+          {/* Weaver list */}
+          <div className="weaver-list">
+            {weavers.length === 0 && !error ? (
+              <div className="empty-state">
+                <span className="empty-icon">🧑‍🤝‍🧑</span>
+                <p style={{ fontWeight: 600, color: "var(--text)" }}>
+                  {search ? "No artisans match your search criteria." : "No weavers registered yet."}
+                </p>
+                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                  {search ? "Try searching for a different name or phone." : "Click '+ Add Weaver' above to register the first artisan."}
+                </span>
+              </div>
+            ) : (
+              weavers.map((weaver) => (
+                <WeaverCard
+                  key={weaver.weaverId}
+                  weaver={weaver}
+                  to={`/admin/weavers/${weaver.weaverId}`}
+                />
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

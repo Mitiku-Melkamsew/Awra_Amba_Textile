@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { numberToAmharicWords } from "../utils/amharic-words.js";
 import { formatDateDDMMYY } from "../utils/format-date.js";
 import { groupReturnsByFabricType } from "./fabric-line-grouping.js";
+import type { LineOverride } from "./calculation.service.js";
 import {
   batchCommitSettlements,
   discoverReturnedSettlementBundles,
@@ -25,8 +26,25 @@ function fabricTypeLabel(fabricVariant: {
   return parts.join(" · ");
 }
 
-export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
-  const bundles = await discoverReturnedSettlementBundles(cutoffDate);
+export function summarizeYarnLines(
+  yarnLines: Array<{ zigId: string; netQuantity: number; totalCost: number }>,
+  zigId: string,
+) {
+  const lines = yarnLines.filter((line) => line.zigId === zigId);
+  const quantity = lines.reduce((sum, line) => sum + line.netQuantity, 0);
+  const total = Number(lines.reduce((sum, line) => sum + line.totalCost, 0).toFixed(2));
+  return {
+    quantity,
+    total,
+    averagePrice: quantity > 0 ? Math.round(total / quantity) : 0,
+  };
+}
+
+export async function buildDetailedBatchSnapshot(
+  cutoffDate?: Date | null,
+  overrides: LineOverride[] = [],
+) {
+  const bundles = await discoverReturnedSettlementBundles(cutoffDate, overrides);
   const returnIds = bundles.flatMap((b) => b.returnIds);
   const yarnIds = bundles.flatMap((b) => b.yarnGivenIds);
 
@@ -61,10 +79,8 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
         .map((id) => yarnById.get(id))
         .filter((y) => y && y.zigId === zigId);
 
-      const yarnQty = zigYarn.reduce((sum, y) => sum + Number(y!.quantity), 0);
-      const yarnTotal = Math.round(
-        zigYarn.reduce((sum, y) => sum + Number(y!.quantity) * Number(y!.unitPrice), 0),
-      );
+      const { quantity: yarnQty, total: yarnTotal, averagePrice: yarnAvgPrice } =
+        summarizeYarnLines(bundle.preview.yarnLines, zigId);
       const fabricTotal = Math.round(
         bundle.preview.lineItems
           .filter((li) => li.zigId === zigId)
@@ -99,7 +115,7 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
         }),
         yarnQty,
         yarnTotal,
-        yarnAvgPrice: yarnQty > 0 ? Math.round(yarnTotal / yarnQty) : 0,
+        yarnAvgPrice,
         fabricTotal,
         netProfit,
       };
@@ -111,10 +127,11 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
       zigIds: bundle.zigIds,
       returnIds: bundle.returnIds,
       yarnGivenIds: bundle.yarnGivenIds,
+      overrides: bundle.overrides,
       saleIds: [],
       returnCount: bundle.returnIds.length,
       yarnCount: bundle.yarnGivenIds.length,
-      netSettlement: Math.round(bundle.preview.netSettlement),
+      netSettlement: Number(bundle.preview.netSettlement.toFixed(2)),
       lineItems: bundle.preview.lineItems,
       yarnDebits: bundle.preview.yarnDebits,
       zigDetails,
@@ -123,7 +140,7 @@ export async function buildDetailedBatchSnapshot(cutoffDate?: Date | null) {
     };
   });
 
-  const grandTotal = Math.round(weavers.reduce((sum, w) => sum + w.netSettlement, 0));
+  const grandTotal = Number(weavers.reduce((sum, w) => sum + w.netSettlement, 0).toFixed(2));
 
   return {
     weavers,
@@ -153,20 +170,23 @@ export function withGroupedReturns(snapshot: BatchSnapshot) {
 export async function createSettlementPreview(
   createdByUserId: number,
   cutoffDate?: Date | null,
+  overrides: LineOverride[] = [],
 ) {
-  const snapshot = await buildDetailedBatchSnapshot(cutoffDate);
-  const previewId = `preview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const snapshot = await buildDetailedBatchSnapshot(cutoffDate, overrides);
   const persistedSnapshot = withGroupedReturns(snapshot);
-  await prisma.settlementPreview.create({
+  const batch = await prisma.settlementBatch.create({
     data: {
-      previewId,
       snapshot: persistedSnapshot as unknown as Prisma.InputJsonValue,
+      totalAmount: snapshot.grandTotal,
       createdByUserId,
     },
   });
   return {
-    previewId,
+    batchId: batch.batchId,
+    previewId: String(batch.batchId),
+    status: batch.status,
     ...persistedSnapshot,
+    generatedAt: batch.createdAt,
   };
 }
 
@@ -314,15 +334,26 @@ export function snapshotToCsv(snapshot: BatchSnapshot): string {
   return `\uFEFF${lines.join("\n")}`;
 }
 
+export async function exportBatchSettlementCsv(batchId: number): Promise<string | null> {
+  const batch = await prisma.settlementBatch.findUnique({
+    where: { batchId },
+    select: { snapshot: true },
+  });
+  if (!batch) return null;
+  return snapshotToCsv(batch.snapshot as unknown as BatchSnapshot);
+}
+
 export async function commitBatchSettlementPreview(params: {
   recordedByUserId: number;
   paymentMethod?: string;
   cutoffDate?: Date | null;
+  batchId?: number;
 }) {
   const bundles = await discoverReturnedSettlementBundles(params.cutoffDate);
   const eligibleBundles = bundles.filter((b) => !b.preview.isBlocked);
   return batchCommitSettlements({
     bundles: eligibleBundles,
+    batchId: params.batchId,
     recordedByUserId: params.recordedByUserId,
     paymentMethod: params.paymentMethod,
   });

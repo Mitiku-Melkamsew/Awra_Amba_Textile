@@ -8,3 +8,18 @@ _srs_unpacked/
 _srs_temp.zip
 postgres_data/
 terminals/
+
+# Flutter/Dart generated files
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/*.iml
+**/.idea/
+**/GeneratedPluginRegistrant.*
+**/android/.gradle/
+**/android/local.properties
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/macos/Flutter/ephemeral/

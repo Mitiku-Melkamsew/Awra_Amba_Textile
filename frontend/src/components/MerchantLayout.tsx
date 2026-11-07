@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const links = [
@@ -8,11 +8,6 @@ const links = [
 
 export function MerchantLayout() {
   const { user, logout } = useAuth();
-  const location = useLocation();
-
-  const currentLink = links.find((l) =>
-    l.end ? location.pathname === l.to : location.pathname.startsWith(l.to)
-  );
 
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
@@ -54,6 +49,9 @@ export function MerchantLayout() {
         </nav>
 
         <div className="sidebar-footer">
+          <div className="sidebar-status-pill merchant">
+            <span className="status-indicator-dot" /> Active Commercial Buyer
+          </div>
           <div className="sidebar-user">
             <div
               className="sidebar-user-avatar"
@@ -87,23 +85,6 @@ export function MerchantLayout() {
 
       {/* ── Main Content Area ── */}
       <main className="main-content" style={{ background: "#F8FAFC" }}>
-        <header className="topbar" style={{ background: "rgba(255, 255, 255, 0.9)", borderColor: "#E2E8F0" }}>
-          <div className="topbar-left">
-            <span className="topbar-brand-chip" style={{ background: "#E0F2FE", color: "#0369A1" }}>
-              <span>🏬</span> Merchant Portal / የነጋዴ ፖርታል
-            </span>
-            <span className="topbar-title">
-              {currentLink ? `${currentLink.label} (${currentLink.amharic})` : "Portal"}
-            </span>
-          </div>
-
-          <div className="topbar-right">
-            <div className="topbar-status" style={{ background: "#F0F9FF", color: "#0284C7", borderColor: "#BAE6FD" }}>
-              Active Commercial Buyer
-            </div>
-          </div>
-        </header>
-
         <Outlet />
       </main>
     </div>

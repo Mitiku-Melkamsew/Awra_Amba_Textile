@@ -105,7 +105,7 @@
   --shadow-glow:        0 0 24px rgba(234, 88, 12, 0.18);
 
   /* Typography */
-  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', 'Noto Sans Ethiopic', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
   color: var(--text);
   background: var(--bg);
@@ -372,79 +372,55 @@ a:hover {
   scroll-behavior: smooth;
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 2rem;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  flex-shrink: 0;
-}
-
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.topbar-brand-chip {
+/* Sidebar Live Status Pill */
+.sidebar-status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent);
-  background: var(--brand-light);
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-full);
-}
-
-.topbar-title {
-  font-size: 14px;
+  gap: 0.45rem;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text-muted);
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.topbar-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--green);
-  background: var(--green-bg);
-  border: 1px solid var(--green-border);
-  padding: 0.25rem 0.65rem;
+  color: #34D399;
+  padding: 0.2rem 0.55rem;
+  margin-bottom: 0.4rem;
   border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  width: fit-content;
 }
 
-.topbar-status::before {
-  content: "";
+.sidebar-status-pill .status-indicator-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--green);
+  background: #10B981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
   display: inline-block;
+  flex-shrink: 0;
+}
+
+.sidebar-status-pill.weaver {
+  color: #6EE7B7;
+  background: rgba(110, 231, 183, 0.12);
+  border-color: rgba(110, 231, 183, 0.25);
+}
+
+.sidebar-status-pill.merchant {
+  color: #38BDF8;
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+.sidebar-status-pill.merchant .status-indicator-dot {
+  background: #0284C7;
+  box-shadow: 0 0 8px rgba(2, 132, 199, 0.8);
 }
 
 .page {
   flex: 1 0 auto;
-  padding: 2rem 2.25rem 4rem;
+  padding: 2.25rem 2.5rem 4rem;
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 65px);
+  min-height: 100vh;
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
@@ -986,6 +962,123 @@ tbody tr:hover {
   background: var(--red-bg);
   color: var(--red-fg);
   border: 1px solid var(--red-border);
+}
+
+/* Direct transaction backend status values */
+.badge.unpaid {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+}
+
+.badge.partially_paid {
+  background: var(--amber-bg);
+  color: var(--amber-fg);
+  border: 1px solid var(--amber-border);
+}
+
+.badge.paid {
+  background: var(--green-bg);
+  color: var(--green-fg);
+  border: 1px solid var(--green-border);
+}
+
+/* Clickable table row */
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.clickable-row:hover {
+  background: rgba(234, 88, 12, 0.05) !important;
+}
+
+/* Modal Dialog */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-dialog {
+  background: var(--surface);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 500px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  animation: modalPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  padding: 1.15rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+  line-height: 1;
+}
+
+.modal-close-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1900,14 +1993,8 @@ tbody tr:hover {
 
   .main-content {
     height: auto;
-    min-height: calc(100vh - 60px);
+    min-height: 100vh;
     overflow: visible;
-  }
-
-  .topbar {
-    position: sticky;
-    top: 57px;
-    padding: 0.75rem 1rem;
   }
 
   .page {

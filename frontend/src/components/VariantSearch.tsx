@@ -1,5 +1,9 @@
 ﻿import { useMemo, useState } from "react";
-import { matchesAllWords, searchHaystack, searchWords } from "../utils/searchMatch";
+import {
+  matchesAllWords,
+  searchHaystack,
+  searchWords,
+} from "../utils/searchMatch";
 
 interface VariantSearchProps<T> {
   label: string;
@@ -38,7 +42,13 @@ export function VariantSearch<T>({
   const [active, setActive] = useState(0);
 
   const indexed = useMemo(
-    () => items.map((item) => ({ item, haystack: searchHaystack(`${getLabel(item)} ${getSearchText?.(item) ?? ""}`) })),
+    () =>
+      items.map((item) => ({
+        item,
+        haystack: searchHaystack(
+          `${getLabel(item)} ${getSearchText?.(item) ?? ""}`,
+        ),
+      })),
     [items, getLabel, getSearchText],
   );
 
@@ -46,9 +56,13 @@ export function VariantSearch<T>({
   const results =
     words.length === 0
       ? []
-      : indexed.filter((entry) => matchesAllWords(entry.haystack, words)).slice(0, maxResults);
+      : indexed
+          .filter((entry) => matchesAllWords(entry.haystack, words))
+          .slice(0, maxResults);
 
-  const selected = selectedId ? items.find((item) => getId(item) === selectedId) : undefined;
+  const selected = selectedId
+    ? items.find((item) => getId(item) === selectedId)
+    : undefined;
 
   function choose(item: T) {
     onSelect(item);
@@ -78,7 +92,7 @@ export function VariantSearch<T>({
         <input
           type="search"
           value={query}
-          placeholder={placeholder ?? "Type a nameâ€¦"}
+          placeholder={placeholder ?? "Type a name..."}
           autoComplete="off"
           role="combobox"
           aria-expanded={open && results.length > 0}
@@ -109,14 +123,20 @@ export function VariantSearch<T>({
       {open && words.length > 0 && (
         <ul className="variant-search-list" role="listbox">
           {results.length === 0 ? (
-            <li className="variant-search-empty">No match. Fill in the details below instead.</li>
+            <li className="variant-search-empty">
+              No match. Fill in the details below instead.
+            </li>
           ) : (
             results.map((entry, index) => (
               <li
                 key={getId(entry.item)}
                 role="option"
                 aria-selected={index === active}
-                className={index === active ? "variant-search-option active" : "variant-search-option"}
+                className={
+                  index === active
+                    ? "variant-search-option active"
+                    : "variant-search-option"
+                }
                 // mousedown (not click) so the choice lands before the input loses focus
                 onMouseDown={(e) => {
                   e.preventDefault();

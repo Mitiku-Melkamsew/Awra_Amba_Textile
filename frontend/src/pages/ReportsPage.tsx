@@ -20,7 +20,7 @@ export function ReportsPage() {
     paymentsApi
       .list()
       .then(setPayments)
-      .catch((err) => setError(err.message))
+      .catch((err: any) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 

@@ -1,5 +1,6 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { recordAudit } from "./audit.service.js";
+import { AuditService } from "../application/services/audit.service.js";
 import {
   buildSettlementPreview,
   type LineOverride,
@@ -9,6 +10,7 @@ import {
 export type SettlementOverride = LineOverride;
 
 export interface CommitSettlementInput {
+  batchId?: number;
   weaverUserId: number;
   returnIds: number[];
   yarnGivenIds: number[];
@@ -16,10 +18,15 @@ export interface CommitSettlementInput {
   notes?: string;
   recordedByUserId: number;
   overrides?: SettlementOverride[];
+  expectedNetSettlement?: number;
+  markAsPaid?: boolean;
 }
 
-export async function commitSettlement(input: CommitSettlementInput) {
-  return prisma.$transaction(async (tx) => {
+export async function commitSettlement(
+  input: CommitSettlementInput,
+  transaction?: Prisma.TransactionClient,
+) {
+  const execute = async (tx: Prisma.TransactionClient) => {
     // 1. Fetch eligible returns belonging to the weaver and not yet settled
     const returns = await tx.fabricReturn.findMany({
       where: {
@@ -33,7 +40,9 @@ export async function commitSettlement(input: CommitSettlementInput) {
             fabric: true,
           },
         },
-        workOrder: true,
+        workOrder: {
+          include: { weaver: { select: { fullName: true } } },
+        },
       },
     });
 
@@ -117,17 +126,40 @@ export async function commitSettlement(input: CommitSettlementInput) {
       throw new Error(`BLOCKED: ${preview.blockReasons.join(" | ")}`);
     }
 
+    if (
+      input.expectedNetSettlement !== undefined &&
+      Math.abs(preview.netSettlement - input.expectedNetSettlement) > 0.01
+    ) {
+      throw new Error(
+        "CONFLICT: Settlement totals changed after preview. Generate a new preview before committing.",
+      );
+    }
+
+    const batch = input.batchId
+      ? await tx.settlementBatch.findUniqueOrThrow({ where: { batchId: input.batchId } })
+      : await tx.settlementBatch.create({
+          data: {
+            status: "draft",
+            snapshot: preview as object,
+            totalAmount: preview.netSettlement,
+            createdByUserId: input.recordedByUserId,
+          },
+        });
+
+    const shouldPay = input.markAsPaid === true;
+
     // 6. Create settlement header
     const settlement = await tx.settlement.create({
       data: {
+        batchId: batch.batchId,
         weaverUserId: input.weaverUserId,
-        status: "paid",
+        status: shouldPay ? "paid" : "draft",
         grossFabricValue: preview.grossFabricValue,
         totalDeductions: preview.totalDeductions,
         totalYarnCost: preview.totalYarnCost,
         netAmount: preview.netSettlement,
         createdByUserId: input.recordedByUserId,
-        paidAt: new Date(),
+        paidAt: shouldPay ? new Date() : null,
         notes: input.notes,
       },
     });
@@ -180,28 +212,40 @@ export async function commitSettlement(input: CommitSettlementInput) {
       });
     }
 
-    // 9. Record payment
-    const payment = await tx.settlementPayment.create({
+    // 9. Record payment only if explicitly requested
+    let payment: any = null;
+    if (shouldPay) {
+      payment = await tx.settlementPayment.create({
+        data: {
+          settlementId: settlement.settlementId,
+          amount: preview.netSettlement,
+          paymentMethod: input.paymentMethod,
+          paymentDate: new Date(),
+          recordedByUserId: input.recordedByUserId,
+          notes: input.notes,
+        },
+      });
+
+      // 10. Reconcile all included work orders
+      await tx.workOrder.updateMany({
+        where: { zigId: { in: zigIds } },
+        data: { status: "reconciled" },
+      });
+    }
+
+    await tx.settlementBatch.update({
+      where: { batchId: batch.batchId },
       data: {
-        settlementId: settlement.settlementId,
-        amount: preview.netSettlement,
-        paymentMethod: input.paymentMethod,
-        paymentDate: new Date(),
-        recordedByUserId: input.recordedByUserId,
-        notes: input.notes,
+        status: input.batchId ? undefined : "committed",
+        committedAt: input.batchId ? undefined : new Date(),
+        amountPaid: shouldPay ? { increment: preview.netSettlement } : undefined,
       },
     });
 
-    // 10. Reconcile all included work orders
-    await tx.workOrder.updateMany({
-      where: { zigId: { in: zigIds } },
-      data: { status: "reconciled" },
-    });
-
-    await recordAudit(
+    await AuditService.record(
       {
         actorUserId: input.recordedByUserId,
-        action: "settlement.paid",
+        action: shouldPay ? "settlement.paid" : "settlement.created",
         entityType: "settlement",
         entityId: settlement.settlementId,
         details: { weaverUserId: input.weaverUserId, amount: Number(preview.netSettlement) },
@@ -211,10 +255,16 @@ export async function commitSettlement(input: CommitSettlementInput) {
 
     return {
       settlementId: settlement.settlementId,
-      paymentId: payment.settlementPaymentId,
-      amount: Number(payment.amount),
-      reconciledZigIds: zigIds,
+      batchId: batch.batchId,
+      weaverUserId: input.weaverUserId,
+      weaverName: returns[0]?.workOrder.weaver.fullName ?? "",
+      paymentId: payment?.settlementPaymentId ?? null,
+      amount: Number(preview.netSettlement),
+      status: settlement.status,
+      reconciledZigIds: shouldPay ? zigIds : [],
       preview,
     };
-  });
+  };
+
+  return transaction ? execute(transaction) : prisma.$transaction(execute);
 }

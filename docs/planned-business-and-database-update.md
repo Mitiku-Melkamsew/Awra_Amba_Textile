@@ -154,9 +154,9 @@ returns recorded
 → settlement reconciled
 ```
 
-A single full payment belongs to one weaver. A batch preview may contain
-multiple zigs for that weaver, but zigs belonging to different weavers require
-separate payments. Weaver agreement and dispute are handled in person and are
+A settlement batch may contain multiple weavers. It contains one settlement
+record per weaver, and each settlement may contain multiple zigs for that
+weaver. Zigs belonging to different weavers require separate payments. Weaver agreement and dispute are handled in person and are
 not application capabilities for now.
 
 The settlement must preserve the calculation used for payment. It must remain
@@ -665,15 +665,16 @@ returned to a weaver are recorded before settlement.
 ### Settlement routes
 
 ```text
-POST /settlements/preview
-GET  /settlements/preview/:id
+POST /settlements/batches
+GET  /settlements/batches/:id
 POST /settlements/:id/agree
 POST /settlements/:id/pay
 GET  /settlements
 GET  /settlements/:id
 ```
 
-Preview and committed settlement data must use the same calculation result.
+The persisted settlement batch snapshot and committed settlement data must use
+the same calculation result.
 
 ### Direct transaction routes
 

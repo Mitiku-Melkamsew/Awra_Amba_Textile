@@ -15,17 +15,18 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function ZigCard({ order, to }: ZigCardProps) {
-  const variant = order.fabricVariant;
-  const warp = variant.warpColor?.name;
-  const weft = variant.weftColor?.name;
-  const design = variant.design?.name;
+  const variant: any = order.fabricVariant ?? { fabric: order.fabric };
+  const warp = variant?.warpColor?.name;
+  const weft = variant?.weftColor?.name;
+  const design = variant?.design?.name;
+  const zigId = order.zigId ?? String(order.workOrderId);
 
   return (
     <Link to={to} className="zig-card">
       <div className="zig-card-top">
         <span className="zig-card-id" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
           <span style={{ color: "var(--accent)", fontSize: "12px" }}>#</span>
-          {order.zigId}
+          {zigId}
         </span>
         <span className={`badge ${order.status}`}>
           {STATUS_LABELS[order.status] ?? order.status}
@@ -33,7 +34,7 @@ export function ZigCard({ order, to }: ZigCardProps) {
       </div>
 
       <p className="zig-card-product">
-        {variant.fabric?.name ?? variant.product?.name ?? "Handwoven Fabric"}
+        {variant?.fabric?.name ?? variant?.product?.name ?? order.fabric?.name ?? "Handwoven Fabric"}
       </p>
 
       {(warp || weft || design) && (
@@ -66,7 +67,7 @@ export function ZigCard({ order, to }: ZigCardProps) {
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px solid var(--border-subtle)" }}>
         <span style={{ fontSize: "12px", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-          <span>📅</span> {formatDateDDMMYY(order.dateIssued)}
+          <span>📅</span> {formatDateDDMMYY(order.dateIssued ?? order.assignedDate ?? new Date())}
         </span>
         {order._count && (
           <div style={{ display: "flex", gap: "0.4rem", fontSize: "11.5px", fontWeight: 600, color: "var(--text-muted)" }}>

@@ -135,6 +135,34 @@ export function TransactionFormPage() {
         return;
       }
 
+      if (txnType === "fabric_sale") {
+        for (const l of lines as any[]) {
+          if (l.fabricVariantId) {
+            const v = fabricVariants.find((fv) => fv.fabricVariantId === l.fabricVariantId);
+            const stock = v ? Number((v as any).stockSnapshot ?? 0) : 0;
+            if (l.quantity > stock) {
+              setError(`Cannot sell ${l.quantity} pcs of "${v?.sku ?? "fabric"}": available stock is ${stock} pcs.`);
+              setSaving(false);
+              return;
+            }
+          }
+        }
+      }
+
+      if (txnType === "yarn_sale") {
+        for (const l of lines as any[]) {
+          if (l.yarnVariantId) {
+            const v = yarnVariants.find((yv) => yv.yarnVariantId === l.yarnVariantId);
+            const stock = v ? Number((v as any).stockSnapshot ?? 0) : 0;
+            if (l.quantity > stock) {
+              setError(`Cannot sell ${l.quantity} pieces of "${v?.sku ?? "yarn"}": available stock is ${stock} pieces.`);
+              setSaving(false);
+              return;
+            }
+          }
+        }
+      }
+
       const txn = await transactionsApi.create({
         transactionId,
         type: txnType,
@@ -148,7 +176,7 @@ export function TransactionFormPage() {
         notes: notes || undefined,
         lines,
       });
-      navigate(`/admin/transactions/${txn.transactionId}`);
+      navigate(`/admin/transactions/${txn.transactionId ?? txn.directTransactionId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save transaction");
     } finally {
@@ -312,6 +340,7 @@ export function TransactionFormPage() {
               lookup={catalogLookup}
               fabricVariants={fabricVariants}
               defaultEntryMode={isFabricPurchase ? "catalog" : "variant"}
+              txnType={txnType}
             />
           ) : (
             <YarnLinesEditor
@@ -319,6 +348,7 @@ export function TransactionFormPage() {
               onChange={setYarnLines}
               lookup={catalogLookup}
               yarnVariants={yarnVariants}
+              txnType={txnType}
             />
           )}
         </div>

@@ -23,20 +23,39 @@ interface FabricReturnFormProps {
   onCancel?: () => void;
 }
 
-export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: FabricReturnFormProps) {
+export function FabricReturnForm({
+  order,
+  onSaved,
+  editReturn,
+  onCancel,
+}: FabricReturnFormProps) {
   const isEdit = Boolean(editReturn);
-  const product = order.fabricVariant.product ?? {
-    productId: order.fabricVariant.fabric?.fabricId ?? 0,
-    name: order.fabricVariant.fabric?.name ?? "Fabric",
+  const fv = order.fabricVariant ?? ({} as any);
+  const product = fv.product ?? {
+    productId: fv.fabric?.fabricId ?? fv.fabricId ?? order.fabricVariantId ?? 0,
+    name: fv.fabric?.name ?? "Fabric",
     category: "fabric",
     basePrice: "0",
-    standardLengthCm: order.fabricVariant.fabric?.standardLengthCm ? String(order.fabricVariant.fabric.standardLengthCm) : null,
-    standardWidthCm: order.fabricVariant.fabric?.standardWidthCm ? String(order.fabricVariant.fabric.standardWidthCm) : null,
+    standardLengthCm: fv.fabric?.standardLengthCm
+      ? String(fv.fabric.standardLengthCm)
+      : null,
+    standardWidthCm: fv.fabric?.standardWidthCm
+      ? String(fv.fabric.standardWidthCm)
+      : null,
   };
-  const fv = order.fabricVariant;
-  const defaultLength = product.standardLengthCm ? Number(product.standardLengthCm) : "";
-  const defaultWidth = product.standardWidthCm ? Number(product.standardWidthCm) : "";
-  const defaultPrice = fv.basePrice ? Number(fv.basePrice) : Number(product.basePrice || 0);
+  const defaultLength = product.standardLengthCm
+    ? Number(product.standardLengthCm)
+    : "";
+  const defaultWidth = product.standardWidthCm
+    ? Number(product.standardWidthCm)
+    : "";
+  const defaultPrice =
+    fv.basePrice ??
+    (fv as any).currentPrice?.weaverUnitPrice ??
+    (fv as any).fabric?.prices?.[0]?.weaverRate ??
+    (fv as any).fabric?.prices?.[0]?.weaverUnitPrice ??
+    product.basePrice ??
+    0;
 
   const [lookup, setLookup] = useState<FabricCatalogLookup>({
     colors: [],
@@ -57,51 +76,81 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([catalogApi.lookup(), catalogApi.fabricVariants()]).then(([data, variants]) => {
-      setLookup(data);
-      setFabricVariants(variants);
+    Promise.all([catalogApi.lookup(), catalogApi.fabricVariants()]).then(
+      ([data, variants]) => {
+        setLookup(data);
+        setFabricVariants(variants);
 
-      if (editReturn) {
-        const rv = editReturn.fabricVariant;
-        setEntryMode("variant");
-        setLine(applyFabricVariantToLine(createFabricLineDraft(data, "variant"), rv));
-        setQuantity(String(editReturn.quantityReturned));
-        setTotalWeight(String(editReturn.totalWeight));
-        setLengthCm(editReturn.lengthCm ? String(editReturn.lengthCm) : "");
-        setWidthCm(editReturn.widthCm ? String(editReturn.widthCm) : "");
-        setUnitPrice(String(editReturn.unitPrice));
-        setRemark(editReturn.remark ?? "");
-        return;
-      }
+        if (editReturn) {
+          const rv = editReturn.fabricVariant ?? fv;
+          setEntryMode("variant");
+          setLine(
+            applyFabricVariantToLine(
+              createFabricLineDraft(data, "variant"),
+              rv as any,
+            ),
+          );
+          setQuantity(String(editReturn.quantityReturned));
+          setTotalWeight(String(editReturn.totalWeight));
+          setLengthCm(editReturn.lengthCm ? String(editReturn.lengthCm) : "");
+          setWidthCm(editReturn.widthCm ? String(editReturn.widthCm) : "");
+          setUnitPrice(String(editReturn.unitPrice));
+          setRemark(editReturn.remark ?? "");
+          return;
+        }
 
-      const draft = createFabricLineDraft(data, "catalog");
-      setLine({
-        ...draft,
-        productId: String(product.productId),
-        warpColorId: fv.warpColor ? String(fv.warpColor.colorId) : draft.warpColorId,
-        weftColorId: fv.weftColor ? String(fv.weftColor.colorId) : draft.weftColorId,
-        designId: fv.design ? String(fv.design.designId) : draft.designId,
-        unitPrice: String(defaultPrice),
-      });
-    });
+        const draft = createFabricLineDraft(data, "catalog");
+        const prodId = String(
+          product.productId ||
+            fv.fabricId ||
+            fv.fabric?.fabricId ||
+            draft.productId ||
+            (data.products?.[0]?.productId ?? ""),
+        );
+        setLine({
+          ...draft,
+          productId: prodId,
+          warpColorId: fv.warpColor
+            ? String(fv.warpColor.colorId)
+            : draft.warpColorId,
+          weftColorId: fv.weftColor
+            ? String(fv.weftColor.colorId)
+            : draft.weftColorId,
+          designId: fv.design ? String(fv.design.designId) : draft.designId,
+          unitPrice: String(defaultPrice),
+        });
+      },
+    );
   }, [product.productId, fv, defaultPrice, editReturn]);
 
-  const fabricProducts = (lookup.products?.length ? lookup.products : []).filter(
-    (p) => p.category === "fabric" || !p.category,
-  );
+  const fabricProducts = (
+    lookup.products?.length ? lookup.products : []
+  ).filter((p) => p.category === "fabric" || !p.category);
 
   /** Readable name of what is being saved: the chosen variant, or the typed details on the zig's product. */
   function savedFabricName(): string {
     const chosen =
       entryMode === "variant" && line.fabricVariantId
-        ? fabricVariants.find((v) => String(v.fabricVariantId) === line.fabricVariantId)
+        ? fabricVariants.find(
+            (v) => String(v.fabricVariantId) === line.fabricVariantId,
+          )
         : undefined;
     if (chosen) return fabricVariantName(chosen);
-    const colorName = (id: string) => lookup.colors.find((c) => String(c.colorId) === id)?.name;
-    const designName = lookup.designs.find((d) => String(d.designId) === line.designId)?.name;
+    const colorName = (id: string) =>
+      lookup.colors.find((c) => String(c.colorId) === id)?.name;
+    const designName = lookup.designs.find(
+      (d) => String(d.designId) === line.designId,
+    )?.name;
     const chosenProduct =
-      lookup.products.find((p) => String(p.productId) === line.productId)?.name ?? product.name;
-    return fabricNameFromParts(chosenProduct, colorName(line.warpColorId), colorName(line.weftColorId), designName);
+      lookup.products.find((p) => String(p.productId) === line.productId)
+        ?.name ?? product?.name ?? fv?.fabric?.name ?? "Fabric";
+    const name = fabricNameFromParts(
+      chosenProduct || "Fabric",
+      colorName(line.warpColorId),
+      colorName(line.weftColorId),
+      designName,
+    );
+    return name && name !== "undefined" ? name : "Fabric";
   }
 
   function editDetails(patch: Partial<FabricLineDraft>) {
@@ -114,64 +163,77 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
     setSaving(true);
     setError("");
     try {
+      const zigId = String(order.zigId ?? (order as any).workOrderId ?? "");
+      const fvId =
+        (entryMode === "variant" && line.fabricVariantId
+          ? Number(line.fabricVariantId)
+          : undefined) ??
+        fv?.fabricVariantId ??
+        order.fabricVariantId;
+
+      const pId = line.productId
+        ? Number(line.productId)
+        : product.productId
+          ? Number(product.productId)
+          : undefined;
+      const wColorId = line.warpColorId
+        ? Number(line.warpColorId)
+        : (fv.warpColor?.colorId ?? undefined);
+      const wfColorId = line.weftColorId
+        ? Number(line.weftColorId)
+        : (fv.weftColor?.colorId ?? undefined);
+      const dId = line.designId
+        ? Number(line.designId)
+        : (fv.design?.designId ?? null);
+
       const payload =
         entryMode === "variant" && line.fabricVariantId
           ? {
-              zigId: order.zigId,
-              fabricVariantId: Number(line.fabricVariantId),
+              zigId,
+              fabricVariantId: fvId,
               quantityReturned: Number(quantity),
               totalWeight: Number(totalWeight),
-              unitPrice: Number(unitPrice),
+              unitPrice: Number(unitPrice || 0),
               lengthCm: lengthCm ? Number(lengthCm) : undefined,
               widthCm: widthCm ? Number(widthCm) : undefined,
               remark: remark || undefined,
             }
           : {
-              zigId: order.zigId,
-              productId: Number(line.productId),
-              warpColorId: Number(line.warpColorId),
-              weftColorId: Number(line.weftColorId),
-              designId: line.designId ? Number(line.designId) : null,
+              zigId,
+              fabricVariantId: fvId,
+              productId: pId,
+              warpColorId: wColorId,
+              weftColorId: wfColorId,
+              designId: dId,
               quantityReturned: Number(quantity),
               totalWeight: Number(totalWeight),
-              unitPrice: Number(unitPrice),
+              unitPrice: Number(unitPrice || 0),
               lengthCm: lengthCm ? Number(lengthCm) : undefined,
               widthCm: widthCm ? Number(widthCm) : undefined,
               remark: remark || undefined,
             };
 
       if (isEdit && editReturn) {
-        const createPayload = payload as Parameters<typeof fabricReturnsApi.create>[0];
         const updatePayload = {
-          fabricVariantId: createPayload.fabricVariantId,
-          productId: createPayload.productId,
-          warpColorId: createPayload.warpColorId,
-          weftColorId: createPayload.weftColorId,
-          designId: createPayload.designId,
-          quantityReturned: createPayload.quantityReturned,
-          totalWeight: createPayload.totalWeight,
-          unitPrice: createPayload.unitPrice,
-          lengthCm: createPayload.lengthCm,
-          widthCm: createPayload.widthCm,
-          remark: createPayload.remark,
+          quantityReturned: Number(quantity),
+          totalWeight: Number(totalWeight),
+          unitPrice: Number(unitPrice || 0),
+          remark: remark || undefined,
         };
-        const result = (await fabricReturnsApi.update(editReturn.returnId, updatePayload)) as {
-          variantResolved?: { created: boolean; sku: string };
-        };
-        const msg = result.variantResolved?.created
-          ? `Fabric return updated. New fabric type created: ${savedFabricName()}`
-          : `Fabric return updated.`;
+        const targetId = editReturn.returnId ?? editReturn.fabricReturnId ?? 0;
+        await fabricReturnsApi.update(targetId, updatePayload);
+        const msg = `Fabric return updated.`;
         onSaved(msg);
         return;
       }
 
-      const result = (await fabricReturnsApi.create(payload as Parameters<typeof fabricReturnsApi.create>[0])) as {
-        variantResolved?: { created: boolean; sku: string };
-      };
+      await fabricReturnsApi.create(payload as any);
 
-      const msg = result.variantResolved?.created
-        ? `Fabric recorded. New fabric type created: ${savedFabricName()}`
-        : `Fabric recorded: ${savedFabricName()}`;
+      const savedName = savedFabricName();
+      const msg =
+        savedName && savedName !== "undefined"
+          ? `Fabric recorded: ${savedName}`
+          : "Fabric recorded successfully.";
       onSaved(msg);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -183,17 +245,19 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
   return (
     <form className="card form fabric-form" onSubmit={handleSubmit}>
       <h3>
-        {isEdit ? "áŒ¨áˆ­á‰… áˆ›áˆµá‰°áŠ«áŠ¨áˆ / Edit Fabric Return" : "áŒ¨áˆ­á‰… áˆ˜áˆ˜á‹áŒˆá‰¥ / Record Fabric"}
+        {isEdit
+          ? "ጨርቅ ማስተካከል / Edit Fabric Return"
+          : "ጨርቅ መመዝገብ / Record Fabric"}
       </h3>
       <p className="muted">
-        From zig: {product.name}
-        {fv.warpColor && ` Â· warp: ${fv.warpColor.name}`}
-        {fv.weftColor && ` Â· weft: ${fv.weftColor.name}`}
-        {fv.design && ` Â· ${fv.design.name}`}
+        From zig: {product.name || fv.fabric?.name || "Fabric"}
+        {fv.warpColor && ` · warp: ${fv.warpColor.name}`}
+        {fv.weftColor && ` · weft: ${fv.weftColor.name}`}
+        {fv.design && ` · ${fv.design.name}`}
       </p>
 
       <VariantSearch
-        label="Find existing fabric / áŒ¨áˆ­á‰… áˆáˆáŒ"
+        label="Find existing fabric / ጨርቅ ፈልግ"
         placeholder="Type a name, e.g. medebegna-biret-geberdin"
         items={fabricVariants}
         getId={(v) => String(v.fabricVariantId)}
@@ -203,7 +267,15 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
         onSelect={(variant) => {
           setEntryMode("variant");
           setLine(applyFabricVariantToLine(line, variant));
-          if (variant.basePrice) setUnitPrice(String(variant.basePrice));
+          const vPrice = (variant as any).weaverRate ?? (variant as any).product?.weaverRate ?? variant.basePrice;
+          if (vPrice) setUnitPrice(String(vPrice));
+          const prod = (variant as any).product ?? variant.fabric;
+          if (prod?.standardLengthCm) setLengthCm(String(prod.standardLengthCm));
+          if (prod?.standardWidthCm) setWidthCm(String(prod.standardWidthCm));
+          const stdWt = prod?.standardWeightG;
+          if (stdWt && quantity && !isNaN(Number(quantity))) {
+            setTotalWeight(String(Number(stdWt) * Number(quantity)));
+          }
         }}
         onClear={() => editDetails({})}
       />
@@ -212,13 +284,24 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
       </p>
 
       <label>
-        Fabric type / á‹“á‹­áŠá‰µ
+        Fabric type / ዓይነት
         <select
           value={line.productId}
           onChange={(e) => {
-            const chosen = fabricProducts.find((p) => String(p.productId) === e.target.value);
+            const chosen = fabricProducts.find(
+              (p) => String(p.productId) === e.target.value,
+            );
             editDetails({ productId: e.target.value });
-            if (chosen) setUnitPrice(String(chosen.basePrice));
+            if (chosen) {
+              const r = (chosen as any).weaverRate ?? chosen.basePrice;
+              if (r) setUnitPrice(String(r));
+              if (chosen.standardLengthCm) setLengthCm(String(chosen.standardLengthCm));
+              if (chosen.standardWidthCm) setWidthCm(String(chosen.standardWidthCm));
+              const stdWt = (chosen as any).standardWeightG;
+              if (stdWt && quantity && !isNaN(Number(quantity))) {
+                setTotalWeight(String(Number(stdWt) * Number(quantity)));
+              }
+            }
           }}
         >
           {fabricProducts.map((p) => (
@@ -230,7 +313,10 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
       </label>
       <label>
         Design
-        <select value={line.designId} onChange={(e) => editDetails({ designId: e.target.value })}>
+        <select
+          value={line.designId}
+          onChange={(e) => editDetails({ designId: e.target.value })}
+        >
           <option value="">None</option>
           {lookup.designs.map((d) => (
             <option key={d.designId} value={d.designId}>
@@ -278,17 +364,36 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
       </p>
 
       <label>
-        Quantity
-        <input value={quantity} onChange={(e) => setQuantity(e.target.value)} required />
+        Quantity / ብዛት
+        <input
+          value={quantity}
+          onChange={(e) => {
+            const val = e.target.value;
+            setQuantity(val);
+            const chosen = fabricProducts.find((p) => String(p.productId) === line.productId);
+            const stdWt = (chosen as any)?.standardWeightG ?? (fv as any)?.fabric?.standardWeightG ?? 500;
+            if (val && !isNaN(Number(val)) && (!totalWeight || totalWeight === "0")) {
+              setTotalWeight(String(Math.round(Number(val) * Number(stdWt))));
+            }
+          }}
+          required
+        />
       </label>
       <label>
         Total weight (g)
-        <input value={totalWeight} onChange={(e) => setTotalWeight(e.target.value)} required />
+        <input
+          value={totalWeight}
+          onChange={(e) => setTotalWeight(e.target.value)}
+          required
+        />
       </label>
       <div className="form-row">
         <label>
           Length (cm)
-          <input value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} />
+          <input
+            value={lengthCm}
+            onChange={(e) => setLengthCm(e.target.value)}
+          />
         </label>
         <label>
           Width (cm)
@@ -297,11 +402,19 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
       </div>
       <label>
         Unit price
-        <input value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} required />
+        <input
+          value={unitPrice}
+          onChange={(e) => setUnitPrice(e.target.value)}
+          required
+        />
       </label>
       <label>
         Remark
-        <input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Optional" />
+        <input
+          value={remark}
+          onChange={(e) => setRemark(e.target.value)}
+          placeholder="Optional"
+        />
       </label>
       {error && <p className="error">{error}</p>}
       <div className="form-actions">
@@ -311,7 +424,11 @@ export function FabricReturnForm({ order, onSaved, editReturn, onCancel }: Fabri
           </button>
         )}
         <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "Saving..." : isEdit ? "Update Fabric Return" : "Save Fabric Return"}
+          {saving
+            ? "Saving..."
+            : isEdit
+              ? "Update Fabric Return"
+              : "Save Fabric Return"}
         </button>
       </div>
     </form>

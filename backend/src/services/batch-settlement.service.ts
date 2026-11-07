@@ -1,5 +1,9 @@
 import { prisma } from "../lib/prisma.js";
-import { buildSettlementPreview, type SettlementPreview } from "./calculation.service.js";
+import {
+  buildSettlementPreview,
+  type LineOverride,
+  type SettlementPreview,
+} from "./calculation.service.js";
 import { commitSettlement } from "./settlement.service.js";
 
 export interface WeaverSettlementBundle {
@@ -8,10 +12,39 @@ export interface WeaverSettlementBundle {
   zigIds: string[];
   returnIds: number[];
   yarnGivenIds: number[];
+  overrides: LineOverride[];
   preview: SettlementPreview;
 }
 
-export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null) {
+export function eligibleReturnedZigIds(
+  returnedOrders: Array<{ zigId: string }>,
+  unsettledReturns: Array<{ zigId: string; dateReturned: Date | string }>,
+  cutoffDate?: Date | null,
+): Set<string> {
+  const firstReturnDateByZig = new Map<string, Date>();
+  for (const ret of unsettledReturns) {
+    const date = new Date(ret.dateReturned);
+    const first = firstReturnDateByZig.get(ret.zigId);
+    if (!first || date < first) firstReturnDateByZig.set(ret.zigId, date);
+  }
+
+  const cutoffEnd = cutoffDate ? new Date(cutoffDate) : null;
+  cutoffEnd?.setHours(23, 59, 59, 999);
+
+  return new Set(
+    returnedOrders
+      .filter((order) => {
+        const firstReturn = firstReturnDateByZig.get(order.zigId);
+        return Boolean(firstReturn) && (!cutoffEnd || firstReturn! <= cutoffEnd);
+      })
+      .map((order) => order.zigId),
+  );
+}
+
+export async function discoverReturnedSettlementBundles(
+  cutoffDate?: Date | null,
+  overrides: LineOverride[] = [],
+) {
   // 1. Get all returned work orders
   const returnedOrders = await prisma.workOrder.findMany({
     where: { status: "returned" },
@@ -56,28 +89,8 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
 
   const weightRule = qualityRules.find((q) => q.factor === "weight");
 
-  // 3. Optional cutoff filter by first return date
-  const firstReturnDateByZig = new Map<string, Date>();
-  for (const ret of returns) {
-    const existing = firstReturnDateByZig.get(ret.zigId);
-    const retDate = new Date(ret.dateReturned);
-    if (!existing || retDate < existing) {
-      firstReturnDateByZig.set(ret.zigId, retDate);
-    }
-  }
-
-  const eligibleZigIds = new Set(
-    returnedOrders
-      .filter((o) => {
-        if (!cutoffDate) return true;
-        const firstReturn = firstReturnDateByZig.get(o.zigId);
-        if (!firstReturn) return false;
-        const cutoffEnd = new Date(cutoffDate);
-        cutoffEnd.setHours(23, 59, 59, 999);
-        return firstReturn <= cutoffEnd;
-      })
-      .map((o) => o.zigId),
-  );
+  // Only include zigs with at least one unsettled return; older settled zigs must not re-charge yarn.
+  const eligibleZigIds = eligibleReturnedZigIds(returnedOrders, returns, cutoffDate);
 
   const eligibleOrders = returnedOrders.filter((o) => eligibleZigIds.has(o.zigId));
   const byWeaver = new Map<number, WeaverSettlementBundle>();
@@ -90,6 +103,7 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
         zigIds: [],
         returnIds: [],
         yarnGivenIds: [],
+        overrides: [],
         preview: {
           lineItems: [],
           groupedLines: [],
@@ -121,6 +135,7 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
 
     bundle.returnIds = weaverReturns.map((r) => r.returnId);
     bundle.yarnGivenIds = weaverYarn.map((y) => y.yarnGivenId);
+    bundle.overrides = overrides.filter((override) => bundle.returnIds.includes(override.returnId));
 
     bundle.preview = buildSettlementPreview({
       returns: weaverReturns.map((r) => ({
@@ -156,6 +171,7 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
         zigId: yr.zigId,
         quantity: Number(yr.quantity),
       })),
+      overrides: bundle.overrides,
     });
   }
 
@@ -164,6 +180,7 @@ export async function discoverReturnedSettlementBundles(cutoffDate?: Date | null
 
 export async function batchCommitSettlements(params: {
   bundles: WeaverSettlementBundle[];
+  batchId?: number;
   recordedByUserId: number;
   paymentMethod?: string;
 }) {
@@ -173,6 +190,7 @@ export async function batchCommitSettlements(params: {
       continue;
     }
     const result = await commitSettlement({
+      batchId: params.batchId,
       weaverUserId: bundle.weaverUserId,
       returnIds: bundle.returnIds,
       yarnGivenIds: bundle.yarnGivenIds,

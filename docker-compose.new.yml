@@ -1,4 +1,0 @@
-# Compatibility entry point for the redesign stack.
-# Prefer: docker compose -f docker-compose.redesign.yml up -d --build
-include:
-  - docker-compose.redesign.yml

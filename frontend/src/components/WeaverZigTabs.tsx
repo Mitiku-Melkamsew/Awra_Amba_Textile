@@ -39,12 +39,14 @@ export function WeaverZigTabs({ weaver, zigLinkPrefix, issueZigLink }: WeaverZig
     if (!searchQuery.trim()) return orders;
     const q = searchQuery.toLowerCase().trim();
     return orders.filter(
-      (o) =>
-        o.zigId.toLowerCase().includes(q) ||
-        (o.fabricVariant.fabric?.name && o.fabricVariant.fabric.name.toLowerCase().includes(q)) ||
-        (o.fabricVariant.product?.name && o.fabricVariant.product.name.toLowerCase().includes(q)) ||
-        (o.fabricVariant.warpColor?.name && o.fabricVariant.warpColor.name.toLowerCase().includes(q)) ||
-        (o.fabricVariant.weftColor?.name && o.fabricVariant.weftColor.name.toLowerCase().includes(q))
+      (o: any) =>
+        (o.zigId && o.zigId.toLowerCase().includes(q)) ||
+        String(o.workOrderId).includes(q) ||
+        (o.fabricVariant?.fabric?.name && o.fabricVariant.fabric.name.toLowerCase().includes(q)) ||
+        (o.fabric?.name && o.fabric.name.toLowerCase().includes(q)) ||
+        (o.fabricVariant?.product?.name && o.fabricVariant.product.name.toLowerCase().includes(q)) ||
+        (o.fabricVariant?.warpColor?.name && o.fabricVariant.warpColor.name.toLowerCase().includes(q)) ||
+        (o.fabricVariant?.weftColor?.name && o.fabricVariant.weftColor.name.toLowerCase().includes(q))
     );
   }, [orders, searchQuery]);
 
@@ -147,8 +149,12 @@ export function WeaverZigTabs({ weaver, zigLinkPrefix, issueZigLink }: WeaverZig
 
       {!loading && !error && filteredOrders.length > 0 && (
         <div className="zig-grid">
-          {filteredOrders.map((order) => (
-            <ZigCard key={order.zigId} order={order} to={`${zigLinkPrefix}/${order.zigId}`} />
+          {filteredOrders.map((order: any) => (
+            <ZigCard
+              key={order.zigId ?? order.workOrderId}
+              order={order}
+              to={`${zigLinkPrefix}/${order.zigId ?? order.workOrderId}`}
+            />
           ))}
         </div>
       )}

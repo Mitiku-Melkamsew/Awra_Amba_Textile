@@ -191,6 +191,8 @@ describe("buildSettlementPreview - overrides", () => {
     expect(overridden.lineItems[0].deductionPerPiece).toBe(0);
     expect(overridden.lineItems[0].netCredit).toBe(13000);
     expect(overridden.lineItems[0].remark).toBe("Waived by admin");
+    expect(overridden.groupedLines[0].netFabricValue).toBe(13000);
+    expect(overridden.groupedLines[0].deductionAmount).toBe(0);
     expect(overridden.netSettlement).toBe(13000 + 5000 - 1200 - 300);
   });
 
@@ -299,5 +301,57 @@ describe("buildSettlementPreview - planned update validations & yarn returns", (
     expect(preview.yarnLines[0].totalCost).toBe(300); // 3 * 100
     expect(preview.totalYarnCost).toBe(300);
     expect(preview.netSettlement).toBe(2000 - 300);
+  });
+
+  it("allocates a yarn return only once across multiple issue records", () => {
+    const preview = buildSettlementPreview({
+      returns: [
+        {
+          returnId: 13,
+          zigId: "zig-multiple-yarn-issues",
+          fabricVariantId: 1,
+          quantityReturned: 2,
+          totalWeight: 200,
+          unitPrice: 1000,
+          standardWeightG: 100,
+        },
+      ],
+      yarnGiven: [
+        { yarnGivenId: 6, zigId: "zig-multiple-yarn-issues", yarnVariantId: 4, quantity: 5, unitPrice: 100 },
+        { yarnGivenId: 7, zigId: "zig-multiple-yarn-issues", yarnVariantId: 4, quantity: 5, unitPrice: 200 },
+      ],
+      yarnReturns: [
+        { zigId: "zig-multiple-yarn-issues", yarnVariantId: 4, quantity: 7 },
+      ],
+    });
+
+    expect(preview.yarnLines.map((line) => line.returnedQuantity)).toEqual([5, 2]);
+    expect(preview.yarnLines.map((line) => line.netQuantity)).toEqual([0, 3]);
+    expect(preview.totalYarnCost).toBe(600);
+  });
+
+  it("blocks settlement when returned yarn exceeds issued quantity", () => {
+    const preview = buildSettlementPreview({
+      returns: [
+        {
+          returnId: 14,
+          zigId: "zig-excess-yarn-return",
+          fabricVariantId: 1,
+          quantityReturned: 2,
+          totalWeight: 200,
+          unitPrice: 1000,
+          standardWeightG: 100,
+        },
+      ],
+      yarnGiven: [
+        { yarnGivenId: 8, zigId: "zig-excess-yarn-return", yarnVariantId: 5, quantity: 3, unitPrice: 100 },
+      ],
+      yarnReturns: [
+        { zigId: "zig-excess-yarn-return", yarnVariantId: 5, quantity: 4 },
+      ],
+    });
+
+    expect(preview.isBlocked).toBe(true);
+    expect(preview.blockReasons[0]).toContain("exceeds issued quantity");
   });
 });

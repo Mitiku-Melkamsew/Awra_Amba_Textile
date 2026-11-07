@@ -44,6 +44,11 @@ enum DirectTxnStatus {
   cancelled
 }
 
+enum SettlementBatchStatus {
+  draft
+  committed
+}
+
 // ==========================================
 // USERS & ROLES
 // ==========================================
@@ -69,11 +74,13 @@ model User {
   yarnPurchasesCreated          YarnPurchase[]             @relation("YarnPurchaseCreator")
   settlementsAsWeaver           Settlement[]               @relation("WeaverSettlements")
   settlementsCreated            Settlement[]               @relation("SettlementCreator")
+  settlementBatchesCreated     SettlementBatch[]          @relation("SettlementBatchCreator")
   settlementPaymentsRecorded    SettlementPayment[]        @relation("SettlementPaymentRecorder")
   directTxnsAsWeaver            DirectTransaction[]        @relation("WeaverDirectTxns")
   directTxnsAsMerchant          DirectTransaction[]        @relation("MerchantDirectTxns")
   directTxnsCreated             DirectTransaction[]        @relation("DirectTxnCreator")
   directTxnPaymentsRecorded     DirectTransactionPayment[] @relation("DirectTxnPaymentRecorder")
+  auditLogs                     AuditLog[]                 @relation("AuditActor")
 
   @@map("users")
 }
@@ -368,6 +375,7 @@ model YarnPurchaseLine {
 
 model Settlement {
   settlementId     Int              @id @default(autoincrement()) @map("settlement_id")
+  batchId          Int              @map("batch_id")
   weaverUserId     Int              @map("weaver_user_id")
   status           SettlementStatus @default(draft)
   grossFabricValue Decimal          @map("gross_fabric_value") @db.Decimal(12, 2)
@@ -379,6 +387,7 @@ model Settlement {
   paidAt           DateTime?        @map("paid_at") @db.Timestamptz
   notes            String?
 
+  batch     SettlementBatch      @relation(fields: [batchId], references: [batchId])
   weaver    User                 @relation("WeaverSettlements", fields: [weaverUserId], references: [userId])
   createdBy User                 @relation("SettlementCreator", fields: [createdByUserId], references: [userId])
   lines     SettlementLine[]
@@ -386,6 +395,22 @@ model Settlement {
   payments  SettlementPayment[]
 
   @@map("settlements")
+}
+
+model SettlementBatch {
+  batchId         Int                  @id @default(autoincrement()) @map("batch_id")
+  status          SettlementBatchStatus @default(draft)
+  snapshot        Json
+  totalAmount     Decimal              @default(0) @map("total_amount") @db.Decimal(14, 2)
+  amountPaid      Decimal              @default(0) @map("amount_paid") @db.Decimal(14, 2)
+  createdByUserId Int                  @map("created_by_user_id")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  committedAt     DateTime?            @map("committed_at") @db.Timestamptz
+
+  createdBy   User         @relation("SettlementBatchCreator", fields: [createdByUserId], references: [userId])
+  settlements Settlement[]
+
+  @@map("settlement_batches")
 }
 
 model SettlementLine {
@@ -516,4 +541,20 @@ model DirectTransactionPayment {
   recordedBy  User              @relation("DirectTxnPaymentRecorder", fields: [recordedByUserId], references: [userId])
 
   @@map("direct_transaction_payments")
+}
+
+model AuditLog {
+  auditLogId  Int      @id @default(autoincrement()) @map("audit_log_id")
+  actorUserId Int      @map("actor_user_id")
+  action      String   @db.VarChar(80)
+  entityType  String   @map("entity_type") @db.VarChar(80)
+  entityId    String?  @map("entity_id") @db.VarChar(80)
+  details     Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  actor User @relation("AuditActor", fields: [actorUserId], references: [userId])
+
+  @@index([entityType, entityId])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
 }

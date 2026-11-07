@@ -53,3 +53,8 @@ export function numberToAmharicWords(n: number): string {
 
   return parts.join(" ");
 }
+
+export function formatAmharicAmount(n: number): string {
+  const rounded = Math.round(n);
+  return `${numberToAmharicWords(rounded)} ብር`;
+}

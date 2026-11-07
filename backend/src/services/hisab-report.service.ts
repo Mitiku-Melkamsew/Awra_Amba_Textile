@@ -277,6 +277,24 @@ export async function buildHisabReport(settlementOrPaymentId: number) {
   };
 }
 
+export async function buildHisabReportByPaymentId(paymentId: number) {
+  const payment = await prisma.settlementPayment.findUnique({
+    where: { settlementPaymentId: paymentId },
+    select: { settlementId: true, paymentDate: true, amount: true },
+  });
+  if (!payment) {
+    throw new Error("CONFLICT:Payment not found.");
+  }
+
+  const report = await buildHisabReport(payment.settlementId);
+  return {
+    ...report,
+    paymentId,
+    paymentDate: payment.paymentDate,
+    amount: Number(payment.amount),
+  };
+}
+
 export function hisabToCsv(report: Awaited<ReturnType<typeof buildHisabReport>>): string {
   const header = [
     "weaver_id",

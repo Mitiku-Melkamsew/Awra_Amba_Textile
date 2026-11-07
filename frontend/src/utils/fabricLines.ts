@@ -84,7 +84,7 @@ export const DETAILS_EDITED = { entryMode: "catalog", fabricVariantId: "" } as c
 
 export function parseFabricLines(lines: FabricLineDraft[]): FabricLinePayload[] {
   return lines
-    .filter((line) => Number(line.quantity) > 0 && Number(line.unitPrice) >= 0)
+    .filter((line) => Number.isInteger(Number(line.quantity)) && Number(line.quantity) > 0 && Number(line.unitPrice) >= 0)
     .filter((line) => usesVariant(line) || Boolean(line.productId))
     .map((line) => ({
       ...(usesVariant(line)

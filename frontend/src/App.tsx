@@ -6,31 +6,41 @@ import { RoleRoute } from "./components/RoleRoute";
 import { WeaverLayout } from "./components/WeaverLayout";
 import { MerchantLayout } from "./components/MerchantLayout";
 import { AuthProvider } from "./context/AuthContext";
-import { CalculatorPage } from "./pages/CalculatorPage";
-import { LoginPage } from "./pages/LoginPage";
+
+// Pages
 import { PublicHomePage } from "./pages/PublicHomePage";
+import { LoginPage } from "./pages/LoginPage";
+import { SignUpPage } from "./pages/SignUpPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettlementPage } from "./pages/SettlementPage";
 import { SettlementPreviewPage } from "./pages/admin/SettlementPreviewPage";
 import { SettlementHistoryPage } from "./pages/admin/SettlementHistoryPage";
-import { SignUpPage } from "./pages/SignUpPage";
 import { CatalogPage } from "./pages/admin/CatalogPage";
+import { PricesPage } from "./pages/admin/PricesPage";
+import { QualityRulesPage } from "./pages/admin/QualityRulesPage";
+import { UsersPage } from "./pages/admin/UsersPage";
+import { AuditLogsPage } from "./pages/admin/AuditLogsPage";
 import { HisabPrintPage } from "./pages/admin/HisabPrintPage";
 import { IssueZigPage } from "./pages/admin/IssueZigPage";
+import { StockPage } from "./pages/admin/StockPage";
+import { WeaverProfilePage } from "./pages/admin/WeaverProfilePage";
+import { WeaversPage } from "./pages/admin/WeaversPage";
+import { ZigDetailPage } from "./pages/admin/ZigDetailPage";
 import { TransactionDetailPage } from "./pages/admin/transactions/TransactionDetailPage";
 import { TransactionFormPage } from "./pages/admin/transactions/TransactionFormPage";
 import { TransactionNewPage } from "./pages/admin/transactions/TransactionNewPage";
 import { TransactionTypePage } from "./pages/admin/transactions/TransactionTypePage";
 import { TransactionsHubPage } from "./pages/admin/transactions/TransactionsHubPage";
-import { StockPage } from "./pages/admin/StockPage";
-import { WeaverProfilePage } from "./pages/admin/WeaverProfilePage";
-import { WeaversPage } from "./pages/admin/WeaversPage";
-import { ZigDetailPage } from "./pages/admin/ZigDetailPage";
+
+// Weaver & Merchant Pages
 import { WeaverPaymentsPage } from "./pages/weaver/WeaverPaymentsPage";
 import { WeaverPortalPage } from "./pages/weaver/WeaverPortalPage";
 import { WeaverZigDetailPage } from "./pages/weaver/WeaverZigDetailPage";
+import { WeaverRatesPage } from "./pages/weaver/WeaverRatesPage";
+import { WeaverCalculatorPage } from "./pages/weaver/WeaverCalculatorPage";
 import { MerchantFabricsPage } from "./pages/merchant/MerchantFabricsPage";
 import { MerchantPricesPage } from "./pages/merchant/MerchantPricesPage";
+
 import "./App.css";
 
 function App() {
@@ -38,67 +48,64 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public Pages */}
           <Route path="/" element={<PublicHomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
+
+          {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route element={<RoleRoute role="admin" redirectTo="/weaver" />}>
+            {/* Admin Routes */}
+            <Route path="/admin" element={<RoleRoute role="admin" redirectTo="/weaver" />}>
               <Route element={<Layout />}>
-                <Route path="/admin" element={<Navigate to="/admin/weavers" replace />} />
-                <Route path="/admin/weavers" element={<WeaversPage />} />
-                <Route path="/admin/weavers/:weaverId" element={<WeaverProfilePage />} />
-                <Route path="/admin/weavers/:weaverId/issue-zig" element={<IssueZigPage />} />
-                <Route path="/admin/zigs/:zigId" element={<ZigDetailPage />} />
-                <Route path="/admin/stock" element={<StockPage />} />
-                <Route path="/admin/transactions" element={<TransactionsHubPage />} />
-                <Route path="/admin/transactions/new" element={<TransactionNewPage />} />
-                <Route
-                  path="/admin/transactions/new/:direction"
-                  element={<TransactionTypePage />}
-                />
-                <Route
-                  path="/admin/transactions/new/:direction/:goods"
-                  element={<TransactionFormPage />}
-                />
-                <Route
-                  path="/admin/transactions/:transactionId"
-                  element={<TransactionDetailPage />}
-                />
-                <Route
-                  path="/admin/procurement"
-                  element={<Navigate to="/admin/transactions/new/buy/yarn" replace />}
-                />
-                <Route path="/admin/catalog" element={<CatalogPage />} />
-                <Route
-                  path="/admin/prices"
-                  element={<Navigate to="/admin/catalog?tab=fabricPrices" replace />}
-                />
-                <Route path="/admin/settlement" element={<SettlementPage />} />
-                <Route path="/admin/settlement/history" element={<SettlementHistoryPage />} />
-                <Route
-                  path="/admin/settlement/preview/:previewId"
-                  element={<SettlementPreviewPage />}
-                />
-                <Route path="/admin/reports/hisab/:paymentId" element={<HisabPrintPage />} />
-                <Route path="/admin/reports" element={<ReportsPage />} />
-                <Route path="/admin/calculator" element={<CalculatorPage />} />
+                <Route index element={<Navigate to="/admin/weavers" replace />} />
+                <Route path="weavers" element={<WeaversPage />} />
+                <Route path="weavers/:weaverId" element={<WeaverProfilePage />} />
+                <Route path="weavers/:weaverId/issue-zig" element={<IssueZigPage />} />
+                <Route path="zigs/:zigId" element={<ZigDetailPage />} />
+                <Route path="users" element={<UsersPage />} />
+                <Route path="prices" element={<PricesPage />} />
+                <Route path="quality-rules" element={<QualityRulesPage />} />
+                <Route path="procurement" element={<Navigate to="/admin/transactions" replace />} />
+                <Route path="stock" element={<StockPage />} />
+                <Route path="transactions" element={<TransactionsHubPage />} />
+                <Route path="transactions/new" element={<TransactionNewPage />} />
+                <Route path="transactions/new/:direction" element={<TransactionTypePage />} />
+                <Route path="transactions/new/:direction/:goods" element={<TransactionFormPage />} />
+                <Route path="transactions/:transactionId" element={<TransactionDetailPage />} />
+                <Route path="catalog" element={<CatalogPage />} />
+                <Route path="settlement" element={<SettlementPage />} />
+                <Route path="settlement/history" element={<SettlementHistoryPage />} />
+                <Route path="settlement/preview/:previewId" element={<SettlementPreviewPage />} />
+                <Route path="reports/hisab/:paymentId" element={<HisabPrintPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="audit-logs" element={<AuditLogsPage />} />
+                <Route path="calculator" element={<Navigate to="/admin/weavers?tab=calculator" replace />} />
               </Route>
             </Route>
-            <Route element={<RoleRoute role="weaver" redirectTo="/merchant" />}>
+
+            {/* Weaver Routes */}
+            <Route path="/weaver" element={<RoleRoute role="weaver" redirectTo="/merchant" />}>
               <Route element={<WeaverLayout />}>
-                <Route path="/weaver" element={<WeaverPortalPage />} />
-                <Route path="/weaver/zigs/:zigId" element={<WeaverZigDetailPage />} />
-                <Route path="/weaver/payments" element={<WeaverPaymentsPage />} />
+                <Route index element={<WeaverPortalPage />} />
+                <Route path="zigs/:zigId" element={<WeaverZigDetailPage />} />
+                <Route path="rates" element={<WeaverRatesPage />} />
+                <Route path="calculator" element={<WeaverCalculatorPage />} />
+                <Route path="payments" element={<WeaverPaymentsPage />} />
               </Route>
             </Route>
-            <Route element={<RoleRoute role="merchant" redirectTo="/admin/weavers" />}>
+
+            {/* Merchant Routes */}
+            <Route path="/merchant" element={<RoleRoute role="merchant" redirectTo="/weaver" />}>
               <Route element={<MerchantLayout />}>
-                <Route path="/merchant" element={<MerchantFabricsPage />} />
-                <Route path="/merchant/fabrics" element={<MerchantFabricsPage />} />
-                <Route path="/merchant/prices" element={<MerchantPricesPage />} />
+                <Route index element={<MerchantFabricsPage />} />
+                <Route path="fabrics" element={<MerchantFabricsPage />} />
+                <Route path="prices" element={<MerchantPricesPage />} />
               </Route>
             </Route>
           </Route>
+
+          {/* Catch-all redirect */}
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </BrowserRouter>

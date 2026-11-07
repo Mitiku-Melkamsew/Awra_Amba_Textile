@@ -2,17 +2,18 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function HomeRedirect() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, isWeaver, isMerchant } = useAuth();
+
   if (loading) return <div className="loading">Loading...</div>;
   if (!user) return <Navigate to="/" replace />;
 
-  if (user.roles?.includes("admin") || user.role === "admin") {
+  if (isAdmin) {
     return <Navigate to="/admin/weavers" replace />;
   }
-  if (user.roles?.includes("weaver") || user.role === "weaver") {
+  if (isWeaver) {
     return <Navigate to="/weaver" replace />;
   }
-  if (user.roles?.includes("merchant") || user.role === "merchant") {
+  if (isMerchant) {
     return <Navigate to="/merchant" replace />;
   }
 

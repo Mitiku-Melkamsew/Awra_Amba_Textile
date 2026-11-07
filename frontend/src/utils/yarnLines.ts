@@ -40,7 +40,7 @@ export interface YarnLinePayload {
 
 export function createYarnLineDraft(
   lookup?: YarnCatalogLookup,
-  defaultQuantity = "1.00",
+  defaultQuantity = "1",
   entryMode: "variant" | "catalog" = "variant",
 ): YarnLineDraft {
   return {
@@ -97,6 +97,7 @@ export function parseYarnLines(lines: YarnLineDraft[]): YarnLinePayload[] {
   return lines
     .filter(
       (line) =>
+        Number.isInteger(Number(line.quantity)) &&
         Number(line.quantity) > 0 &&
         Number(line.unitPrice) >= 0 &&
         (usesVariant(line) || Boolean(line.yarnTypeId)),
