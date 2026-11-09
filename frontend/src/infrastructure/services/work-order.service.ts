@@ -9,18 +9,13 @@ import type {
 } from "../../domain/models";
 
 export interface CreateWorkOrderDto {
-  weaverId: number;
-  fabricId: number;
-  warpColorId?: number | null;
-  weftColorId?: number | null;
-  designId?: number | null;
-  expectedDate?: string | null;
-  notes?: string | null;
+  zigId?: string;
+  weaverUserId: number;
+  weaverId?: number;
+  fabricVariantId: number;
   yarnLines?: Array<{
-    yarnId: number;
-    yarnVariantId?: number | null;
-    supplierId?: number | null;
-    quantityKg: number;
+    yarnVariantId: number;
+    quantity: number;
     unitPrice?: number;
   }>;
 }

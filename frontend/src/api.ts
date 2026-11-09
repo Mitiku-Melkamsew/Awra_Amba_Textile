@@ -584,16 +584,11 @@ export const workOrdersApi = {
   nextId: async () => ({ zigId: `WO-${Date.now().toString().slice(-6)}` }),
   create: async (data: any) => {
     const created: any = await workOrderService.createWorkOrder({
-      weaverId: Number(data.weaverId),
-      fabricId: Number(data.productId ?? data.fabricId),
-      warpColorId: data.warpColorId ? Number(data.warpColorId) : null,
-      weftColorId: data.weftColorId ? Number(data.weftColorId) : null,
-      designId: data.designId ? Number(data.designId) : null,
+      weaverUserId: Number(data.weaverUserId ?? data.weaverId),
+      fabricVariantId: Number(data.fabricVariantId),
       yarnLines: data.yarnLines?.map((yl: any) => ({
-        yarnId: Number(yl.yarnTypeId ?? yl.yarnId ?? 1),
-        yarnVariantId: yl.yarnVariantId ? Number(yl.yarnVariantId) : undefined,
-        supplierId: yl.supplierId ? Number(yl.supplierId) : undefined,
-        quantityKg: Number(yl.quantity ?? yl.quantityKg ?? 0),
+        yarnVariantId: Number(yl.yarnVariantId),
+        quantity: Number(yl.quantity ?? yl.quantityKg ?? 0),
         unitPrice: Number(yl.unitPrice ?? 0),
       })),
     });

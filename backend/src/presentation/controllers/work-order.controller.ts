@@ -58,7 +58,11 @@ export class WorkOrderController {
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
       const actorUserId = req.user!.userId;
-      const created = await WorkOrderService.createWorkOrder(req.body, actorUserId);
+      const body = {
+        ...req.body,
+        weaverUserId: req.body.weaverUserId ?? req.body.weaverId,
+      };
+      const created = await WorkOrderService.createWorkOrder(body, actorUserId);
       res.status(201).json(created);
     } catch (error) {
       next(error);

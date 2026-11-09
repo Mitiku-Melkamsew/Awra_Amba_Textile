@@ -1,7 +1,7 @@
 import { WorkOrderStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AuditService } from "./audit.service.js";
-import { resolveFabricVariant, resolveYarnVariant } from "../../services/variant.service.js";
+import { resolveFabricVariant } from "../../services/variant.service.js";
 import {
   NotFoundError,
   ConflictError,
@@ -109,22 +109,11 @@ export class WorkOrderService {
   static async createWorkOrder(
     input: {
       zigId?: string;
-      weaverUserId?: number;
-      weaverId?: number;
-      fabricVariantId?: number;
-      fabricId?: number;
-      productId?: number;
-      warpColorId?: number | null;
-      weftColorId?: number | null;
-      designId?: number | null;
+      weaverUserId: number;
+      fabricVariantId: number;
       yarnLines?: Array<{
-        yarnVariantId?: number;
-        yarnId?: number;
-        yarnTypeId?: number;
-        colorId?: number | null;
-        supplierId?: number | null;
-        quantity?: number;
-        quantityKg?: number;
+        yarnVariantId: number;
+        quantity: number;
         unitPrice?: number;
       }>;
     },
@@ -137,8 +126,8 @@ export class WorkOrderService {
       throw new ConflictError(`Work order ${zigId} already exists`);
     }
 
-    const weaverUserId = input.weaverUserId ?? input.weaverId;
-    if (!weaverUserId) throw new ValidationError("weaverUserId or weaverId is required");
+    const weaverUserId = input.weaverUserId ?? (input as any).weaverId;
+    if (!weaverUserId) throw new ValidationError("weaverUserId is required");
 
     const weaver = await prisma.user.findUnique({
       where: { userId: weaverUserId },
@@ -149,66 +138,26 @@ export class WorkOrderService {
       throw new ValidationError(`User ${weaverUserId} is not assigned the weaver role`);
     }
 
-    let fabricVariantId = input.fabricVariantId;
-    if (!fabricVariantId) {
-      const fabricId = input.fabricId ?? input.productId;
-      if (!fabricId) throw new ValidationError("fabricVariantId or fabricId is required");
-      let warpColorId = input.warpColorId;
-      let weftColorId = input.weftColorId;
-      if (!warpColorId || !weftColorId) {
-        let firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
-        if (!firstColor) {
-          firstColor = await prisma.color.create({ data: { name: "መደበኛ ቀለም" } });
-        }
-        warpColorId = warpColorId ?? firstColor.colorId;
-        weftColorId = weftColorId ?? firstColor.colorId;
-      }
-      const res = await resolveFabricVariant({
-        fabricId,
-        warpColorId,
-        weftColorId,
-        designId: input.designId,
-      });
-      fabricVariantId = res.variantId;
+    const fabricVariantId = input.fabricVariantId;
+    if (!fabricVariantId) throw new ValidationError("fabricVariantId is required");
+
+    const fabricVariant = await prisma.fabricVariant.findUnique({
+      where: { fabricVariantId },
+    });
+    if (!fabricVariant) {
+      throw new NotFoundError(`Fabric variant ${fabricVariantId} not found`);
     }
 
-    // Resolve any missing yarnVariantId in yarnLines
     const resolvedYarnLines: Array<{ yarnVariantId: number; quantity: number; unitPrice: number }> = [];
     if (input.yarnLines && input.yarnLines.length > 0) {
       for (const line of input.yarnLines) {
-        const qty = line.quantity ?? line.quantityKg ?? 0;
+        const qty = line.quantity ?? (line as any).quantityKg ?? 0;
         if (qty <= 0) continue;
-        let yvId = line.yarnVariantId;
-        if (!yvId) {
-          const yId = line.yarnId ?? line.yarnTypeId;
-          if (yId) {
-            let sId = line.supplierId;
-            if (!sId) {
-              let firstSupplier = await prisma.supplier.findFirst({ orderBy: { supplierId: "asc" } });
-              if (!firstSupplier) {
-                firstSupplier = await prisma.supplier.create({ data: { name: "መደበኛ አቅራቢ" } });
-              }
-              sId = firstSupplier.supplierId;
-            }
-            let cId = line.colorId;
-            if (!cId) {
-              let firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
-              if (!firstColor) {
-                firstColor = await prisma.color.create({ data: { name: "መደበኛ ቀለም" } });
-              }
-              cId = firstColor.colorId;
-            }
-            const res = await resolveYarnVariant({ yarnId: yId, supplierId: sId, colorId: cId });
-            yvId = res.variantId;
-          }
-        }
-        if (yvId) {
-          resolvedYarnLines.push({
-            yarnVariantId: yvId,
-            quantity: qty,
-            unitPrice: line.unitPrice ?? 0,
-          });
-        }
+        resolvedYarnLines.push({
+          yarnVariantId: line.yarnVariantId,
+          quantity: qty,
+          unitPrice: line.unitPrice ?? 0,
+        });
       }
     }
 
@@ -217,7 +166,7 @@ export class WorkOrderService {
         data: {
           zigId,
           weaverUserId,
-          fabricVariantId: fabricVariantId!,
+          fabricVariantId,
           status: resolvedYarnLines.length > 0
             ? WorkOrderStatus.in_progress
             : WorkOrderStatus.assigned,

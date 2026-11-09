@@ -1,32 +1,27 @@
 import { z } from "zod";
 import { WorkOrderStatus } from "@prisma/client";
 
-export const CreateWorkOrderSchema = z.object({
-  zigId: z.string().regex(/^z-[\w-]+$/i).optional(),
-  weaverUserId: z.number().int().positive().optional(),
-  weaverId: z.number().int().positive().optional(),
-  fabricVariantId: z.number().int().positive().optional(),
-  fabricId: z.number().int().positive().optional(),
-  productId: z.number().int().positive().optional(),
-  warpColorId: z.number().int().positive().optional().nullable(),
-  weftColorId: z.number().int().positive().optional().nullable(),
-  designId: z.number().int().positive().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  yarnLines: z
-    .array(
-      z.object({
-        yarnVariantId: z.number().int().positive().optional(),
-        yarnId: z.number().int().positive().optional(),
-        yarnTypeId: z.number().int().positive().optional(),
-        colorId: z.number().int().positive().optional().nullable(),
-        supplierId: z.number().int().positive().optional().nullable(),
-        quantity: z.number().int().positive().optional(),
-        quantityKg: z.number().int().positive().optional(),
-        unitPrice: z.number().nonnegative().optional(),
-      }),
-    )
-    .optional(),
-});
+export const CreateWorkOrderSchema = z
+  .object({
+    zigId: z.string().regex(/^z-[\w-]+$/i).optional(),
+    weaverUserId: z.coerce.number().int().positive().optional(),
+    weaverId: z.coerce.number().int().positive().optional(),
+    fabricVariantId: z.coerce.number().int().positive(),
+    yarnLines: z
+      .array(
+        z.object({
+          yarnVariantId: z.coerce.number().int().positive(),
+          quantity: z.coerce.number().min(0).optional(),
+          quantityKg: z.coerce.number().min(0).optional(),
+          unitPrice: z.coerce.number().nonnegative().optional(),
+        }),
+      )
+      .optional(),
+  })
+  .refine((data) => data.weaverUserId != null || data.weaverId != null, {
+    message: "weaverUserId is required",
+    path: ["weaverUserId"],
+  });
 
 export const UpdateWorkOrderStatusSchema = z.object({
   status: z.nativeEnum(WorkOrderStatus),
