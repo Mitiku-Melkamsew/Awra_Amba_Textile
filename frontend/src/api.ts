@@ -879,8 +879,18 @@ export const transactionsApi = {
     const items = rawLines.map((l: any) => ({
       fabricVariantId: l.fabricVariantId ? Number(l.fabricVariantId) : undefined,
       yarnVariantId: l.yarnVariantId ? Number(l.yarnVariantId) : undefined,
+      productId: l.productId ? Number(l.productId) : undefined,
+      fabricId: (l.fabricId ?? l.productId) ? Number(l.fabricId ?? l.productId) : undefined,
+      warpColorId: l.warpColorId ? Number(l.warpColorId) : undefined,
+      weftColorId: l.weftColorId ? Number(l.weftColorId) : undefined,
+      designId: l.designId ? Number(l.designId) : null,
+      yarnId: (l.yarnId ?? l.yarnTypeId) ? Number(l.yarnId ?? l.yarnTypeId) : undefined,
+      yarnTypeId: (l.yarnTypeId ?? l.yarnId) ? Number(l.yarnTypeId ?? l.yarnId) : undefined,
+      colorId: l.colorId ? Number(l.colorId) : undefined,
+      supplierId: l.supplierId ? Number(l.supplierId) : undefined,
       quantity: Number(l.quantity),
       unitPrice: Number(l.unitPrice),
+      description: l.description,
     }));
 
     const res: any = await directTransactionService.createTransaction({
@@ -890,6 +900,7 @@ export const transactionsApi = {
       merchantId: data.merchantId ? Number(data.merchantId) : null,
       notes: data.notes,
       items,
+      lines: items,
     });
     return {
       ...res,

@@ -64,9 +64,10 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
   // Auto-resolve variants if catalog combinations are provided
   for (const line of input.lines) {
     if (!line.fabricVariantId && (line.fabricId || line.productId)) {
-      const fId = line.fabricId ?? line.productId!;
-      let warpColorId = line.warpColorId;
-      let weftColorId = line.weftColorId;
+      const fId = Number(line.fabricId ?? line.productId);
+      let warpColorId = line.warpColorId ? Number(line.warpColorId) : undefined;
+      let weftColorId = line.weftColorId ? Number(line.weftColorId) : undefined;
+      let designId = line.designId ? Number(line.designId) : undefined;
       if (!warpColorId || !weftColorId) {
         const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
         warpColorId = warpColorId ?? firstColor?.colorId ?? 1;
@@ -76,19 +77,19 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         fabricId: fId,
         warpColorId,
         weftColorId,
-        designId: line.designId,
+        designId,
       });
       line.fabricVariantId = res.variantId;
     }
 
     if (!line.yarnVariantId && (line.yarnId || line.yarnTypeId)) {
-      const yId = line.yarnId ?? line.yarnTypeId!;
-      let cId = line.colorId;
+      const yId = Number(line.yarnId ?? line.yarnTypeId);
+      let cId = line.colorId ? Number(line.colorId) : undefined;
       if (!cId) {
         const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
         cId = firstColor?.colorId ?? 1;
       }
-      let sId = line.supplierId ?? (input as any).supplierId;
+      let sId = (line.supplierId ?? (input as any).supplierId) ? Number(line.supplierId ?? (input as any).supplierId) : undefined;
       if (!sId) {
         const firstSupplier = await prisma.supplier.findFirst({ orderBy: { supplierId: "asc" } });
         sId = firstSupplier?.supplierId ?? 1;

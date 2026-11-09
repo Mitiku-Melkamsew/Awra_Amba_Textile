@@ -54,7 +54,11 @@ export class DirectTransactionController {
             notes: body.notes,
             purchaseDate: body.transactionDate ? new Date(body.transactionDate) : undefined,
             lines: lines.map((l: any) => ({
-              yarnVariantId: Number(l.yarnVariantId),
+              yarnVariantId: l.yarnVariantId ? Number(l.yarnVariantId) : undefined,
+              yarnId: (l.yarnId ?? l.yarnTypeId) ? Number(l.yarnId ?? l.yarnTypeId) : undefined,
+              yarnTypeId: (l.yarnTypeId ?? l.yarnId) ? Number(l.yarnTypeId ?? l.yarnId) : undefined,
+              colorId: l.colorId ? Number(l.colorId) : undefined,
+              supplierId: l.supplierId ? Number(l.supplierId) : undefined,
               quantity: Number(l.quantity),
               unitPrice: Number(l.unitPrice),
             })),
