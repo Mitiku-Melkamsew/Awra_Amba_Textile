@@ -512,26 +512,24 @@ export class WorkOrderService {
     }
 
     let fabricVariantId = input.fabricVariantId;
-    if (!fabricVariantId) {
-      const fabricId = input.fabricId ?? input.productId;
-      if (fabricId) {
-        let warpColorId = input.warpColorId;
-        let weftColorId = input.weftColorId;
-        if (!warpColorId || !weftColorId) {
-          const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
-          warpColorId = warpColorId ?? firstColor?.colorId ?? 1;
-          weftColorId = weftColorId ?? firstColor?.colorId ?? 1;
-        }
-        const res = await resolveFabricVariant({
-          fabricId,
-          warpColorId,
-          weftColorId,
-          designId: input.designId,
-        });
-        fabricVariantId = res.variantId;
-      } else {
-        fabricVariantId = order.fabricVariantId;
+    const fabricId = input.fabricId ?? input.productId;
+    if (fabricId) {
+      let warpColorId = input.warpColorId;
+      let weftColorId = input.weftColorId;
+      if (!warpColorId || !weftColorId) {
+        const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
+        warpColorId = warpColorId ?? firstColor?.colorId ?? 1;
+        weftColorId = weftColorId ?? firstColor?.colorId ?? 1;
       }
+      const res = await resolveFabricVariant({
+        fabricId,
+        warpColorId,
+        weftColorId,
+        designId: input.designId,
+      });
+      fabricVariantId = res.variantId;
+    } else if (!fabricVariantId) {
+      fabricVariantId = order.fabricVariantId;
     }
 
     const totalWeight = input.totalWeight ?? input.actualWeightG ?? 0;

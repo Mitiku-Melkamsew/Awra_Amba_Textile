@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { AuditService } from "./audit.service.js";
-import { NotFoundError } from "../../domain/errors/domain-errors.js";
+import { NotFoundError, ValidationError } from "../../domain/errors/domain-errors.js";
+import { resolveYarnVariant } from "../../services/variant.service.js";
 
 const purchaseInclude = {
   supplier: true,
@@ -46,14 +47,49 @@ export class ProcurementService {
       purchaseDate?: Date;
       notes?: string;
       lines: Array<{
-        yarnVariantId: number;
-        quantity: number;
-        unitPrice: number;
+        yarnVariantId?: number;
+        yarnId?: number;
+        yarnTypeId?: number;
+        colorId?: number;
+        supplierId?: number;
+        quantity?: number;
+        quantityKg?: number;
+        unitPrice?: number;
+        unitCost?: number;
       }>;
     },
     actorUserId: number,
   ) {
     return prisma.$transaction(async (tx) => {
+      const resolvedLines: Array<{ yarnVariantId: number; quantity: number; unitPrice: number }> = [];
+
+      for (const line of input.lines) {
+        const qty = line.quantity ?? line.quantityKg ?? 0;
+        const price = line.unitPrice ?? line.unitCost ?? 0;
+        if (qty <= 0) {
+          throw new ValidationError("Procurement line quantity must be greater than 0");
+        }
+
+        let yarnVariantId = line.yarnVariantId;
+        if (!yarnVariantId) {
+          const yarnId = line.yarnId ?? line.yarnTypeId;
+          const colorId = line.colorId;
+          const supplierId = line.supplierId ?? input.supplierId;
+          if (yarnId && colorId && supplierId) {
+            const res = await resolveYarnVariant({ yarnId, colorId, supplierId }, tx);
+            yarnVariantId = res.variantId;
+          } else {
+            throw new ValidationError("yarnVariantId or (yarnId, colorId, supplierId) is required for each procurement line");
+          }
+        }
+
+        resolvedLines.push({
+          yarnVariantId,
+          quantity: qty,
+          unitPrice: price,
+        });
+      }
+
       const purchase = await tx.yarnPurchase.create({
         data: {
           supplierId: input.supplierId,
@@ -61,7 +97,7 @@ export class ProcurementService {
           notes: input.notes,
           createdByUserId: actorUserId,
           lines: {
-            create: input.lines.map((l) => ({
+            create: resolvedLines.map((l) => ({
               yarnVariantId: l.yarnVariantId,
               quantity: l.quantity,
               unitPrice: l.unitPrice,
@@ -71,7 +107,7 @@ export class ProcurementService {
         include: purchaseInclude,
       });
 
-      for (const line of input.lines) {
+      for (const line of resolvedLines) {
         await tx.yarnVariant.update({
           where: { yarnVariantId: line.yarnVariantId },
           data: { stockSnapshot: { increment: line.quantity } },
@@ -84,7 +120,7 @@ export class ProcurementService {
           action: "procurement.yarn_purchase",
           entityType: "yarn_purchase",
           entityId: purchase.purchaseId,
-          details: { supplierId: input.supplierId, lineCount: input.lines.length },
+          details: { supplierId: input.supplierId, lineCount: resolvedLines.length },
         },
         tx,
       );

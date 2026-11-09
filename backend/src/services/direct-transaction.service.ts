@@ -1,10 +1,20 @@
 import { DirectTxnStatus, DirectTxnType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AuditService } from "../application/services/audit.service.js";
+import { resolveFabricVariant, resolveYarnVariant } from "./variant.service.js";
 
 export interface CreateDirectTxnLineInput {
   fabricVariantId?: number | null;
   yarnVariantId?: number | null;
+  productId?: number | null;
+  fabricId?: number | null;
+  warpColorId?: number | null;
+  weftColorId?: number | null;
+  designId?: number | null;
+  yarnId?: number | null;
+  yarnTypeId?: number | null;
+  colorId?: number | null;
+  supplierId?: number | null;
   quantity: number;
   unitPrice: number;
   description?: string;
@@ -49,6 +59,47 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
 
   if (!input.lines || input.lines.length === 0) {
     throw new Error("VALIDATION: At least one transaction line is required.");
+  }
+
+  // Auto-resolve variants if catalog combinations are provided
+  for (const line of input.lines) {
+    if (!line.fabricVariantId && (line.fabricId || line.productId)) {
+      const fId = line.fabricId ?? line.productId!;
+      let warpColorId = line.warpColorId;
+      let weftColorId = line.weftColorId;
+      if (!warpColorId || !weftColorId) {
+        const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
+        warpColorId = warpColorId ?? firstColor?.colorId ?? 1;
+        weftColorId = weftColorId ?? firstColor?.colorId ?? 1;
+      }
+      const res = await resolveFabricVariant({
+        fabricId: fId,
+        warpColorId,
+        weftColorId,
+        designId: line.designId,
+      });
+      line.fabricVariantId = res.variantId;
+    }
+
+    if (!line.yarnVariantId && (line.yarnId || line.yarnTypeId)) {
+      const yId = line.yarnId ?? line.yarnTypeId!;
+      let cId = line.colorId;
+      if (!cId) {
+        const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
+        cId = firstColor?.colorId ?? 1;
+      }
+      let sId = line.supplierId ?? (input as any).supplierId;
+      if (!sId) {
+        const firstSupplier = await prisma.supplier.findFirst({ orderBy: { supplierId: "asc" } });
+        sId = firstSupplier?.supplierId ?? 1;
+      }
+      const res = await resolveYarnVariant({
+        yarnId: yId,
+        colorId: cId,
+        supplierId: sId,
+      });
+      line.yarnVariantId = res.variantId;
+    }
   }
 
   // Validate line items & stock types

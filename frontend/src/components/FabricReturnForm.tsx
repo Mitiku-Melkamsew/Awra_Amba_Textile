@@ -200,7 +200,7 @@ export function FabricReturnForm({
             }
           : {
               zigId,
-              fabricVariantId: fvId,
+              fabricId: pId,
               productId: pId,
               warpColorId: wColorId,
               weftColorId: wfColorId,

@@ -100,6 +100,36 @@ export function CatalogPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Record<string, any>>({});
 
+  const duplicateFabricVariant = useMemo(() => {
+    if (tab !== "fabricVariants") return null;
+    const fId = Number(fvFabricId);
+    const dId = Number(fvDesignId);
+    const wcId = Number(fvWarpColorId);
+    const wfcId = Number(fvWeftColorId);
+    if (!fId || !wcId || !wfcId) return null;
+    return fabricVariants.find(
+      (v) =>
+        (v.fabricId === fId || (v as any).fabric?.fabricId === fId) &&
+        (v.warpColorId === wcId || v.warpColor?.colorId === wcId) &&
+        (v.weftColorId === wfcId || v.weftColor?.colorId === wfcId) &&
+        (!dId || v.designId === dId || v.design?.designId === dId),
+    );
+  }, [tab, fvFabricId, fvDesignId, fvWarpColorId, fvWeftColorId, fabricVariants]);
+
+  const duplicateYarnVariant = useMemo(() => {
+    if (tab !== "yarnVariants") return null;
+    const yId = Number(yvYarnId);
+    const sId = Number(yvSupplierId);
+    const cId = Number(yvColorId);
+    if (!yId || !sId || !cId) return null;
+    return yarnVariants.find(
+      (v) =>
+        ((v as any).yarnId === yId || (v as any).yarn?.yarnId === yId) &&
+        ((v as any).supplierId === sId || (v as any).supplier?.supplierId === sId) &&
+        ((v as any).colorId === cId || (v as any).color?.colorId === cId),
+    );
+  }, [tab, yvYarnId, yvSupplierId, yvColorId, yarnVariants]);
+
   async function loadAll() {
     setLoading(true);
     try {
@@ -781,8 +811,25 @@ export function CatalogPage() {
           </div>
         )}
 
+        {duplicateFabricVariant && (
+          <div style={{ margin: "0.75rem 0", padding: "0.5rem 0.75rem", background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: "6px", color: "#92400e", fontSize: "0.9rem" }}>
+            ⚠️ <strong>Combination already exists:</strong> A fabric variant with this fabric, design, warp and weft color already exists (SKU: <code>{duplicateFabricVariant.sku}</code>). Duplicate registration is blocked.
+          </div>
+        )}
+
+        {duplicateYarnVariant && (
+          <div style={{ margin: "0.75rem 0", padding: "0.5rem 0.75rem", background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: "6px", color: "#92400e", fontSize: "0.9rem" }}>
+            ⚠️ <strong>Combination already exists:</strong> A yarn variant with this material, color, and supplier already exists (SKU: <code>{duplicateYarnVariant.sku}</code>). Duplicate registration is blocked.
+          </div>
+        )}
+
         <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={saving}>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={saving || Boolean(duplicateFabricVariant) || Boolean(duplicateYarnVariant)}
+            title={duplicateFabricVariant || duplicateYarnVariant ? "Combination already exists" : undefined}
+          >
             {saving ? "Saving…" : "Add to Catalog / መዝግብ"}
           </button>
         </div>

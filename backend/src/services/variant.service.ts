@@ -53,11 +53,16 @@ export async function resolveFabricVariant(
       warpColorId: input.warpColorId,
       weftColorId: input.weftColorId,
       designId,
-      isActive: true,
     },
   });
 
   if (existing) {
+    if (!existing.isActive) {
+      await tx.fabricVariant.update({
+        where: { fabricVariantId: existing.fabricVariantId },
+        data: { isActive: true },
+      });
+    }
     return {
       variantId: existing.fabricVariantId,
       created: false,
@@ -72,7 +77,12 @@ export async function resolveFabricVariant(
     tx.design.findUniqueOrThrow({ where: { designId } }),
   ]);
 
-  const sku = `FV-${fabric.fabricId}-${design.designId}-${warp.colorId}-${weft.colorId}-${Date.now().toString(36)}`;
+  const baseSku = `FV-${fabric.fabricId}-${design.designId}-${warp.colorId}-${weft.colorId}`;
+  let sku = baseSku;
+  const existingSku = await tx.fabricVariant.findUnique({ where: { sku } });
+  if (existingSku) {
+    sku = `${baseSku}-${Date.now().toString(36)}`;
+  }
 
   const created = await tx.fabricVariant.create({
     data: {
@@ -81,6 +91,8 @@ export async function resolveFabricVariant(
       warpColorId: warp.colorId,
       weftColorId: weft.colorId,
       sku,
+      stockSnapshot: 0,
+      isActive: true,
     },
   });
 
@@ -105,11 +117,16 @@ export async function resolveYarnVariant(
       yarnId,
       colorId: input.colorId,
       supplierId: input.supplierId,
-      isActive: true,
     },
   });
 
   if (existing) {
+    if (!existing.isActive) {
+      await tx.yarnVariant.update({
+        where: { yarnVariantId: existing.yarnVariantId },
+        data: { isActive: true },
+      });
+    }
     return {
       variantId: existing.yarnVariantId,
       created: false,
@@ -123,7 +140,12 @@ export async function resolveYarnVariant(
     tx.supplier.findUniqueOrThrow({ where: { supplierId: input.supplierId } }),
   ]);
 
-  const sku = `YV-${yarn.yarnId}-${supplier.supplierId}-${color.colorId}-${Date.now().toString(36)}`;
+  const baseSku = `YV-${yarn.yarnId}-${supplier.supplierId}-${color.colorId}`;
+  let sku = baseSku;
+  const existingSku = await tx.yarnVariant.findUnique({ where: { sku } });
+  if (existingSku) {
+    sku = `${baseSku}-${Date.now().toString(36)}`;
+  }
 
   const created = await tx.yarnVariant.create({
     data: {
@@ -131,6 +153,8 @@ export async function resolveYarnVariant(
       colorId: color.colorId,
       supplierId: supplier.supplierId,
       sku,
+      stockSnapshot: 0,
+      isActive: true,
     },
   });
 

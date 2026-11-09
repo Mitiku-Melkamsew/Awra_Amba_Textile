@@ -9,9 +9,14 @@ import type { Supplier, YarnVariant, YarnPurchase } from "../../domain/models";
 export function ProcurementPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [yarnVariants, setYarnVariants] = useState<YarnVariant[]>([]);
+  const [yarns, setYarns] = useState<any[]>([]);
+  const [colors, setColors] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<YarnPurchase[]>([]);
   const [supplierId, setSupplierId] = useState("");
+  const [entryMode, setEntryMode] = useState<"variant" | "catalog">("variant");
   const [yarnVariantId, setYarnVariantId] = useState("");
+  const [yarnId, setYarnId] = useState("");
+  const [colorId, setColorId] = useState("");
   const [quantity, setQuantity] = useState("100");
   const [unitCost, setUnitCost] = useState("400");
   const [notes, setNotes] = useState("");
@@ -28,12 +33,18 @@ export function ProcurementPage() {
         procurementService.listPurchases(),
       ]);
       setSuppliers(lookup.suppliers);
+      setYarns((lookup as any).yarns || []);
+      setColors((lookup as any).colors || []);
       setYarnVariants(yv);
       setPurchases(p);
       if (!supplierId && lookup.suppliers[0])
         setSupplierId(String(lookup.suppliers[0].supplierId));
       if (!yarnVariantId && yv[0])
         setYarnVariantId(String(yv[0].yarnVariantId));
+      if (!yarnId && (lookup as any).yarns?.[0])
+        setYarnId(String((lookup as any).yarns[0].yarnId));
+      if (!colorId && (lookup as any).colors?.[0])
+        setColorId(String((lookup as any).colors[0].colorId));
     } catch (err: any) {
       setError(err.message || "Failed to load procurement data");
     } finally {
@@ -50,16 +61,25 @@ export function ProcurementPage() {
     setError("");
     setMessage("");
     try {
+      const linePayload: any =
+        entryMode === "variant"
+          ? {
+              yarnVariantId: Number(yarnVariantId),
+              quantityKg: Number(quantity),
+              unitCost: Number(unitCost),
+            }
+          : {
+              yarnId: Number(yarnId),
+              colorId: Number(colorId),
+              supplierId: Number(supplierId),
+              quantityKg: Number(quantity),
+              unitCost: Number(unitCost),
+            };
+
       await procurementService.recordPurchase({
         supplierId: Number(supplierId),
         notes: notes || undefined,
-        lines: [
-          {
-            yarnVariantId: Number(yarnVariantId),
-            quantityKg: Number(quantity),
-            unitCost: Number(unitCost),
-          },
-        ],
+        lines: [linePayload],
       });
       setMessage(
         "Procurement recorded successfully. Yarn inventory stock snapshot updated.",
@@ -162,32 +182,79 @@ export function ProcurementPage() {
             </select>
           </div>
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                marginBottom: "0.25rem",
-              }}
-            >
-              Yarn Variant SKU *
-            </label>
-            <select
-              value={yarnVariantId}
-              onChange={(e) => setYarnVariantId(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #cbd5e1",
-              }}
-            >
-              {yarnVariants.map((v) => (
-                <option key={v.yarnVariantId} value={v.yarnVariantId}>
-                  {v.sku} ({v.yarn?.materialName ?? "Yarn"})
-                </option>
-              ))}
-            </select>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+              <label
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                }}
+              >
+                {entryMode === "variant" ? "Yarn Variant SKU *" : "Yarn Material & Color *"}
+              </label>
+              <button
+                type="button"
+                onClick={() => setEntryMode(entryMode === "variant" ? "catalog" : "variant")}
+                style={{ fontSize: "0.75rem", background: "none", border: "none", color: "#2563eb", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+              >
+                {entryMode === "variant" ? "+ Enter new / other material & color" : "← Select from existing SKU"}
+              </button>
+            </div>
+
+            {entryMode === "variant" ? (
+              <select
+                value={yarnVariantId}
+                onChange={(e) => setYarnVariantId(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                {yarnVariants.map((v) => (
+                  <option key={v.yarnVariantId} value={v.yarnVariantId}>
+                    {v.sku} ({v.yarn?.materialName ?? (v as any).yarn?.name ?? "Yarn"})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                <select
+                  value={yarnId}
+                  onChange={(e) => setYarnId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                  }}
+                  required
+                >
+                  {yarns.map((y) => (
+                    <option key={y.yarnId} value={y.yarnId}>
+                      {y.name || y.materialName}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={colorId}
+                  onChange={(e) => setColorId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    borderRadius: "4px",
+                    border: "1px solid #cbd5e1",
+                  }}
+                  required
+                >
+                  {colors.map((c) => (
+                    <option key={c.colorId} value={c.colorId}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <div
             style={{

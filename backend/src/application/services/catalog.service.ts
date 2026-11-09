@@ -428,9 +428,37 @@ export class CatalogService {
     },
     actorUserId: number,
   ) {
+    const existingCombination = await prisma.fabricVariant.findFirst({
+      where: {
+        fabricId: data.fabricId,
+        designId: data.designId,
+        warpColorId: data.warpColorId,
+        weftColorId: data.weftColorId,
+      },
+    });
+
+    if (existingCombination) {
+      if (existingCombination.isActive) {
+        throw new ConflictError(
+          `A fabric variant with this exact combination already exists (SKU: ${existingCombination.sku}).`,
+        );
+      } else {
+        throw new ConflictError(
+          `A fabric variant with this combination already exists but is currently deactivated (SKU: ${existingCombination.sku}). Please reactivate it from the list.`,
+        );
+      }
+    }
+
     const sku =
       data.sku?.trim() ||
-      `FV-${data.fabricId}-${data.designId}-${data.warpColorId}-${data.weftColorId}-${Date.now().toString(36)}`;
+      `FV-${data.fabricId}-${data.designId}-${data.warpColorId}-${data.weftColorId}`;
+
+    const existingSku = await prisma.fabricVariant.findUnique({
+      where: { sku },
+    });
+    if (existingSku) {
+      throw new ConflictError(`A fabric variant with SKU "${sku}" already exists.`);
+    }
 
     return prisma.$transaction(async (tx) => {
       const created = await tx.fabricVariant.create({
@@ -509,9 +537,36 @@ export class CatalogService {
     },
     actorUserId: number,
   ) {
+    const existingCombination = await prisma.yarnVariant.findFirst({
+      where: {
+        yarnId: data.yarnId,
+        colorId: data.colorId,
+        supplierId: data.supplierId,
+      },
+    });
+
+    if (existingCombination) {
+      if (existingCombination.isActive) {
+        throw new ConflictError(
+          `A yarn variant with this material, color, and supplier already exists (SKU: ${existingCombination.sku}).`,
+        );
+      } else {
+        throw new ConflictError(
+          `A yarn variant with this combination already exists but is currently deactivated (SKU: ${existingCombination.sku}). Please reactivate it from the list.`,
+        );
+      }
+    }
+
     const sku =
       data.sku?.trim() ||
-      `YV-${data.yarnId}-${data.colorId}-${data.supplierId}-${Date.now().toString(36)}`;
+      `YV-${data.yarnId}-${data.supplierId}-${data.colorId}`;
+
+    const existingSku = await prisma.yarnVariant.findUnique({
+      where: { sku },
+    });
+    if (existingSku) {
+      throw new ConflictError(`A yarn variant with SKU "${sku}" already exists.`);
+    }
 
     return prisma.$transaction(async (tx) => {
       const created = await tx.yarnVariant.create({
