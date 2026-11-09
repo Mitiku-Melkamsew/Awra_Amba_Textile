@@ -43,16 +43,24 @@ export function deriveDirectTxnStatus(totalAmount: number, amountPaid: number): 
 }
 
 export async function createDirectTransaction(input: CreateDirectTransactionInput) {
+  let resolvedType = input.type;
+  if ((resolvedType as any) === "fabric_sale") resolvedType = DirectTxnType.fabric_sale_to_merchant;
+  if ((resolvedType as any) === "yarn_sale") resolvedType = DirectTxnType.yarn_sale_to_weaver;
+  if ((resolvedType as any) === "fabric_purchase") resolvedType = DirectTxnType.fabric_purchase_from_weaver;
+
+  const isSale = resolvedType === DirectTxnType.fabric_sale_to_merchant || resolvedType === DirectTxnType.yarn_sale_to_weaver;
+
   // Validate counterparty
-  if (
-    input.type === "fabric_purchase_from_weaver" ||
-    input.type === "yarn_sale_to_weaver"
-  ) {
+  if (resolvedType === DirectTxnType.fabric_purchase_from_weaver) {
     if (!input.weaverUserId) {
       throw new Error("VALIDATION: weaverUserId is required for weaver direct transactions.");
     }
-  } else if (input.type === "fabric_sale_to_merchant") {
-    if (!input.merchantUserId) {
+  } else if (resolvedType === DirectTxnType.yarn_sale_to_weaver) {
+    if (!input.weaverUserId && !input.merchantUserId) {
+      throw new Error("VALIDATION: A buyer (weaver or merchant) is required for yarn sales.");
+    }
+  } else if (resolvedType === DirectTxnType.fabric_sale_to_merchant) {
+    if (!input.merchantUserId && !input.weaverUserId) {
       throw new Error("VALIDATION: merchantUserId is required for merchant direct transactions.");
     }
   }
@@ -73,13 +81,33 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         warpColorId = warpColorId ?? firstColor?.colorId ?? 1;
         weftColorId = weftColorId ?? firstColor?.colorId ?? 1;
       }
-      const res = await resolveFabricVariant({
-        fabricId: fId,
-        warpColorId,
-        weftColorId,
-        designId,
-      });
-      line.fabricVariantId = res.variantId;
+      if (isSale) {
+        let defaultDesignId: number | undefined;
+        if (!designId) {
+          const firstDesign = await prisma.design.findFirst({ orderBy: { designId: "asc" } });
+          defaultDesignId = firstDesign?.designId;
+        }
+        const existing = await prisma.fabricVariant.findFirst({
+          where: {
+            fabricId: fId,
+            warpColorId,
+            weftColorId,
+            ...(designId ? { designId } : defaultDesignId ? { designId: defaultDesignId } : {}),
+          },
+        });
+        if (!existing) {
+          throw new Error("VALIDATION: Cannot sell a fabric combination that does not exist in inventory.");
+        }
+        line.fabricVariantId = existing.fabricVariantId;
+      } else {
+        const res = await resolveFabricVariant({
+          fabricId: fId,
+          warpColorId,
+          weftColorId,
+          designId,
+        });
+        line.fabricVariantId = res.variantId;
+      }
     }
 
     if (!line.yarnVariantId && (line.yarnId || line.yarnTypeId)) {
@@ -94,12 +122,26 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         const firstSupplier = await prisma.supplier.findFirst({ orderBy: { supplierId: "asc" } });
         sId = firstSupplier?.supplierId ?? 1;
       }
-      const res = await resolveYarnVariant({
-        yarnId: yId,
-        colorId: cId,
-        supplierId: sId,
-      });
-      line.yarnVariantId = res.variantId;
+      if (isSale) {
+        const existing = await prisma.yarnVariant.findFirst({
+          where: {
+            yarnId: yId,
+            colorId: cId,
+            supplierId: sId,
+          },
+        });
+        if (!existing) {
+          throw new Error("VALIDATION: Cannot sell a yarn combination that does not exist in inventory.");
+        }
+        line.yarnVariantId = existing.yarnVariantId;
+      } else {
+        const res = await resolveYarnVariant({
+          yarnId: yId,
+          colorId: cId,
+          supplierId: sId,
+        });
+        line.yarnVariantId = res.variantId;
+      }
     }
   }
 
@@ -120,13 +162,13 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
     }
 
     if (
-      (input.type === "fabric_purchase_from_weaver" || input.type === "fabric_sale_to_merchant") &&
+      (resolvedType === DirectTxnType.fabric_purchase_from_weaver || resolvedType === DirectTxnType.fabric_sale_to_merchant) &&
       !hasFabric
     ) {
       throw new Error("VALIDATION: Fabric variant is required for fabric transactions.");
     }
 
-    if (input.type === "yarn_sale_to_weaver" && !hasYarn) {
+    if (resolvedType === DirectTxnType.yarn_sale_to_weaver && !hasYarn) {
       throw new Error("VALIDATION: Yarn variant is required for yarn transactions.");
     }
 
@@ -138,7 +180,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       if (!variant?.isActive || !variant.fabric.isActive) {
         throw new Error("VALIDATION: Inactive fabric catalog items cannot be used.");
       }
-      if (input.type === "fabric_sale_to_merchant") {
+      if (resolvedType === DirectTxnType.fabric_sale_to_merchant) {
         const currentStock = Number(variant.stockSnapshot ?? 0);
         if (currentStock < line.quantity) {
           throw new Error(
@@ -165,7 +207,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       if (!variant?.isActive || !variant.yarn.isActive) {
         throw new Error("VALIDATION: Inactive yarn catalog items cannot be used.");
       }
-      if (input.type === "yarn_sale_to_weaver") {
+      if (resolvedType === DirectTxnType.yarn_sale_to_weaver) {
         const currentStock = Number(variant.stockSnapshot ?? 0);
         if (currentStock < line.quantity) {
           throw new Error(
@@ -201,7 +243,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
 
     const txn = await tx.directTransaction.create({
       data: {
-        type: input.type,
+        type: resolvedType,
         weaverUserId: input.weaverUserId,
         merchantUserId: input.merchantUserId,
         totalAmount: calculatedTotal,
@@ -229,13 +271,13 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       });
 
       // Stock adjustment according to transaction type
-      if (input.type === "fabric_purchase_from_weaver") {
+      if (resolvedType === DirectTxnType.fabric_purchase_from_weaver) {
         // Fabric stock increases
         await tx.fabricVariant.update({
           where: { fabricVariantId: line.fabricVariantId! },
           data: { stockSnapshot: { increment: line.quantity } },
         });
-      } else if (input.type === "fabric_sale_to_merchant") {
+      } else if (resolvedType === DirectTxnType.fabric_sale_to_merchant) {
         // Fabric stock decreases - prohibit negative stock
         const current = await tx.fabricVariant.findUniqueOrThrow({
           where: { fabricVariantId: line.fabricVariantId! },
@@ -249,7 +291,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
           where: { fabricVariantId: line.fabricVariantId! },
           data: { stockSnapshot: { decrement: line.quantity } },
         });
-      } else if (input.type === "yarn_sale_to_weaver") {
+      } else if (resolvedType === DirectTxnType.yarn_sale_to_weaver) {
         // Yarn stock decreases - prohibit negative stock
         const current = await tx.yarnVariant.findUniqueOrThrow({
           where: { yarnVariantId: line.yarnVariantId! },

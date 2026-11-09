@@ -409,7 +409,15 @@ export class CatalogService {
     return prisma.fabricVariant.findMany({
       where: activeOnly ? { isActive: true } : undefined,
       include: {
-        fabric: true,
+        fabric: {
+          include: {
+            prices: {
+              where: { isActive: true },
+              orderBy: { effectiveFrom: "desc" },
+              take: 1,
+            },
+          },
+        },
         design: true,
         warpColor: true,
         weftColor: true,
@@ -520,7 +528,14 @@ export class CatalogService {
     return prisma.yarnVariant.findMany({
       where: activeOnly ? { isActive: true } : undefined,
       include: {
-        yarn: true,
+        yarn: {
+          include: {
+            yarnPrices: {
+              where: { isActive: true },
+              orderBy: { effectiveFrom: "desc" },
+            },
+          },
+        },
         color: true,
         supplier: true,
       },

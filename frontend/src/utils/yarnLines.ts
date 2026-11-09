@@ -14,6 +14,10 @@ export interface YarnVariantOption {
   supplier?: { supplierId?: number; name: string };
   color?: { colorId?: number; name: string };
   basePrice?: string | number | null;
+  sellingPrice?: number;
+  purchasePrice?: number;
+  stockSnapshot?: string | number;
+  isActive?: boolean;
 }
 
 export type LineEntryMode = "variant" | "catalog";

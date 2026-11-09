@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
+import { Prisma } from "@prisma/client";
 import { DomainError } from "../../domain/errors/domain-errors.js";
 
 export function errorHandler(
@@ -24,6 +25,21 @@ export function errorHandler(
     return;
   }
 
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === "P2002") {
+      res.status(409).json({ error: "A record with this combination or identifier already exists." });
+      return;
+    }
+    if (err.code === "P2003") {
+      res.status(400).json({ error: "The referenced counterparty or variant does not exist in the database." });
+      return;
+    }
+    if (err.code === "P2025") {
+      res.status(404).json({ error: "Requested record not found." });
+      return;
+    }
+  }
+
   const message = err instanceof Error ? err.message : "Internal server error";
 
   // Check for common error prefixes
@@ -41,6 +57,10 @@ export function errorHandler(
   }
   if (message.startsWith("BLOCKED:")) {
     res.status(422).json({ error: message.replace("BLOCKED:", "").trim() });
+    return;
+  }
+  if (message.startsWith("INSUFFICIENT_STOCK:")) {
+    res.status(400).json({ error: message.replace("INSUFFICIENT_STOCK:", "").trim() });
     return;
   }
 
