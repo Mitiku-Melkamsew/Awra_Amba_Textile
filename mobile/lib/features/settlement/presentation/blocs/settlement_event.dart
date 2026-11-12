@@ -44,3 +44,22 @@ class CommitBatchSettlementSubmitted extends SettlementEvent {
   @override
   List<Object?> get props => [previewId, paymentMethod, cutoffDate];
 }
+
+class LoadSettlementHistory extends SettlementEvent {}
+
+class PayBatchSubmitted extends SettlementEvent {
+  final String batchId;
+  final double amount;
+  final String? paymentMethod;
+  final String? notes;
+
+  const PayBatchSubmitted({
+    required this.batchId,
+    required this.amount,
+    this.paymentMethod,
+    this.notes,
+  });
+
+  @override
+  List<Object?> get props => [batchId, amount, paymentMethod, notes];
+}

@@ -45,4 +45,17 @@ class ProductsRepositoryImpl implements ProductsRepository {
     quantity: quantity,
     minWeightThreshold: minWeightThreshold,
   );
+
+  @override
+  Future<FabricVariantEntity> createFabricVariant({
+    required int fabricId,
+    int? warpColorId,
+    int? weftColorId,
+    int? designId,
+  }) => remoteDataSource.createFabricVariant(
+    fabricId: fabricId,
+    warpColorId: warpColorId,
+    weftColorId: weftColorId,
+    designId: designId,
+  );
 }

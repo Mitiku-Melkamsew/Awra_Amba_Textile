@@ -26,35 +26,24 @@ class LoadWorkOrderDetail extends WorkOrdersEvent {
 }
 
 class CreateWorkOrderSubmitted extends WorkOrdersEvent {
-  final int weaverId;
+  final int weaverUserId;
   final String? zigId;
-  final int productId;
-  final int warpColorId;
-  final int weftColorId;
-  final int? designId;
-  final double? unitPrice;
+  final int fabricVariantId;
   final List<Map<String, dynamic>>? yarnLines;
 
   const CreateWorkOrderSubmitted({
-    required this.weaverId,
+    required this.weaverUserId,
     this.zigId,
-    required this.productId,
-    required this.warpColorId,
-    required this.weftColorId,
-    this.designId,
-    this.unitPrice,
+    required this.fabricVariantId,
     this.yarnLines,
   });
 
   @override
   List<Object?> get props => [
-    weaverId,
+    weaverUserId,
     zigId,
-    productId,
-    warpColorId,
-    weftColorId,
-    designId,
-    unitPrice,
+    fabricVariantId,
+    yarnLines,
   ];
 }
 
@@ -81,6 +70,7 @@ class DeleteYarnGivenSubmitted extends WorkOrdersEvent {
 class AddFabricReturnSubmitted extends WorkOrdersEvent {
   final String zigId;
   final int? fabricVariantId;
+  final int? fabricId;
   final int? warpColorId;
   final int? weftColorId;
   final int? designId;
@@ -97,6 +87,7 @@ class AddFabricReturnSubmitted extends WorkOrdersEvent {
   const AddFabricReturnSubmitted({
     required this.zigId,
     this.fabricVariantId,
+    this.fabricId,
     this.warpColorId,
     this.weftColorId,
     this.designId,

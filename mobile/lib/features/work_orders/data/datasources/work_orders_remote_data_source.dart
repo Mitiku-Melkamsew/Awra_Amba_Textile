@@ -9,13 +9,9 @@ abstract class WorkOrdersRemoteDataSource {
   Future<WorkOrderDetailModel> getWorkOrderDetail(String zigId);
   Future<String> getNextZigId();
   Future<WorkOrderModel> createWorkOrder({
-    required int weaverId,
+    required int weaverUserId,
     String? zigId,
-    required int productId,
-    required int warpColorId,
-    required int weftColorId,
-    int? designId,
-    double? unitPrice,
+    required int fabricVariantId,
     List<Map<String, dynamic>>? yarnLines,
   });
   Future<WorkOrderModel> updateStatus(String zigId, String status);
@@ -47,6 +43,7 @@ abstract class WorkOrdersRemoteDataSource {
   Future<void> addFabricReturn({
     required String zigId,
     int? fabricVariantId,
+    int? fabricId,
     int? warpColorId,
     int? weftColorId,
     int? designId,
@@ -138,26 +135,18 @@ class WorkOrdersRemoteDataSourceImpl implements WorkOrdersRemoteDataSource {
 
   @override
   Future<WorkOrderModel> createWorkOrder({
-    required int weaverId,
+    required int weaverUserId,
     String? zigId,
-    required int productId,
-    required int warpColorId,
-    required int weftColorId,
-    int? designId,
-    double? unitPrice,
+    required int fabricVariantId,
     List<Map<String, dynamic>>? yarnLines,
   }) async {
     final response = await apiClient.dio.post(
       ApiConstants.workOrders,
       data: {
-        'weaverId': weaverId,
+        'weaverUserId': weaverUserId,
         if (zigId != null && zigId.isNotEmpty) 'zigId': zigId,
-        'productId': productId,
-        'warpColorId': warpColorId,
-        'weftColorId': weftColorId,
-        'designId': ?designId,
-        'unitPrice': ?unitPrice,
-        if (yarnLines != null && yarnLines.isNotEmpty) 'yarnLines': yarnLines,
+        'fabricVariantId': fabricVariantId,
+        'yarnLines': ?yarnLines,
       },
     );
     return WorkOrderModel.fromJson(response.data);
@@ -256,6 +245,7 @@ class WorkOrdersRemoteDataSourceImpl implements WorkOrdersRemoteDataSource {
   Future<void> addFabricReturn({
     required String zigId,
     int? fabricVariantId,
+    int? fabricId,
     int? warpColorId,
     int? weftColorId,
     int? designId,
@@ -273,6 +263,7 @@ class WorkOrdersRemoteDataSourceImpl implements WorkOrdersRemoteDataSource {
       ApiConstants.workOrderFabricReturns(zigId),
       data: {
         'fabricVariantId': ?fabricVariantId,
+        'fabricId': ?fabricId,
         'warpColorId': ?warpColorId,
         'weftColorId': ?weftColorId,
         'designId': ?designId,

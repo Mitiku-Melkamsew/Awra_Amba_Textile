@@ -7,6 +7,7 @@ class ProductEntity extends Equatable {
   final double basePrice;
   final double? standardLengthCm;
   final double? standardWidthCm;
+  final double? standardWeightG;
 
   const ProductEntity({
     required this.productId,
@@ -15,6 +16,7 @@ class ProductEntity extends Equatable {
     required this.basePrice,
     this.standardLengthCm,
     this.standardWidthCm,
+    this.standardWeightG,
   });
 
   @override

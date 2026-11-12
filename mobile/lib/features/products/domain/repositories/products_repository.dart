@@ -17,4 +17,10 @@ abstract class ProductsRepository {
     required int quantity,
     required double minWeightThreshold,
   });
+  Future<FabricVariantEntity> createFabricVariant({
+    required int fabricId,
+    int? warpColorId,
+    int? weftColorId,
+    int? designId,
+  });
 }

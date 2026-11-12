@@ -19,6 +19,12 @@ abstract class ProductsRemoteDataSource {
     required int quantity,
     required double minWeightThreshold,
   });
+  Future<FabricVariantModel> createFabricVariant({
+    required int fabricId,
+    int? warpColorId,
+    int? weftColorId,
+    int? designId,
+  });
 }
 
 class ProductsRemoteDataSourceImpl implements ProductsRemoteDataSource {
@@ -86,5 +92,24 @@ class ProductsRemoteDataSourceImpl implements ProductsRemoteDataSource {
       },
     );
     return response.data as Map<String, dynamic>;
+  }
+
+  @override
+  Future<FabricVariantModel> createFabricVariant({
+    required int fabricId,
+    int? warpColorId,
+    int? weftColorId,
+    int? designId,
+  }) async {
+    final response = await apiClient.dio.post(
+      '/catalog/fabric-variants',
+      data: {
+        'fabricId': fabricId,
+        'warpColorId': ?warpColorId,
+        'weftColorId': ?weftColorId,
+        'designId': ?designId,
+      },
+    );
+    return FabricVariantModel.fromJson(response.data);
   }
 }

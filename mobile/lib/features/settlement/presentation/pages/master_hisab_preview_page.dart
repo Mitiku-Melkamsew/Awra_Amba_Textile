@@ -172,6 +172,48 @@ class _MasterPayrollBody extends StatelessWidget {
             ],
           ),
         ),
+        if (preview.hasBlockedWeavers)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFFCA5A5)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: AppColors.danger, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Attention: Blocked Weaver(s) Detected',
+                        style: TextStyle(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${preview.weavers.where((w) => w.isBlocked).length} weaver(s) are blocked from settlement due to negative balances or unreturned materials.',
+                        style: const TextStyle(
+                          color: Color(0xFF7F1D1D),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         const Divider(height: 1),
         Expanded(
           child: ListView.builder(
@@ -211,12 +253,59 @@ class _WeaverPayrollCard extends StatelessWidget {
                   color: AppColors.adminPrimary),
             ),
           ),
-          title: Text(weaver.weaverName,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          subtitle: Text(
-              '${weaver.zigIds.length} zig(s) · Net: ${Formatters.currency(weaver.netSettlement)}',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          title: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  weaver.weaverName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              if (weaver.isBlocked) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'BLOCKED',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${weaver.zigIds.length} zig(s) · Net: ${Formatters.currency(weaver.netSettlement)}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              if (weaver.isBlocked && weaver.blockReasons.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    'Reason: ${weaver.blockReasons.join(", ")}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.danger,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(

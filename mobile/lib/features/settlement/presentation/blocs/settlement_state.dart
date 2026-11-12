@@ -9,6 +9,7 @@ class SettlementState extends Equatable {
   final String? cutoffDate;
   final List<CommittedPaymentResultEntity> committedPayments;
   final double committedGrandTotal;
+  final List<dynamic> batches;
   final String? errorMessage;
   final String? successMessage;
 
@@ -18,6 +19,7 @@ class SettlementState extends Equatable {
     this.cutoffDate,
     this.committedPayments = const [],
     this.committedGrandTotal = 0.0,
+    this.batches = const [],
     this.errorMessage,
     this.successMessage,
   });
@@ -28,6 +30,7 @@ class SettlementState extends Equatable {
     String? cutoffDate,
     List<CommittedPaymentResultEntity>? committedPayments,
     double? committedGrandTotal,
+    List<dynamic>? batches,
     String? errorMessage,
     String? successMessage,
   }) {
@@ -37,6 +40,7 @@ class SettlementState extends Equatable {
       cutoffDate: cutoffDate ?? this.cutoffDate,
       committedPayments: committedPayments ?? this.committedPayments,
       committedGrandTotal: committedGrandTotal ?? this.committedGrandTotal,
+      batches: batches ?? this.batches,
       errorMessage: errorMessage ?? this.errorMessage,
       successMessage: successMessage ?? this.successMessage,
     );
@@ -49,6 +53,7 @@ class SettlementState extends Equatable {
         cutoffDate,
         committedPayments,
         committedGrandTotal,
+        batches,
         errorMessage,
         successMessage,
       ];

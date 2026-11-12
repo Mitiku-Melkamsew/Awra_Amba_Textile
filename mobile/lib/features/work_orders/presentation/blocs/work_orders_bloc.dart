@@ -86,13 +86,9 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
     try {
       final wo = await createWorkOrderUseCase(
         CreateWorkOrderParams(
-          weaverId: event.weaverId,
+          weaverUserId: event.weaverUserId,
           zigId: event.zigId,
-          productId: event.productId,
-          warpColorId: event.warpColorId,
-          weftColorId: event.weftColorId,
-          designId: event.designId,
-          unitPrice: event.unitPrice,
+          fabricVariantId: event.fabricVariantId,
           yarnLines: event.yarnLines,
         ),
       );
@@ -162,6 +158,7 @@ class WorkOrdersBloc extends Bloc<WorkOrdersEvent, WorkOrdersState> {
         AddFabricReturnParams(
           zigId: event.zigId,
           fabricVariantId: event.fabricVariantId,
+          fabricId: event.fabricId,
           warpColorId: event.warpColorId,
           weftColorId: event.weftColorId,
           designId: event.designId,

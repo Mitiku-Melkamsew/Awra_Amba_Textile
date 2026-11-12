@@ -7,6 +7,7 @@ import '../blocs/settlement_bloc.dart';
 import '../blocs/settlement_event.dart';
 import '../blocs/settlement_state.dart';
 import 'master_hisab_preview_page.dart';
+import 'settlement_history_page.dart';
 
 class SettlementPage extends StatefulWidget {
   const SettlementPage({super.key});
@@ -47,7 +48,32 @@ class _SettlementPageState extends State<SettlementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Weaver Payroll & Settlement (ሂሳብ)')),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Open Menu',
+            onPressed: () {
+              ctx.findRootAncestorStateOfType<ScaffoldState>()?.openDrawer();
+            },
+          ),
+        ),
+        title: const Text('Weaver Payroll & Settlement (ሂሳብ)'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Settlement History',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettlementHistoryPage(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: BlocConsumer<SettlementBloc, SettlementState>(
         listener: (context, state) {
           if (state.status == SettlementStatus.committed) {

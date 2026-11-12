@@ -63,6 +63,7 @@ class ApiConstants {
   static const String settlementsUnsettled = '/settlements/unsettled';
   static const String settlementsPreview = '/settlements/preview';
   static const String settlementsBatches = '/settlements/batches';
+  static String settlementBatchPay(String id) => '/settlements/batches/$id/pay';
   static const String settlementsSingle = '/settlements/single';
   static String settlementPay(int id) => '/settlements/$id/pay';
   static String settlementOverrideLine(int id) =>

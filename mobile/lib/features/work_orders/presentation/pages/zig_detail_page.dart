@@ -7,6 +7,7 @@ import '../../../products/domain/entities/product_entity.dart';
 import '../../../products/presentation/blocs/stock_bloc.dart';
 import '../../../products/presentation/blocs/stock_event.dart';
 import '../../../products/presentation/blocs/stock_state.dart';
+import '../../../weavers/presentation/widgets/fabric_selection_sheet.dart';
 import '../../domain/entities/work_order_entity.dart';
 import '../blocs/work_orders_bloc.dart';
 import '../blocs/work_orders_event.dart';
@@ -30,15 +31,48 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
   }
 
   void _showAddYarnDialog(CatalogLookupEntity lookup) {
-    if (lookup.yarnTypes.isEmpty || lookup.colors.isEmpty) return;
+    final Set<int> seenYarnTypeIds = {};
+    final yarnTypesList = <YarnTypeEntity>[];
+    for (final yt in lookup.yarnTypes) {
+      if (seenYarnTypeIds.add(yt.yarnTypeId)) {
+        yarnTypesList.add(yt);
+      }
+    }
+    if (yarnTypesList.isEmpty) {
+      yarnTypesList.add(
+        const YarnTypeEntity(yarnTypeId: 1, materialName: 'Cotton'),
+      );
+      seenYarnTypeIds.add(1);
+    }
+
+    final Set<int> seenColorIds = {};
+    final colorsList = <NamedColorEntity>[];
+    for (final c in lookup.colors) {
+      if (seenColorIds.add(c.colorId)) {
+        colorsList.add(c);
+      }
+    }
+    if (colorsList.isEmpty) {
+      colorsList.add(
+        const NamedColorEntity(colorId: 1, colorCode: '#FFFFFF', name: 'White'),
+      );
+      seenColorIds.add(1);
+    }
+
+    final Set<int> seenSupplierIds = {};
+    final suppliersList = <SupplierEntity>[];
+    for (final s in lookup.suppliers) {
+      if (seenSupplierIds.add(s.supplierId)) {
+        suppliersList.add(s);
+      }
+    }
 
     final qtyCtrl = TextEditingController(text: '10');
     final priceCtrl = TextEditingController(text: '400');
-    YarnTypeEntity selectedType = lookup.yarnTypes.first;
-    NamedColorEntity selectedColor = lookup.colors.first;
-    SupplierEntity? selectedSupplier = lookup.suppliers.isNotEmpty
-        ? lookup.suppliers.first
-        : null;
+    int selectedTypeId = yarnTypesList.first.yarnTypeId;
+    int selectedColorId = colorsList.first.colorId;
+    int? selectedSupplierId =
+        suppliersList.isNotEmpty ? suppliersList.first.supplierId : null;
 
     showDialog(
       context: context,
@@ -51,40 +85,64 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<YarnTypeEntity>(
-                      initialValue: selectedType,
+                    DropdownButtonFormField<int>(
+                      initialValue: selectedTypeId,
                       decoration: const InputDecoration(labelText: 'Material'),
-                      items: lookup.yarnTypes
+                      items: yarnTypesList
                           .map(
-                            (yt) => DropdownMenuItem(
-                              value: yt,
+                            (yt) => DropdownMenuItem<int>(
+                              value: yt.yarnTypeId,
                               child: Text(yt.materialName),
                             ),
                           )
                           .toList(),
                       onChanged: (val) {
                         if (val != null) {
-                          setDialogState(() => selectedType = val);
+                          setDialogState(() => selectedTypeId = val);
                         }
                       },
                     ),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<NamedColorEntity>(
-                      initialValue: selectedColor,
+                    DropdownButtonFormField<int>(
+                      initialValue: selectedColorId,
                       decoration: const InputDecoration(labelText: 'Color'),
-                      items: lookup.colors
+                      items: colorsList
                           .map(
-                            (c) =>
-                                DropdownMenuItem(value: c, child: Text(c.name)),
+                            (c) => DropdownMenuItem<int>(
+                              value: c.colorId,
+                              child: Text(c.name),
+                            ),
                           )
                           .toList(),
                       onChanged: (val) {
                         if (val != null) {
-                          setDialogState(() => selectedColor = val);
+                          setDialogState(() => selectedColorId = val);
                         }
                       },
                     ),
                     const SizedBox(height: 12),
+                    if (suppliersList.isNotEmpty) ...[
+                      DropdownButtonFormField<int?>(
+                        initialValue: selectedSupplierId,
+                        decoration:
+                            const InputDecoration(labelText: 'Supplier (Optional)'),
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('None'),
+                          ),
+                          ...suppliersList.map(
+                            (s) => DropdownMenuItem<int?>(
+                              value: s.supplierId,
+                              child: Text(s.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (val) =>
+                            setDialogState(() => selectedSupplierId = val),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     TextField(
                       controller: qtyCtrl,
                       decoration: const InputDecoration(
@@ -118,9 +176,9 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
                           zigId: widget.zigId,
                           lines: [
                             {
-                              'yarnTypeId': selectedType.yarnTypeId,
-                              'colorId': selectedColor.colorId,
-                              'supplierId': selectedSupplier?.supplierId,
+                              'yarnTypeId': selectedTypeId,
+                              'colorId': selectedColorId,
+                              'supplierId': selectedSupplierId,
                               'quantity': qty,
                               'unitPrice': price,
                             },
@@ -144,43 +202,121 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
     CatalogLookupEntity lookup,
     List<FabricVariantEntity> fabricVariants,
   ) {
-    final fabricProducts = lookup.products
-        .where((p) => p.category == 'fabric')
-        .toList();
-    if (fabricProducts.isEmpty || lookup.colors.isEmpty) return;
-
-    final qtyCtrl = TextEditingController();
-    final weightCtrl = TextEditingController();
-    final lengthCtrl = TextEditingController();
-    final widthCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
-    final remarkCtrl = TextEditingController();
-    final defectReasonCtrl = TextEditingController();
-    final deductionCtrl = TextEditingController();
-    var isDefective = false;
-    var entryMode = 'catalog';
-    var selectedProduct = fabricProducts.first;
-    var selectedWarp = lookup.colors.first;
-    var selectedWeft = lookup.colors.first;
-    DesignEntity? selectedDesign;
-    FabricVariantEntity? selectedVariant;
     final currentVariant = context
         .read<WorkOrdersBloc>()
         .state
         .selectedDetail
         ?.fabricVariant;
-    if (currentVariant != null) {
-      selectedProduct = currentVariant.product ?? selectedProduct;
-      selectedWarp = currentVariant.warpColor ?? selectedWarp;
-      selectedWeft = currentVariant.weftColor ?? selectedWeft;
-      selectedDesign = currentVariant.design;
-      priceCtrl.text = (currentVariant.basePrice ?? selectedProduct.basePrice)
-          .toString();
-    } else {
-      priceCtrl.text = selectedProduct.basePrice.toString();
+
+    // Deduplicate fabric products
+    final Set<int> seenProductIds = {};
+    final fabricProducts = <ProductEntity>[];
+    for (final p in lookup.products) {
+      if ((p.category == 'fabric' || p.category.isEmpty) &&
+          seenProductIds.add(p.productId)) {
+        fabricProducts.add(p);
+      }
     }
-    lengthCtrl.text = selectedProduct.standardLengthCm?.toString() ?? '';
-    widthCtrl.text = selectedProduct.standardWidthCm?.toString() ?? '';
+    if (currentVariant?.product != null &&
+        seenProductIds.add(currentVariant!.product!.productId)) {
+      fabricProducts.insert(0, currentVariant.product!);
+    }
+    if (fabricProducts.isEmpty) {
+      fabricProducts.add(
+        ProductEntity(
+          productId: currentVariant?.product?.productId ?? 1,
+          name: currentVariant?.displayName ?? 'Fabric',
+          category: 'fabric',
+          basePrice: currentVariant?.basePrice ?? 120.0,
+        ),
+      );
+      seenProductIds.add(fabricProducts.first.productId);
+    }
+
+    // Deduplicate colors
+    final Set<int> seenColorIds = {};
+    final colorsList = <NamedColorEntity>[];
+    for (final c in lookup.colors) {
+      if (seenColorIds.add(c.colorId)) {
+        colorsList.add(c);
+      }
+    }
+    if (colorsList.isEmpty) {
+      colorsList.add(
+        const NamedColorEntity(colorId: 1, colorCode: '#FFFFFF', name: 'White'),
+      );
+      seenColorIds.add(1);
+    }
+    if (currentVariant?.warpColor != null &&
+        seenColorIds.add(currentVariant!.warpColor!.colorId)) {
+      colorsList.add(currentVariant.warpColor!);
+    }
+    if (currentVariant?.weftColor != null &&
+        seenColorIds.add(currentVariant!.weftColor!.colorId)) {
+      colorsList.add(currentVariant.weftColor!);
+    }
+
+    // Deduplicate designs
+    final Set<int> seenDesignIds = {};
+    final designsList = <DesignEntity>[];
+    for (final d in lookup.designs) {
+      if (seenDesignIds.add(d.designId)) {
+        designsList.add(d);
+      }
+    }
+    if (currentVariant?.design != null &&
+        seenDesignIds.add(currentVariant!.design!.designId)) {
+      designsList.insert(0, currentVariant.design!);
+    }
+
+    // Deduplicate variants
+    final Set<int> seenVariantIds = {};
+    final variantsList = <FabricVariantEntity>[];
+    for (final v in fabricVariants) {
+      if (seenVariantIds.add(v.fabricVariantId)) {
+        variantsList.add(v);
+      }
+    }
+    if (currentVariant != null &&
+        seenVariantIds.add(currentVariant.fabricVariantId)) {
+      variantsList.insert(0, currentVariant);
+    }
+
+    int? selectedVariantId = currentVariant?.fabricVariantId;
+    int selectedProductId = currentVariant?.product?.productId ??
+        fabricProducts.first.productId;
+    int selectedWarpId = currentVariant?.warpColor?.colorId ??
+        colorsList.first.colorId;
+    int selectedWeftId = currentVariant?.weftColor?.colorId ??
+        colorsList.first.colorId;
+    int? selectedDesignId = currentVariant?.design?.designId;
+
+    String fabricDisplayName = currentVariant?.displayName ??
+        '${fabricProducts.first.name} · ${colorsList.first.name}';
+    double defaultPrice = (currentVariant?.basePrice ?? 0) > 0
+        ? currentVariant!.basePrice!
+        : (fabricProducts.first.basePrice > 0
+            ? fabricProducts.first.basePrice
+            : 120.0);
+    double? stdWeight = currentVariant?.product?.standardWeightG ??
+        fabricProducts.first.standardWeightG ??
+        64.0;
+    double? stdLength = currentVariant?.product?.standardLengthCm ??
+        fabricProducts.first.standardLengthCm;
+    double? stdWidth = currentVariant?.product?.standardWidthCm ??
+        fabricProducts.first.standardWidthCm;
+
+    final qtyCtrl = TextEditingController();
+    final weightCtrl = TextEditingController();
+    final lengthCtrl =
+        TextEditingController(text: stdLength?.toString() ?? '');
+    final widthCtrl = TextEditingController(text: stdWidth?.toString() ?? '');
+    final priceCtrl = TextEditingController(text: defaultPrice.toString());
+    final remarkCtrl = TextEditingController();
+    final defectReasonCtrl = TextEditingController();
+    final deductionCtrl = TextEditingController();
+    var isDefective = false;
+    var showManualSelectors = false;
 
     showDialog(
       context: context,
@@ -191,151 +327,294 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'catalog', label: Text('Describe')),
-                      ButtonSegment(value: 'variant', label: Text('Existing')),
-                    ],
-                    selected: {entryMode},
-                    onSelectionChanged: (value) =>
-                        setDialogState(() => entryMode = value.first),
-                  ),
-                  const SizedBox(height: 12),
-                  if (entryMode == 'variant')
-                    DropdownButtonFormField<FabricVariantEntity>(
-                      initialValue: selectedVariant,
-                      decoration: const InputDecoration(
-                        labelText: 'Fabric variant',
-                      ),
-                      items: fabricVariants
-                          .map(
-                            (variant) => DropdownMenuItem(
-                              value: variant,
-                              child: Text(
-                                '${variant.displayName} · ${variant.sku}',
+                  // Fabric Card matching Image 2 & Image 1
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFED7AA)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEA580C),
+                                shape: BoxShape.circle,
                               ),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setDialogState(() {
-                          selectedVariant = value;
-                          selectedProduct = value.product ?? selectedProduct;
-                          selectedWarp = value.warpColor ?? selectedWarp;
-                          selectedWeft = value.weftColor ?? selectedWeft;
-                          selectedDesign = value.design;
-                          priceCtrl.text =
-                              (value.basePrice ?? selectedProduct.basePrice)
-                                  .toString();
-                          lengthCtrl.text =
-                              selectedProduct.standardLengthCm?.toString() ??
-                              '';
-                          widthCtrl.text =
-                              selectedProduct.standardWidthCm?.toString() ?? '';
-                        });
-                      },
-                    )
-                  else ...[
-                    DropdownButtonFormField<ProductEntity>(
-                      initialValue: selectedProduct,
-                      decoration: const InputDecoration(labelText: 'Product'),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                fabricDisplayName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13.5,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                foregroundColor: const Color(0xFFC2410C),
+                                side: const BorderSide(
+                                  color: Color(0xFFFED7AA),
+                                ),
+                              ),
+                              onPressed: () async {
+                                final result = await FabricSelectionSheet.show(
+                                  context,
+                                  fabricVariants: variantsList,
+                                  lookup: lookup,
+                                  currentVariantId: selectedVariantId,
+                                );
+                                if (result != null) {
+                                  setDialogState(() {
+                                    selectedVariantId =
+                                        result.variant?.fabricVariantId;
+                                    selectedProductId =
+                                        result.fabricId ?? selectedProductId;
+                                    selectedWarpId =
+                                        result.warpColorId ?? selectedWarpId;
+                                    selectedWeftId =
+                                        result.weftColorId ?? selectedWeftId;
+                                    selectedDesignId = result.designId;
+                                    fabricDisplayName = result.displayName;
+                                    if (result.weaverRate != null &&
+                                        result.weaverRate! > 0) {
+                                      priceCtrl.text =
+                                          result.weaverRate.toString();
+                                    }
+                                    final matchedProd = fabricProducts
+                                        .where(
+                                          (p) =>
+                                              p.productId == selectedProductId,
+                                        )
+                                        .firstOrNull;
+                                    if (matchedProd?.standardLengthCm != null) {
+                                      lengthCtrl.text =
+                                          matchedProd!.standardLengthCm.toString();
+                                    }
+                                    if (matchedProd?.standardWidthCm != null) {
+                                      widthCtrl.text =
+                                          matchedProd!.standardWidthCm.toString();
+                                    }
+                                    if (matchedProd?.standardWeightG != null) {
+                                      stdWeight = matchedProd!.standardWeightG;
+                                      final q =
+                                          int.tryParse(qtyCtrl.text) ?? 0;
+                                      if (q > 0) {
+                                        weightCtrl.text =
+                                            (q * stdWeight!).round().toString();
+                                      }
+                                    }
+                                  });
+                                }
+                              },
+                              child: const Text(
+                                'Change',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Standard: weight ${stdWeight?.round() ?? 64}g · ${lengthCtrl.text.isNotEmpty ? lengthCtrl.text : '-'} × ${widthCtrl.text.isNotEmpty ? widthCtrl.text : '-'} cm',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Option to toggle direct manual selectors
+                  InkWell(
+                    onTap: () => setDialogState(
+                      () => showManualSelectors = !showManualSelectors,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            showManualSelectors
+                                ? 'Hide detailed selectors'
+                                : 'Or describe details manually',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFC2410C),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Icon(
+                            showManualSelectors
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            size: 18,
+                            color: const Color(0xFFC2410C),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  if (showManualSelectors) ...[
+                    DropdownButtonFormField<int>(
+                      initialValue: selectedProductId,
+                      decoration:
+                          const InputDecoration(labelText: 'Fabric Product'),
                       items: fabricProducts
                           .map(
-                            (product) => DropdownMenuItem(
-                              value: product,
-                              child: Text(product.name),
+                            (p) => DropdownMenuItem<int>(
+                              value: p.productId,
+                              child: Text(p.name),
                             ),
                           )
                           .toList(),
                       onChanged: (value) {
                         if (value == null) return;
+                        final match = fabricProducts
+                            .where((p) => p.productId == value)
+                            .firstOrNull;
                         setDialogState(() {
-                          selectedProduct = value;
-                          priceCtrl.text = value.basePrice.toString();
-                          lengthCtrl.text =
-                              value.standardLengthCm?.toString() ?? '';
-                          widthCtrl.text =
-                              value.standardWidthCm?.toString() ?? '';
+                          selectedProductId = value;
+                          selectedVariantId = null;
+                          if (match != null) {
+                            if (match.basePrice > 0) {
+                              priceCtrl.text = match.basePrice.toString();
+                            }
+                            lengthCtrl.text =
+                                match.standardLengthCm?.toString() ?? '';
+                            widthCtrl.text =
+                                match.standardWidthCm?.toString() ?? '';
+                            stdWeight = match.standardWeightG ?? stdWeight;
+                            final q = int.tryParse(qtyCtrl.text) ?? 0;
+                            if (q > 0 && stdWeight != null) {
+                              weightCtrl.text =
+                                  (q * stdWeight!).round().toString();
+                            }
+                            fabricDisplayName = match.name;
+                          }
                         });
                       },
                     ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<DesignEntity?>(
-                      initialValue: selectedDesign,
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<int?>(
+                      initialValue: selectedDesignId,
                       decoration: const InputDecoration(labelText: 'Design'),
                       items: [
-                        const DropdownMenuItem<DesignEntity?>(
+                        const DropdownMenuItem<int?>(
                           value: null,
                           child: Text('None'),
                         ),
-                        ...lookup.designs.map(
-                          (design) => DropdownMenuItem<DesignEntity?>(
-                            value: design,
+                        ...designsList.map(
+                          (design) => DropdownMenuItem<int?>(
+                            value: design.designId,
                             child: Text(design.name),
                           ),
                         ),
                       ],
-                      onChanged: (value) =>
-                          setDialogState(() => selectedDesign = value),
+                      onChanged: (value) => setDialogState(() {
+                        selectedDesignId = value;
+                        selectedVariantId = null;
+                      }),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<NamedColorEntity>(
-                            initialValue: selectedWarp,
+                          child: DropdownButtonFormField<int>(
+                            initialValue: selectedWarpId,
                             decoration: const InputDecoration(
                               labelText: 'Warp color',
                             ),
-                            items: lookup.colors
+                            items: colorsList
                                 .map(
-                                  (color) => DropdownMenuItem(
-                                    value: color,
+                                  (color) => DropdownMenuItem<int>(
+                                    value: color.colorId,
                                     child: Text(color.name),
                                   ),
                                 )
                                 .toList(),
                             onChanged: (value) {
                               if (value != null) {
-                                setDialogState(() => selectedWarp = value);
+                                setDialogState(() {
+                                  selectedWarpId = value;
+                                  selectedVariantId = null;
+                                });
                               }
                             },
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: DropdownButtonFormField<NamedColorEntity>(
-                            initialValue: selectedWeft,
+                          child: DropdownButtonFormField<int>(
+                            initialValue: selectedWeftId,
                             decoration: const InputDecoration(
                               labelText: 'Weft color',
                             ),
-                            items: lookup.colors
+                            items: colorsList
                                 .map(
-                                  (color) => DropdownMenuItem(
-                                    value: color,
+                                  (color) => DropdownMenuItem<int>(
+                                    value: color.colorId,
                                     child: Text(color.name),
                                   ),
                                 )
                                 .toList(),
                             onChanged: (value) {
                               if (value != null) {
-                                setDialogState(() => selectedWeft = value);
+                                setDialogState(() {
+                                  selectedWeftId = value;
+                                  selectedVariantId = null;
+                                });
                               }
                             },
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
+
+                  const SizedBox(height: 6),
                   TextField(
                     controller: qtyCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Quantity Returned (Pieces / ቁራጭ)',
                     ),
                     keyboardType: TextInputType.number,
+                    onChanged: (val) {
+                      final q = int.tryParse(val) ?? 0;
+                      if (q > 0 &&
+                          (weightCtrl.text.isEmpty ||
+                              weightCtrl.text == '0')) {
+                        final w = stdWeight ?? 64.0;
+                        setDialogState(() {
+                          weightCtrl.text = (q * w).round().toString();
+                        });
+                      }
+                    },
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -423,10 +702,7 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
                   final qty = int.tryParse(qtyCtrl.text) ?? 0;
                   final weight = double.tryParse(weightCtrl.text) ?? 0.0;
                   final price = double.tryParse(priceCtrl.text) ?? 0.0;
-                  if (qty <= 0 ||
-                      weight <= 0 ||
-                      price <= 0 ||
-                      (entryMode == 'variant' && selectedVariant == null)) {
+                  if (qty <= 0 || weight <= 0 || price <= 0) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Complete all required return fields.'),
@@ -437,18 +713,11 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
                   context.read<WorkOrdersBloc>().add(
                     AddFabricReturnSubmitted(
                       zigId: widget.zigId,
-                      fabricVariantId: entryMode == 'variant'
-                          ? selectedVariant!.fabricVariantId
-                          : null,
-                      warpColorId: entryMode == 'catalog'
-                          ? selectedWarp.colorId
-                          : null,
-                      weftColorId: entryMode == 'catalog'
-                          ? selectedWeft.colorId
-                          : null,
-                      designId: entryMode == 'catalog'
-                          ? selectedDesign?.designId
-                          : null,
+                      fabricVariantId: selectedVariantId,
+                      fabricId: selectedProductId,
+                      warpColorId: selectedWarpId,
+                      weftColorId: selectedWeftId,
+                      designId: selectedDesignId,
                       quantityReturned: qty,
                       totalWeight: weight,
                       unitPrice: price,
@@ -1008,9 +1277,20 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
                                 ),
                                 icon: const Icon(Icons.add, size: 18),
                                 label: const Text('Add Yarn'),
-                                onPressed: lookup != null
-                                    ? () => _showAddYarnDialog(lookup)
-                                    : null,
+                                onPressed: () {
+                                  if (lookup == null) {
+                                    context.read<StockBloc>().add(LoadStockAndCatalog());
+                                  }
+                                  final effectiveLookup = lookup ??
+                                      const CatalogLookupEntity(
+                                        colors: [],
+                                        products: [],
+                                        designs: [],
+                                        suppliers: [],
+                                        yarnTypes: [],
+                                      );
+                                  _showAddYarnDialog(effectiveLookup);
+                                },
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -1021,12 +1301,23 @@ class _ZigDetailPageState extends State<ZigDetailPage> {
                                 ),
                                 icon: const Icon(Icons.download, size: 18),
                                 label: const Text('Receive Fabric'),
-                                onPressed: lookup != null
-                                    ? () => _showAddReturnDialog(
-                                        lookup,
-                                        stockState.fabricVariants,
-                                      )
-                                    : null,
+                                onPressed: () {
+                                  if (lookup == null) {
+                                    context.read<StockBloc>().add(LoadStockAndCatalog());
+                                  }
+                                  final effectiveLookup = lookup ??
+                                      const CatalogLookupEntity(
+                                        colors: [],
+                                        products: [],
+                                        designs: [],
+                                        suppliers: [],
+                                        yarnTypes: [],
+                                      );
+                                  _showAddReturnDialog(
+                                    effectiveLookup,
+                                    stockState.fabricVariants,
+                                  );
+                                },
                               ),
                             ),
                           ],

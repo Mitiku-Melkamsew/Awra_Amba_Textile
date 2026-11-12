@@ -37,6 +37,15 @@ class _TransactionsListPageState extends State<TransactionsListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Open Menu',
+            onPressed: () {
+              ctx.findRootAncestorStateOfType<ScaffoldState>()?.openDrawer();
+            },
+          ),
+        ),
         title: const Text('Transactions (ግብይቶች)'),
       ),
       floatingActionButton: FloatingActionButton.extended(

@@ -9,10 +9,14 @@ import '../../../procurement/presentation/pages/procurement_page.dart';
 import '../../../products/presentation/pages/catalog_page.dart';
 import '../../../products/presentation/pages/stock_page.dart';
 import '../../../quality/presentation/pages/quality_rules_page.dart';
+import '../../../settlement/presentation/pages/settlement_history_page.dart';
 import '../../../settlement/presentation/pages/settlement_page.dart';
 import '../../../transactions/presentation/pages/transactions_list_page.dart';
 import '../../../users/presentation/pages/users_page.dart';
+import '../../../weavers/presentation/pages/weaver_calculator_page.dart';
+import '../../../weavers/presentation/pages/weaver_rates_page.dart';
 import '../../../work_orders/presentation/pages/zigs_list_page.dart';
+import 'admin_menu_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -28,8 +32,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
     ZigsListPage(),
     UsersPage(),
     TransactionsListPage(),
-    ProcurementPage(),
     SettlementPage(),
+    AdminMenuPage(),
   ];
 
   @override
@@ -91,7 +95,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.layers_outlined),
-              title: const Text('Work Orders (Zigs)'),
+              title: const Text('Work Orders (Zigs / ዚጎች)'),
               selected: _currentIndex == 0,
               onTap: () {
                 Navigator.pop(context);
@@ -109,7 +113,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.swap_horiz_outlined),
-              title: const Text('Direct Transactions'),
+              title: const Text('Direct Transactions (ግብይቶች)'),
               selected: _currentIndex == 2,
               onTap: () {
                 Navigator.pop(context);
@@ -117,8 +121,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.shopping_cart_outlined),
-              title: const Text('Yarn Procurement'),
+              leading: const Icon(Icons.calculate_outlined),
+              title: const Text('Settlement (HISAB / ሂሳብ)'),
               selected: _currentIndex == 3,
               onTap: () {
                 Navigator.pop(context);
@@ -126,12 +130,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.calculate_outlined),
-              title: const Text('Settlement (HISAB)'),
-              selected: _currentIndex == 4,
+              leading: const Icon(Icons.shopping_cart_outlined),
+              title: const Text('Yarn Procurement (የክር ግዢ)'),
               onTap: () {
                 Navigator.pop(context);
-                setState(() => _currentIndex = 4);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProcurementPage()),
+                );
               },
             ),
             const Divider(height: 24),
@@ -148,30 +154,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.sell_outlined),
-              title: const Text('Pricing Engine'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PricesPage()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.rule_outlined),
-              title: const Text('Quality Deduction Rules'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const QualityRulesPage()),
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.inventory_2_outlined),
-              title: const Text('Stock & Inventory'),
+              title: const Text('Stock & Inventory (ክምችት)'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -182,7 +166,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ),
             ListTile(
               leading: const Icon(Icons.menu_book_outlined),
-              title: const Text('Catalog Master'),
+              title: const Text('Catalog Master (ካታሎግ)'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -192,13 +176,85 @@ class _AdminHomePageState extends State<AdminHomePage> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.sell_outlined),
+              title: const Text('Pricing Engine (የዋጋ ተመን)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PricesPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.rule_outlined),
+              title: const Text('Quality Deduction Rules (የጥራት ደንቦች)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const QualityRulesPage()),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.shield_outlined),
-              title: const Text('Audit Logs'),
+              title: const Text('Audit Logs (የኦዲት መዝገብ)'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AuditLogsPage()),
+                );
+              },
+            ),
+            const Divider(height: 24),
+            const Padding(
+              padding: EdgeInsets.only(left: 16, bottom: 4),
+              child: Text(
+                'PAYROLL & SIMULATION TOOLS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.history_outlined),
+              title: const Text('Settlement History (የሂሳብ ታሪክ)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SettlementHistoryPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calculate_outlined),
+              title: const Text('Wage Calculator (የገቢ ስሌት)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const WeaverCalculatorPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Weaver Piece Rates (ተመን ግልጽነት)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WeaverRatesPage()),
                 );
               },
             ),
@@ -245,14 +301,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
             label: 'Sales',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_outlined),
-            activeIcon: Icon(Icons.shopping_cart),
-            label: 'Procure',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.calculate_outlined),
             activeIcon: Icon(Icons.calculate),
             label: 'Settlement',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.grid_view_outlined),
+            activeIcon: Icon(Icons.grid_view),
+            label: 'More',
           ),
         ],
       ),

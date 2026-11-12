@@ -21,6 +21,8 @@ class SettlementBloc extends Bloc<SettlementEvent, SettlementState> {
     on<CutoffDateChanged>(_onCutoffDateChanged);
     on<LoadSettlementPreviewDetail>(_onLoadSettlementPreviewDetail);
     on<CommitBatchSettlementSubmitted>(_onCommitBatchSettlementSubmitted);
+    on<LoadSettlementHistory>(_onLoadSettlementHistory);
+    on<PayBatchSubmitted>(_onPayBatchSubmitted);
   }
 
   void _onCutoffDateChanged(
@@ -155,6 +157,45 @@ class SettlementBloc extends Bloc<SettlementEvent, SettlementState> {
           errorMessage: e.toString().replaceAll('Exception: ', ''),
         ),
       );
+    }
+  }
+
+  Future<void> _onLoadSettlementHistory(
+    LoadSettlementHistory event,
+    Emitter<SettlementState> emit,
+  ) async {
+    try {
+      final batches = await settlementRepository.getSettlementHistory();
+      emit(state.copyWith(batches: batches));
+    } catch (e) {
+      emit(state.copyWith(
+        status: SettlementStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
+    }
+  }
+
+  Future<void> _onPayBatchSubmitted(
+    PayBatchSubmitted event,
+    Emitter<SettlementState> emit,
+  ) async {
+    try {
+      await settlementRepository.payBatch(
+        event.batchId,
+        amount: event.amount,
+        paymentMethod: event.paymentMethod,
+        notes: event.notes,
+      );
+      final batches = await settlementRepository.getSettlementHistory();
+      emit(state.copyWith(
+        batches: batches,
+        successMessage: 'Payment recorded for batch #${event.batchId}',
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: SettlementStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      ));
     }
   }
 }

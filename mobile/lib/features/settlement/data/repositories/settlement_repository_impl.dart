@@ -28,6 +28,24 @@ class SettlementRepositoryImpl implements SettlementRepository {
       );
 
   @override
+  Future<List<dynamic>> getSettlementHistory() =>
+      remoteDataSource.getSettlementHistory();
+
+  @override
+  Future<Map<String, dynamic>> payBatch(
+    String batchId, {
+    required double amount,
+    String? paymentMethod,
+    String? notes,
+  }) =>
+      remoteDataSource.payBatch(
+        batchId,
+        amount: amount,
+        paymentMethod: paymentMethod,
+        notes: notes,
+      );
+
+  @override
   Future<Map<String, dynamic>> getHisabReport(int paymentId) =>
       remoteDataSource.getHisabReport(paymentId);
 

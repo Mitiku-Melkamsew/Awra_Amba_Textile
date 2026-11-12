@@ -5,13 +5,9 @@ abstract class WorkOrdersRepository {
   Future<WorkOrderDetailEntity> getWorkOrderDetail(String zigId);
   Future<String> getNextZigId();
   Future<WorkOrderEntity> createWorkOrder({
-    required int weaverId,
+    required int weaverUserId,
     String? zigId,
-    required int productId,
-    required int warpColorId,
-    required int weftColorId,
-    int? designId,
-    double? unitPrice,
+    required int fabricVariantId,
     List<Map<String, dynamic>>? yarnLines,
   });
   Future<WorkOrderEntity> updateStatus(String zigId, String status);
@@ -43,6 +39,7 @@ abstract class WorkOrdersRepository {
   Future<void> addFabricReturn({
     required String zigId,
     int? fabricVariantId,
+    int? fabricId,
     int? warpColorId,
     int? weftColorId,
     int? designId,

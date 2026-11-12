@@ -21,23 +21,15 @@ class WorkOrdersRepositoryImpl implements WorkOrdersRepository {
 
   @override
   Future<WorkOrderEntity> createWorkOrder({
-    required int weaverId,
+    required int weaverUserId,
     String? zigId,
-    required int productId,
-    required int warpColorId,
-    required int weftColorId,
-    int? designId,
-    double? unitPrice,
+    required int fabricVariantId,
     List<Map<String, dynamic>>? yarnLines,
   }) =>
       remoteDataSource.createWorkOrder(
-        weaverId: weaverId,
+        weaverUserId: weaverUserId,
         zigId: zigId,
-        productId: productId,
-        warpColorId: warpColorId,
-        weftColorId: weftColorId,
-        designId: designId,
-        unitPrice: unitPrice,
+        fabricVariantId: fabricVariantId,
         yarnLines: yarnLines,
       );
 
@@ -110,6 +102,7 @@ class WorkOrdersRepositoryImpl implements WorkOrdersRepository {
   Future<void> addFabricReturn({
     required String zigId,
     int? fabricVariantId,
+    int? fabricId,
     int? warpColorId,
     int? weftColorId,
     int? designId,
@@ -126,6 +119,7 @@ class WorkOrdersRepositoryImpl implements WorkOrdersRepository {
       remoteDataSource.addFabricReturn(
         zigId: zigId,
         fabricVariantId: fabricVariantId,
+        fabricId: fabricId,
         warpColorId: warpColorId,
         weftColorId: weftColorId,
         designId: designId,

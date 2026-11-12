@@ -9,6 +9,8 @@ import 'package:awra_amba_textile/features/work_orders/presentation/blocs/work_o
 import 'package:awra_amba_textile/features/work_orders/presentation/blocs/work_orders_event.dart';
 import 'package:awra_amba_textile/features/work_orders/presentation/blocs/work_orders_state.dart';
 import 'package:awra_amba_textile/features/work_orders/presentation/pages/weaver_zig_detail_page.dart';
+import 'weaver_calculator_page.dart';
+import 'weaver_rates_page.dart';
 
 class WeaverPortalPage extends StatefulWidget {
   const WeaverPortalPage({super.key});
@@ -164,6 +166,52 @@ class _WeaverPortalPageState extends State<WeaverPortalPage> {
                     ],
                   );
                 },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Tool Shortcuts: Piece Rates & Wage Calculator
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.weaverPrimary,
+                        side: const BorderSide(color: AppColors.weaverPrimary),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                      label: const Text('Piece Rates (ተመን)'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const WeaverRatesPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.weaverPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.calculate_outlined, size: 18),
+                      label: const Text('Calculator (ስሌት)'),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const WeaverCalculatorPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 24),

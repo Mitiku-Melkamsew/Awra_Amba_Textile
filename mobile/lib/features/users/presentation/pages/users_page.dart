@@ -195,6 +195,15 @@ class _UsersPageState extends State<UsersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Open Menu',
+            onPressed: () {
+              ctx.findRootAncestorStateOfType<ScaffoldState>()?.openDrawer();
+            },
+          ),
+        ),
         title: const Text('User Management / የተጠቃሚዎች መዝገብ'),
         actions: [
           IconButton(

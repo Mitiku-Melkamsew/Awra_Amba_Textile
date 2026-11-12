@@ -8,21 +8,36 @@ class ProductModel extends ProductEntity {
     required super.basePrice,
     super.standardLengthCm,
     super.standardWidthCm,
+    super.standardWeightG,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    final id = json['productId'] ?? json['fabricId'] ?? json['id'] ?? 0;
+    final pId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+
+    double basePrice = 0.0;
+    if (json['basePrice'] != null) {
+      basePrice = double.tryParse(json['basePrice'].toString()) ?? 0.0;
+    } else if (json['prices'] is List && (json['prices'] as List).isNotEmpty) {
+      final p0 = (json['prices'] as List).first;
+      final rate = p0['weaverRate'] ?? p0['weaverUnitPrice'] ?? p0['price'] ?? p0['sellingPrice'];
+      basePrice = double.tryParse(rate?.toString() ?? '0') ?? 0.0;
+    }
+
+    final cat = json['category']?.toString();
     return ProductModel(
-      productId: json['productId'] is int
-          ? json['productId']
-          : int.tryParse(json['productId'].toString()) ?? 0,
-      name: json['name']?.toString() ?? '',
-      category: json['category']?.toString() ?? '',
-      basePrice: double.tryParse(json['basePrice']?.toString() ?? '0') ?? 0.0,
+      productId: pId,
+      name: json['name']?.toString() ?? 'Fabric',
+      category: (cat != null && cat.isNotEmpty) ? cat : 'fabric',
+      basePrice: basePrice,
       standardLengthCm: double.tryParse(
         json['standardLengthCm']?.toString() ?? '',
       ),
       standardWidthCm: double.tryParse(
         json['standardWidthCm']?.toString() ?? '',
+      ),
+      standardWeightG: double.tryParse(
+        json['standardWeightG']?.toString() ?? '',
       ),
     );
   }
@@ -35,6 +50,7 @@ class ProductModel extends ProductEntity {
       'basePrice': basePrice,
       'standardLengthCm': standardLengthCm,
       'standardWidthCm': standardWidthCm,
+      'standardWeightG': standardWeightG,
     };
   }
 }
@@ -104,11 +120,15 @@ class YarnTypeModel extends YarnTypeEntity {
   const YarnTypeModel({required super.yarnTypeId, required super.materialName});
 
   factory YarnTypeModel.fromJson(Map<String, dynamic> json) {
+    final id = json['yarnTypeId'] ?? json['yarnId'] ?? json['id'] ?? 0;
+    final yId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+    final matName = json['materialName']?.toString() ??
+        json['name']?.toString() ??
+        json['material']?.toString() ??
+        'Yarn';
     return YarnTypeModel(
-      yarnTypeId: json['yarnTypeId'] is int
-          ? json['yarnTypeId']
-          : int.tryParse(json['yarnTypeId'].toString()) ?? 0,
-      materialName: json['materialName']?.toString() ?? '',
+      yarnTypeId: yId,
+      materialName: matName,
     );
   }
 
@@ -130,16 +150,20 @@ class FabricVariantModel extends FabricVariantEntity {
   });
 
   factory FabricVariantModel.fromJson(Map<String, dynamic> json) {
+    final productData = json['product'] ?? json['fabric'];
     return FabricVariantModel(
       fabricVariantId: json['fabricVariantId'] is int
           ? json['fabricVariantId']
           : int.tryParse(json['fabricVariantId'].toString()) ?? 0,
       sku: json['sku']?.toString() ?? '',
-      basePrice: double.tryParse(json['basePrice']?.toString() ?? ''),
+      basePrice: double.tryParse(json['basePrice']?.toString() ?? '') ??
+          (productData != null && productData['prices'] is List && (productData['prices'] as List).isNotEmpty
+              ? double.tryParse((productData['prices'][0]['weaverRate'] ?? productData['prices'][0]['weaverUnitPrice'] ?? productData['prices'][0]['price'])?.toString() ?? '')
+              : null),
       stockSnapshot:
           double.tryParse(json['stockSnapshot']?.toString() ?? '0') ?? 0.0,
-      product: json['product'] != null
-          ? ProductModel.fromJson(json['product'])
+      product: productData != null
+          ? ProductModel.fromJson(productData)
           : null,
       warpColor: json['warpColor'] != null
           ? NamedColorModel.fromJson(json['warpColor'])
@@ -178,13 +202,22 @@ class YarnVariantModel extends YarnVariantEntity {
   });
 
   factory YarnVariantModel.fromJson(Map<String, dynamic> json) {
+    final yarnData = json['yarn'] ?? json['yarnType'];
+    final yName = json['yarnTypeName']?.toString() ??
+        yarnData?['materialName']?.toString() ??
+        yarnData?['name']?.toString() ??
+        yarnData?['material']?.toString() ??
+        'Yarn';
     return YarnVariantModel(
       yarnVariantId: json['yarnVariantId'] is int
           ? json['yarnVariantId']
           : int.tryParse(json['yarnVariantId'].toString()) ?? 0,
       yarnTypeId: json['yarnTypeId'] is int
           ? json['yarnTypeId']
-          : int.tryParse(json['yarnTypeId'].toString()) ?? 0,
+          : int.tryParse(json['yarnTypeId']?.toString() ??
+                  json['yarnId']?.toString() ??
+                  '') ??
+              0,
       colorId: json['colorId'] is int
           ? json['colorId']
           : int.tryParse(json['colorId'].toString()) ?? 0,
@@ -194,10 +227,17 @@ class YarnVariantModel extends YarnVariantEntity {
       sku: json['sku']?.toString() ?? '',
       stockSnapshot:
           double.tryParse(json['stockSnapshot']?.toString() ?? '0') ?? 0.0,
-      basePrice: double.tryParse(json['basePrice']?.toString() ?? ''),
-      yarnTypeName: json['yarnType']?['materialName']?.toString() ?? '',
-      colorName: json['color']?['name']?.toString() ?? '',
-      supplierName: json['supplier']?['name']?.toString() ?? '',
+      basePrice: double.tryParse(json['basePrice']?.toString() ?? '') ??
+          (yarnData != null && yarnData['yarnPrices'] is List && (yarnData['yarnPrices'] as List).isNotEmpty
+              ? double.tryParse(yarnData['yarnPrices'][0]['unitPrice']?.toString() ?? '')
+              : null),
+      yarnTypeName: yName,
+      colorName: json['color']?['name']?.toString() ??
+          json['colorName']?.toString() ??
+          '',
+      supplierName: json['supplier']?['name']?.toString() ??
+          json['supplierName']?.toString() ??
+          '',
     );
   }
 
@@ -224,6 +264,8 @@ class CatalogLookupModel extends CatalogLookupEntity {
   });
 
   factory CatalogLookupModel.fromJson(Map<String, dynamic> json) {
+    final productsList = json['products'] ?? json['fabrics'];
+    final yarnsList = json['yarnTypes'] ?? json['yarns'];
     return CatalogLookupModel(
       colors:
           (json['colors'] as List?)
@@ -231,7 +273,7 @@ class CatalogLookupModel extends CatalogLookupEntity {
               .toList() ??
           [],
       products:
-          (json['products'] as List?)
+          (productsList as List?)
               ?.map((e) => ProductModel.fromJson(e))
               .toList() ??
           [],
@@ -246,7 +288,7 @@ class CatalogLookupModel extends CatalogLookupEntity {
               .toList() ??
           [],
       yarnTypes:
-          (json['yarnTypes'] as List?)
+          (yarnsList as List?)
               ?.map((e) => YarnTypeModel.fromJson(e))
               .toList() ??
           [],

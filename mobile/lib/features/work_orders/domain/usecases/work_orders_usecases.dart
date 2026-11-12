@@ -39,23 +39,15 @@ class GetNextZigIdUseCase implements UseCase<String, NoParams> {
 }
 
 class CreateWorkOrderParams {
-  final int weaverId;
+  final int weaverUserId;
   final String? zigId;
-  final int productId;
-  final int warpColorId;
-  final int weftColorId;
-  final int? designId;
-  final double? unitPrice;
+  final int fabricVariantId;
   final List<Map<String, dynamic>>? yarnLines;
 
   const CreateWorkOrderParams({
-    required this.weaverId,
+    required this.weaverUserId,
     this.zigId,
-    required this.productId,
-    required this.warpColorId,
-    required this.weftColorId,
-    this.designId,
-    this.unitPrice,
+    required this.fabricVariantId,
     this.yarnLines,
   });
 }
@@ -67,13 +59,9 @@ class CreateWorkOrderUseCase implements UseCase<WorkOrderEntity, CreateWorkOrder
   @override
   Future<WorkOrderEntity> call(CreateWorkOrderParams params) {
     return repository.createWorkOrder(
-      weaverId: params.weaverId,
+      weaverUserId: params.weaverUserId,
       zigId: params.zigId,
-      productId: params.productId,
-      warpColorId: params.warpColorId,
-      weftColorId: params.weftColorId,
-      designId: params.designId,
-      unitPrice: params.unitPrice,
+      fabricVariantId: params.fabricVariantId,
       yarnLines: params.yarnLines,
     );
   }
@@ -152,6 +140,7 @@ class DeleteYarnGivenUseCase implements UseCase<void, int> {
 class AddFabricReturnParams {
   final String zigId;
   final int? fabricVariantId;
+  final int? fabricId;
   final int? warpColorId;
   final int? weftColorId;
   final int? designId;
@@ -168,6 +157,7 @@ class AddFabricReturnParams {
   const AddFabricReturnParams({
     required this.zigId,
     this.fabricVariantId,
+    this.fabricId,
     this.warpColorId,
     this.weftColorId,
     this.designId,
@@ -192,6 +182,7 @@ class AddFabricReturnUseCase implements UseCase<void, AddFabricReturnParams> {
     return repository.addFabricReturn(
       zigId: params.zigId,
       fabricVariantId: params.fabricVariantId,
+      fabricId: params.fabricId,
       warpColorId: params.warpColorId,
       weftColorId: params.weftColorId,
       designId: params.designId,
