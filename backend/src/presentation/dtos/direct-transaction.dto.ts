@@ -1,107 +1,74 @@
 import { z } from "zod";
 import { DirectTxnType, DirectTxnStatus } from "@prisma/client";
 
-export const CreateDirectTxnLineSchema = z.object({
-  fabricVariantId: z.coerce.number().int().positive().optional().nullable(),
-  yarnVariantId: z.coerce.number().int().positive().optional().nullable(),
-  productId: z.coerce.number().int().positive().optional().nullable(),
-  fabricId: z.coerce.number().int().positive().optional().nullable(),
-  warpColorId: z.coerce.number().int().positive().optional().nullable(),
-  weftColorId: z.coerce.number().int().positive().optional().nullable(),
-  designId: z.coerce.number().int().positive().optional().nullable(),
-  yarnId: z.coerce.number().int().positive().optional().nullable(),
-  yarnTypeId: z.coerce.number().int().positive().optional().nullable(),
-  colorId: z.coerce.number().int().positive().optional().nullable(),
-  supplierId: z.coerce.number().int().positive().optional().nullable(),
-  quantity: z.coerce.number().int().positive(),
-  unitPrice: z.coerce.number().positive(),
-  description: z.string().max(255).optional().nullable(),
+/**
+ * Canonical direct-transaction DTOs aligned with Prisma schema.
+ * Removed: productId, weaverId, merchantId, counterpartyId, yarnTypeId,
+ * legacy type aliases (yarn_purchase, fabric_purchase, etc.).
+ *
+ * Allowed types (enum DirectTxnType):
+ *   - fabric_purchase_from_weaver
+ *   - yarn_sale_to_weaver
+ *   - fabric_sale_to_merchant
+ */
+
+export const CreateDirectTxnLineSchema = z
+  .object({
+    fabricVariantId: z.coerce.number().int().positive().optional().nullable(),
+    yarnVariantId: z.coerce.number().int().positive().optional().nullable(),
+    quantity: z.coerce.number().positive(),
+    unitPrice: z.coerce.number().positive(),
+    description: z.string().max(200).optional().nullable(),
+  })
+  .refine(
+    (line) => line.fabricVariantId != null || line.yarnVariantId != null,
+    { message: "Each line must have fabricVariantId or yarnVariantId" },
+  );
+
+export const CreateDirectTransactionSchema = z
+  .object({
+    type: z.nativeEnum(DirectTxnType),
+    weaverUserId: z.coerce.number().int().positive().optional().nullable(),
+    merchantUserId: z.coerce.number().int().positive().optional().nullable(),
+    notes: z.string().max(500).optional().nullable(),
+    lines: z.array(CreateDirectTxnLineSchema).min(1),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      (data.type === DirectTxnType.fabric_purchase_from_weaver ||
+        data.type === DirectTxnType.yarn_sale_to_weaver) &&
+      data.weaverUserId == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "weaverUserId is required for weaver-related transactions",
+        path: ["weaverUserId"],
+      });
+    }
+    if (
+      data.type === DirectTxnType.fabric_sale_to_merchant &&
+      data.merchantUserId == null
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "merchantUserId is required for fabric_sale_to_merchant",
+        path: ["merchantUserId"],
+      });
+    }
+  });
+
+export const AddDirectTxnPaymentSchema = z.object({
+  amount: z.coerce.number().positive(),
+  paymentMethod: z.string().max(30).optional().nullable(),
+  paymentDate: z.string().optional(),
+  notes: z.string().max(500).optional().nullable(),
 });
 
-export const CreateDirectTransactionSchema = z.object({
-  type: z
-    .nativeEnum(DirectTxnType)
-    .or(
-      z.enum([
-        "yarn_purchase",
-        "fabric_purchase",
-        "yarn_sale",
-        "fabric_sale",
-        "fabric_purchase_from_weaver",
-        "yarn_sale_to_weaver",
-        "fabric_sale_to_merchant",
-      ]).transform((val) => {
-        if (val === "yarn_purchase") return "yarn_purchase" as any;
-        if (val === "fabric_purchase") return DirectTxnType.fabric_purchase_from_weaver;
-        if (val === "yarn_sale") return DirectTxnType.yarn_sale_to_weaver;
-        if (val === "fabric_sale") return DirectTxnType.fabric_sale_to_merchant;
-        return val as DirectTxnType;
-      }),
-    )
-    .optional(),
-  transactionType: z
-    .string()
-    .optional()
-    .transform((val) => {
-      if (!val) return undefined;
-      if (val === "yarn_purchase") return "yarn_purchase" as any;
-      if (val === "fabric_purchase") return DirectTxnType.fabric_purchase_from_weaver;
-      if (val === "yarn_sale") return DirectTxnType.yarn_sale_to_weaver;
-      if (val === "fabric_sale") return DirectTxnType.fabric_sale_to_merchant;
-      return val as DirectTxnType;
-    }),
-  supplierId: z.coerce.number().int().positive().optional().nullable(),
-  weaverUserId: z.coerce.number().int().positive().optional().nullable(),
-  weaverId: z.coerce.number().int().positive().optional().nullable(),
-  merchantUserId: z.coerce.number().int().positive().optional().nullable(),
-  merchantId: z.coerce.number().int().positive().optional().nullable(),
-  transactionDate: z.string().datetime().optional().or(z.string().optional()),
-  notes: z.string().optional().nullable(),
-  lines: z.array(CreateDirectTxnLineSchema).optional(),
-  items: z.array(CreateDirectTxnLineSchema).optional(),
-  initialPaymentAmount: z.number().nonnegative().optional(),
-  initialPayment: z
-    .object({
-      amount: z.number().nonnegative(),
-      paymentMethod: z.string().optional(),
-    })
-    .optional(),
-  paymentMethod: z.string().max(30).optional(),
-});
-
-export const RecordTxnPaymentSchema = z.object({
-  amount: z.number().positive(),
-  paymentMethod: z.string().max(30).optional(),
-  notes: z.string().optional(),
-});
-
-export const ListDirectTxnsQuerySchema = z.object({
-  type: z
-    .nativeEnum(DirectTxnType)
-    .or(
-      z.enum([
-        "yarn_purchase",
-        "fabric_purchase",
-        "yarn_sale",
-        "fabric_sale",
-        "fabric_purchase_from_weaver",
-        "yarn_sale_to_weaver",
-        "fabric_sale_to_merchant",
-      ]).transform((val) => {
-        if (val === "yarn_purchase") return "yarn_purchase" as any;
-        if (val === "fabric_purchase") return DirectTxnType.fabric_purchase_from_weaver;
-        if (val === "yarn_sale") return DirectTxnType.yarn_sale_to_weaver;
-        if (val === "fabric_sale") return DirectTxnType.fabric_sale_to_merchant;
-        return val as DirectTxnType;
-      }),
-    )
-    .optional(),
+export const ListDirectTransactionsQuerySchema = z.object({
+  type: z.nativeEnum(DirectTxnType).optional(),
   status: z.nativeEnum(DirectTxnStatus).optional(),
   weaverUserId: z.coerce.number().int().positive().optional(),
-  weaverId: z.coerce.number().int().positive().optional(),
   merchantUserId: z.coerce.number().int().positive().optional(),
-  merchantId: z.coerce.number().int().positive().optional(),
-  counterpartyId: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
   offset: z.coerce.number().int().nonnegative().optional(),
 });
