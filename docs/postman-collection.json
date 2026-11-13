@@ -1,0 +1,746 @@
+{
+  "info": {
+    "name": "Awra Amba Textile Cooperative API",
+    "_postman_id": "c1f7b58e-d9a2-4c28-b804-97210e7b8971",
+    "description": "Comprehensive, standardized Postman collection for Awra Amba Textile API v1. Includes automated authentication token handling.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0. System & Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Verifies server availability, environment, and version."
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login (Auto-stores Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var data = pm.response.json();",
+                  "    if (data.token) {",
+                  "        pm.collectionVariables.set('token', data.token);",
+                  "        console.log('Bearer token saved to collection variable.');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"YourSecurePassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticates user and returns JWT. Test script automatically saves token to {{token}}."
+          }
+        },
+        {
+          "name": "Sign Up (Weaver / Merchant)",
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Almaz\",\n  \"lastName\": \"Kebede\",\n  \"username\": \"almazk\",\n  \"password\": \"SecurePass1\",\n  \"phone\": \"0911223344\",\n  \"role\": \"weaver\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User Profile (/me)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"YourSecurePassword123\",\n  \"newPassword\": \"NewComplexPassword456!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "change-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Users & Roles",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users?role=weaver&limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "role", "value": "weaver" },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/1",
+              "host": ["{{base_url}}"],
+              "path": ["users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Kassahun Worku\",\n  \"phone\": \"0911556677\",\n  \"roles\": [\"weaver\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": ["{{base_url}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Kassahun Worku Updated\",\n  \"phone\": \"0911556688\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/1",
+              "host": ["{{base_url}}"],
+              "path": ["users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Set User Status (Activate/Deactivate)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/1/status",
+              "host": ["{{base_url}}"],
+              "path": ["users", "1", "status"]
+            }
+          }
+        },
+        {
+          "name": "Assign Role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"weaver\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/1/roles",
+              "host": ["{{base_url}}"],
+              "path": ["users", "1", "roles"]
+            }
+          }
+        },
+        {
+          "name": "Admin Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"NewAdminSetPass1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/1/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["users", "1", "reset-password"]
+            }
+          }
+        },
+        {
+          "name": "Get User Balance",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/1/balance",
+              "host": ["{{base_url}}"],
+              "path": ["users", "1", "balance"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Master Catalog & Pricing",
+      "item": [
+        {
+          "name": "Get Lookup Bundle",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/lookup",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "lookup"]
+            }
+          }
+        },
+        {
+          "name": "List Fabrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/fabrics",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "fabrics"]
+            }
+          }
+        },
+        {
+          "name": "Create Fabric",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Standard Shema Fabric\",\n  \"standardLengthCm\": 200,\n  \"standardWidthCm\": 100,\n  \"standardWeightG\": 500,\n  \"weaverUnitPrice\": 120\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/catalog/fabrics",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "fabrics"]
+            }
+          }
+        },
+        {
+          "name": "List Yarns",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/yarns",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "yarns"]
+            }
+          }
+        },
+        {
+          "name": "Create Yarn",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materialName\": \"Pure Cotton 20/2\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/catalog/yarns",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "yarns"]
+            }
+          }
+        },
+        {
+          "name": "List Colors",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/colors",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "colors"]
+            }
+          }
+        },
+        {
+          "name": "Create Color",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Indigo Blue\",\n  \"colorCode\": \"#1A237E\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/catalog/colors",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "colors"]
+            }
+          }
+        },
+        {
+          "name": "List Designs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/designs",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "designs"]
+            }
+          }
+        },
+        {
+          "name": "List Suppliers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/suppliers",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "suppliers"]
+            }
+          }
+        },
+        {
+          "name": "List Fabric Variants",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/fabric-variants",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "fabric-variants"]
+            }
+          }
+        },
+        {
+          "name": "List Yarn Variants",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/yarn-variants",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "yarn-variants"]
+            }
+          }
+        },
+        {
+          "name": "List Fabric Prices",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/fabric-prices",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "fabric-prices"]
+            }
+          }
+        },
+        {
+          "name": "Create Fabric Price",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fabricId\": 1,\n  \"weaverUnitPrice\": 130,\n  \"sellingUnitPrice\": 260\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/catalog/fabric-prices",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "fabric-prices"]
+            }
+          }
+        },
+        {
+          "name": "List Yarn Prices",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/yarn-prices",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "yarn-prices"]
+            }
+          }
+        },
+        {
+          "name": "List Quality Rules",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/catalog/quality-rules",
+              "host": ["{{base_url}}"],
+              "path": ["catalog", "quality-rules"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Work Orders (Zigs)",
+      "item": [
+        {
+          "name": "List Work Orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/work-orders?status=active",
+              "host": ["{{base_url}}"],
+              "path": ["work-orders"],
+              "query": [{ "key": "status", "value": "active" }]
+            }
+          }
+        },
+        {
+          "name": "Get Next Work Order ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/work-orders/next-id",
+              "host": ["{{base_url}}"],
+              "path": ["work-orders", "next-id"]
+            }
+          }
+        },
+        {
+          "name": "Create Work Order (Issue Zig)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weaverUserId\": 1,\n  \"fabricVariantId\": 1,\n  \"yarnLines\": [\n    {\n      \"yarnVariantId\": 1,\n      \"quantity\": 2.5,\n      \"unitPrice\": 180\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/work-orders",
+              "host": ["{{base_url}}"],
+              "path": ["work-orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Work Order Details",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/work-orders/WO-000001",
+              "host": ["{{base_url}}"],
+              "path": ["work-orders", "WO-000001"]
+            }
+          }
+        },
+        {
+          "name": "Record Fabric Return",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantityReturned\": 2,\n  \"actualWeightG\": 1020,\n  \"lengthCm\": 205,\n  \"widthCm\": 101,\n  \"unitPrice\": 120,\n  \"notes\": \"Well woven, good quality\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/work-orders/WO-000001/fabric-returns",
+              "host": ["{{base_url}}"],
+              "path": ["work-orders", "WO-000001", "fabric-returns"]
+            }
+          }
+        },
+        {
+          "name": "Add Yarn Given to Existing Zig",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yarnVariantId\": 1,\n  \"quantityKg\": 1.0,\n  \"unitPrice\": 180\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/work-orders/WO-000001/yarn-given",
+              "host": ["{{base_url}}"],
+              "path": ["work-orders", "WO-000001", "yarn-given"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Settlements & Payroll (HISAB)",
+      "item": [
+        {
+          "name": "Get Unsettled Weavers & Work",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/settlements/unsettled",
+              "host": ["{{base_url}}"],
+              "path": ["settlements", "unsettled"]
+            }
+          }
+        },
+        {
+          "name": "Generate Settlement Preview",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cutoffDate\": \"2026-11-12T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/settlements/preview",
+              "host": ["{{base_url}}"],
+              "path": ["settlements", "preview"]
+            }
+          }
+        },
+        {
+          "name": "List Settlement Batches",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/settlements/batches",
+              "host": ["{{base_url}}"],
+              "path": ["settlements", "batches"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Direct Commercial Transactions",
+      "item": [
+        {
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/direct-transactions?type=fabric_sale_merchant",
+              "host": ["{{base_url}}"],
+              "path": ["direct-transactions"],
+              "query": [{ "key": "type", "value": "fabric_sale_merchant" }]
+            }
+          }
+        },
+        {
+          "name": "Create Direct Transaction",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"fabric_sale_merchant\",\n  \"merchantUserId\": 1,\n  \"items\": [\n    {\n      \"fabricVariantId\": 1,\n      \"quantity\": 10,\n      \"unitPrice\": 250\n    }\n  ],\n  \"paidAmount\": 2500,\n  \"paymentMethod\": \"bank_transfer\",\n  \"paymentReference\": \"TXREF-9921\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/direct-transactions",
+              "host": ["{{base_url}}"],
+              "path": ["direct-transactions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Stock & Inventory",
+      "item": [
+        {
+          "name": "Get Stock Overview",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stock",
+              "host": ["{{base_url}}"],
+              "path": ["stock"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Fabrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/stock/available-fabrics",
+              "host": ["{{base_url}}"],
+              "path": ["stock", "available-fabrics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Audit Trail",
+      "item": [
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/audit-logs?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["audit-logs"],
+              "query": [{ "key": "limit", "value": "50" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Weaver Self-Service Portal",
+      "item": [
+        {
+          "name": "Weaver Dashboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weaver/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["weaver", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Weaver Work Orders",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weaver/work-orders",
+              "host": ["{{base_url}}"],
+              "path": ["weaver", "work-orders"]
+            }
+          }
+        },
+        {
+          "name": "Weaver Settlements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/weaver/settlements",
+              "host": ["{{base_url}}"],
+              "path": ["weaver", "settlements"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Merchant Portal",
+      "item": [
+        {
+          "name": "Merchant Dashboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/merchant/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Merchant Catalog",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/merchant/catalog",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "catalog"]
+            }
+          }
+        },
+        {
+          "name": "Merchant Purchases",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/merchant/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["merchant", "transactions"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

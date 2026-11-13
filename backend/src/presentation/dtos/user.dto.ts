@@ -49,7 +49,7 @@ export const AssignRoleSchema = z.object({
 });
 
 export const ResetPasswordSchema = z.object({
-  newPassword: z.string().min(6),
+  newPassword: z.string().min(8).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, "Password must contain at least one uppercase letter, one lowercase letter, and one digit"),
 });
 
 export const ListUsersQuerySchema = z.object({

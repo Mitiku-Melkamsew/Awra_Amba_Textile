@@ -1,21 +1,64 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Build output
 dist/
+build/
+out/
+.next/
+
+# Environment files – NEVER commit secrets
 .env
-.env.local
-*.log
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+mobile/.env
+mobile/.env.*
+!mobile/.env.example
+
+# OS files
 .DS_Store
-_srs_unpacked/
-_srs_temp.zip
+Thumbs.db
+ehthumbs.db
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database & Runtime Data
 postgres_data/
 terminals/
+_srs_unpacked/
+_srs_temp.zip
 
-# Flutter/Dart generated files
+# Flutter / Dart generated files
 **/.dart_tool/
 **/build/
 **/.flutter-plugins
 **/.flutter-plugins-dependencies
 **/*.iml
-**/.idea/
 **/GeneratedPluginRegistrant.*
 **/android/.gradle/
 **/android/local.properties

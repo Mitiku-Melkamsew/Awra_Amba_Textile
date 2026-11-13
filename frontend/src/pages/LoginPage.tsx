@@ -52,36 +52,6 @@ export function LoginPage() {
           <p className="auth-subtitle">Awra Amba Textile Cooperative</p>
         </div>
 
-        {/* Quick Demo Logins Bar */}
-        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.75rem", marginBottom: "1rem" }}>
-          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", marginBottom: "0.5rem", textAlign: "center", textTransform: "uppercase" }}>
-            ⚡ 1-Click Quick Demo Login
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.4rem" }}>
-            <button
-              type="button"
-              onClick={() => handleLogin("admin", "admin123")}
-              style={{ padding: "0.4rem", fontSize: "0.75rem", borderRadius: "4px", border: "1px solid #fed7aa", background: "#fff7ed", color: "#c2410c", fontWeight: 600, cursor: "pointer" }}
-            >
-              👑 Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLogin("weaver1", "weaver123")}
-              style={{ padding: "0.4rem", fontSize: "0.75rem", borderRadius: "4px", border: "1px solid #bbf7d0", background: "#f0fdf4", color: "#15803d", fontWeight: 600, cursor: "pointer" }}
-            >
-              🪢 Weaver
-            </button>
-            <button
-              type="button"
-              onClick={() => handleLogin("merchant1", "merchant123")}
-              style={{ padding: "0.4rem", fontSize: "0.75rem", borderRadius: "4px", border: "1px solid #bae6fd", background: "#f0f9ff", color: "#0369a1", fontWeight: 600, cursor: "pointer" }}
-            >
-              🏬 Merchant
-            </button>
-          </div>
-        </div>
-
         <div className="form">
           <label>
             <span>Username / መለያ ስም</span>
@@ -89,7 +59,7 @@ export function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. admin, weaver, or merchant"
+              placeholder="Enter your username"
               autoComplete="username"
               autoFocus
               required

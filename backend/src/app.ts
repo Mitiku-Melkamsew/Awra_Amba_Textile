@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import { securityHeaders } from "./presentation/middleware/security-headers.js";
 import { errorHandler } from "./presentation/middleware/error-handler.js";
 import { healthRouter } from "./presentation/routes/health.routes.js";
 import { authRouter } from "./presentation/routes/auth.routes.js";
@@ -17,6 +18,9 @@ import { merchantPortalRouter } from "./presentation/routes/merchant.routes.js";
 
 export function createApp() {
   const app = express();
+  app.disable("x-powered-by");
+  app.use(securityHeaders);
+
   const configuredOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
     .split(",")
     .map((origin) => origin.trim())
@@ -27,7 +31,14 @@ export function createApp() {
       origin: (origin, callback) => {
         // Allow mobile apps, curl, server-to-server (no origin header)
         if (!origin) return callback(null, true);
-        // Allow any localhost port (e.g. Vite on 5173, Flutter Web on random Chrome port)
+        // In production, only allow configured origins
+        if (process.env.NODE_ENV === "production") {
+          if (configuredOrigins.includes(origin)) {
+            return callback(null, true);
+          }
+          return callback(new Error(`Not allowed by CORS: ${origin}`));
+        }
+        // In development, also allow any localhost port
         if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
           return callback(null, true);
         }
@@ -39,7 +50,7 @@ export function createApp() {
       credentials: true,
     }),
   );
-  app.use(express.json());
+  app.use(express.json({ limit: "1mb" }));
 
   // Canonical REST Routes
   app.use("/api/v1/health", healthRouter);
