@@ -1,19 +1,18 @@
 import { z } from "zod";
 
+/**
+ * Canonical procurement DTOs aligned with Prisma schema (YarnPurchase / YarnPurchaseLine).
+ * Removed: quantityKg, yarnTypeId, unitCost aliases.
+ */
+
 export const CreateProcurementLineSchema = z.object({
-  yarnVariantId: z.number().int().positive().optional().nullable(),
-  yarnId: z.number().int().positive().optional().nullable(),
-  yarnTypeId: z.number().int().positive().optional().nullable(),
-  colorId: z.number().int().positive().optional().nullable(),
-  supplierId: z.number().int().positive().optional().nullable(),
-  quantity: z.number().int().positive().optional(),
-  quantityKg: z.number().int().positive().optional(),
-  unitPrice: z.number().positive().optional(),
-  unitCost: z.number().positive().optional(),
+  yarnVariantId: z.coerce.number().int().positive(),
+  quantity: z.coerce.number().positive(),
+  unitPrice: z.coerce.number().positive(),
 });
 
 export const CreateProcurementSchema = z.object({
-  supplierId: z.number().int().positive(),
+  supplierId: z.coerce.number().int().positive(),
   purchaseDate: z.string().datetime().optional().or(z.string().optional()),
   notes: z.string().optional().nullable(),
   lines: z.array(CreateProcurementLineSchema).min(1),

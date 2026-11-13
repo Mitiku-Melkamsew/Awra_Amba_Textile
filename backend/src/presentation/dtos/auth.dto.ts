@@ -13,11 +13,13 @@ export const LoginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+/**
+ * Signup aligned with User model: fullName (not firstName/lastName).
+ * Password rules kept from production security hardening.
+ */
 export const SignupSchema = z.object({
-  firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
-  companyName: z.string().max(120).optional(),
-  phone: z.string().max(30).optional(),
+  fullName: z.string().min(1).max(120),
+  phone: z.string().max(30).optional().nullable(),
   username: z.string().min(3).max(60),
   password: passwordSchema,
   role: z.enum(["weaver", "merchant"]).default("weaver"),
