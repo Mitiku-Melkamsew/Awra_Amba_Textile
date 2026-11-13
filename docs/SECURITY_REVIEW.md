@@ -2,7 +2,7 @@
 **Target Application**: Awra Amba Textile Cooperative Management Platform  
 **Target Architecture**: Node.js/Express (API) + PostgreSQL (Database) + React 19/Vite (Frontend) + Flutter (Mobile)  
 **Date**: November 2026  
-**Status**: Remediation Completed & Production Ready  
+**Status**: Baseline hardening complete — **not yet production-ready** (see §6 Known Limitations)  
 
 ---
 
@@ -17,7 +17,9 @@ A comprehensive security review was conducted across the codebase of the Awra Am
 - Unrestricted JSON payload sizes making endpoints susceptible to memory exhaustion (DoS).
 - Environment file tracking risks where actual `.env` files might be inadvertently pushed to version control.
 
-All identified vulnerabilities have been remediated in the dedicated branch **`production-hardening`**. The API has been standardized with versioned REST routes (`/api/v1/*`), supported by a complete, automated Postman test collection (`docs/postman-collection.json`) and a production deployment guide (`docs/DEPLOYMENT.md`).
+The vulnerabilities listed in the table below were remediated in the dedicated branch **`production-hardening`**. The API has been standardized with versioned REST routes (`/api/v1/*`), supported by a Postman test collection (`docs/postman-collection.json`) and a production deployment guide (`docs/DEPLOYMENT.md`).
+
+This document records the hardening work only. It is **not** a statement that the platform is production-ready — see §6 for the known gaps that remain.
 
 ---
 
@@ -27,7 +29,7 @@ All identified vulnerabilities have been remediated in the dedicated branch **`p
 |---|---|---|---|---|
 | **SEC-01** | Credentials | **Critical** | Hardcoded demo accounts (`admin:admin123`, `demo:demo123`, `merchant:merchant123`) in `LoginPage.tsx`, `seed.ts`, and `README.md`. | Removed 1-click demo buttons from `LoginPage.tsx`. Purged credentials from `README.md`. Guarded `seed.ts` against running in production. Created `scripts/create-admin.ts` for secure interactive admin creation. |
 | **SEC-02** | Secrets Management | **Critical** | Insecure fallback JWT secret (`dev-secret-change-me`) and potential leakage of `.env` files. | Hardened `.gitignore` to match all `.env*` files across root, backend, frontend, and mobile. Updated `backend/src/utils/jwt.ts` to abort startup in production if `JWT_SECRET` is missing or contains placeholder values. |
-| **SEC-03** | Authentication | **High** | Absence of rate limiting on `/api/v1/auth/login` and `/api/v1/auth/signup`. | Implemented in-memory rate limiting middleware (`backend/src/presentation/middleware/rate-limit.ts`) enforcing max 10 requests per 15 minutes per IP with `X-RateLimit-*` headers and HTTP 429 responses. |
+| **SEC-03** | Authentication | **High** | Absence of rate limiting on `/api/v1/auth/login` and `/api/v1/auth/signup`. | Implemented in-memory rate limiting middleware (`backend/src/presentation/middleware/rate-limit.ts`): 10 login attempts per 15 minutes and 20 sign-ups per hour, per client IP, with `X-RateLimit-*` headers and HTTP 429 responses. Requires `TRUST_PROXY` to be correct behind a reverse proxy, otherwise all clients share one bucket. |
 | **SEC-04** | Password Policy | **Medium** | Weak password minimums (6 characters, no complexity enforcement). | Enforced strong password schema (min 8 chars, at least 1 uppercase, 1 lowercase, 1 number) in `auth.dto.ts` and `user.dto.ts`. |
 | **SEC-05** | Transport & Headers | **Medium** | Missing standard security headers; `X-Powered-By: Express` header exposed backend framework. | Disabled `X-Powered-By` in Express. Implemented `securityHeaders` middleware enforcing `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy`. |
 | **SEC-06** | Network Access (CORS) | **Medium** | Development regex allowed any localhost port and lacked environment differentiation. | In production (`NODE_ENV=production`), CORS only permits explicitly whitelisted domains defined in `CORS_ORIGIN`. |
@@ -94,7 +96,7 @@ All identified vulnerabilities have been remediated in the dedicated branch **`p
 
 The changes were validated using automated checks:
 - **Backend Build**: `npm --prefix backend run build` (TypeScript 5.8) executed with zero compiler errors.
-- **Backend Tests**: `npm --prefix backend test` executed successfully with 73 passing unit tests across 10 test suites.
+- **Backend Tests**: `npm --prefix backend test` → 73 passing unit tests, 2 skipped integration tests. The integration suite (`src/services/system-redesign.integration.test.ts`) talks to a real database and only runs with `RUN_INTEGRATION=1`.
 - **Frontend Build**: `npm --prefix frontend run build` (TypeScript + Vite) bundled successfully with zero errors.
 - **Git Branching**: All modifications have been organized and checked into the dedicated branch `production-hardening`.
 
@@ -108,3 +110,17 @@ The changes were validated using automated checks:
    Do not expose PostgreSQL port 5432/5433 to the public internet. Use private VPC networking.
 3. **Monitoring & Backups**:
    Schedule daily automated pg_dump backups and configure uptime alerting on the `/api/v1/health` endpoint.
+
+---
+
+## 6. Known Limitations (not addressed by this hardening)
+
+These items were identified during review and are **still open**. Do not treat the platform as production-ready until they are resolved:
+
+1. **Inventory race conditions** — stock is read, checked, then decremented in separate statements in the work-order and direct-transaction services. Concurrent requests can oversell and drive stock negative.
+2. **Price/cost exposure** — `GET /api/v1/catalog/lookup` returns fabric `weaverRate`, yarn `purchasePrice`, suppliers and quality rules without the merchant masking applied elsewhere.
+3. **Session revocation** — JWTs are stateless with an 8-hour lifetime; deactivation and role changes do not take effect until the token expires.
+4. **Weak generated staff passwords** — `UserService.createUser` derives passwords from the user's name, does not enforce the password policy when one is supplied, and returns the plaintext password in the response.
+5. **Field-level content security** — the API sends no `Content-Security-Policy`, and the web client stores the JWT in `localStorage`.
+6. **Rate limiting storage** — the limiter is per-process and in-memory; a multi-replica deployment needs a shared store.
+7. **Mobile token storage** — the Flutter client keeps the JWT in unencrypted `SharedPreferences`.

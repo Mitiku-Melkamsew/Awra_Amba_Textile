@@ -26,6 +26,7 @@ The system consists of:
 - The backend verifies that `JWT_SECRET` is set and is **not** a placeholder string. If it is missing or unchanged, the server will intentionally fail to start.
 - Minimum recommended secret length: 64 characters (generated via crypto/openssl).
 - Tokens expire by default in `8h` (configurable via `JWT_EXPIRES_IN`).
+- Tokens are not individually revocable before they expire. Deactivating a user or removing a role takes effect on the next login, not immediately. Rotate `JWT_SECRET` to invalidate every active session.
 
 ### 2.3 Passwords & RBAC
 - Passwords are encrypted using **Argon2id**.
@@ -36,7 +37,8 @@ The system consists of:
 ### 2.4 Network & Transport Security
 - **Security Headers Middleware**: Injects `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, and strips `X-Powered-By`.
 - **CORS**: In production (`NODE_ENV=production`), CORS strictly matches configured origins (`CORS_ORIGIN`). Wildcards and arbitrary localhost ports are disabled in production.
-- **Rate Limiting**: Built-in IP rate limiter protects authentication endpoints (`/api/v1/auth/login`, `/api/v1/auth/signup`) against brute-force attacks (10 attempts per 15 minutes).
+- **Reverse Proxy Trust**: The API must know the real client IP for rate limiting. When running behind Nginx/ALB, set `TRUST_PROXY=1` (the default in production) so `X-Forwarded-For` is honoured. If the API is exposed directly to the internet, set `TRUST_PROXY=0`.
+- **Rate Limiting**: Built-in IP rate limiter protects authentication endpoints. Login allows 10 attempts per 15 minutes per IP; sign-up allows 20 per hour per IP. The limiter is in-memory, so it resets on restart and is per-instance; use a shared store (e.g. Redis) if you run more than one API replica.
 - **Request Body Limits**: JSON payloads are limited to 1MB to prevent memory exhaustion / denial-of-service.
 
 ---
@@ -69,6 +71,7 @@ docker compose up -d postgres
    JWT_EXPIRES_IN="8h"
    PORT=3001
    NODE_ENV="production"
+   TRUST_PROXY="1"
    CORS_ORIGIN="https://textile.yourdomain.com"
    ```
 
@@ -171,6 +174,7 @@ Before going live, verify each item:
 - [ ] **Admin Account**: Created via `npm run admin:create` with a unique, secure password.
 - [ ] **HTTPS / TLS**: All traffic is routed over HTTPS with valid certificates.
 - [ ] **CORS**: `CORS_ORIGIN` matches the exact frontend domain(s).
-- [ ] **Rate Limiting**: Tested and verified on `/api/v1/auth/login`.
+- [ ] **Reverse Proxy**: `TRUST_PROXY` matches your topology (`1` behind one Nginx/ALB hop, `0` if the API is directly exposed).
+- [ ] **Rate Limiting**: Login and sign-up budgets verified from a real client IP (not `127.0.0.1`).
 - [ ] **Backups**: Automated PostgreSQL dumps (pg_dump) configured on a daily schedule.
 - [ ] **Monitoring**: Health check endpoint monitored at `GET /api/v1/health`.

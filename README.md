@@ -29,7 +29,6 @@ cp .env.example .env
 npm install
 npx prisma migrate dev
 npm run admin:create     # Interactively create your initial admin account
-npm run db:triggers
 npm run dev
 ```
 
@@ -45,6 +44,16 @@ npm run dev
 ```
 
 UI runs at `http://localhost:5173`.
+
+### 4. Tests
+
+```bash
+cd backend
+npm test                    # unit tests
+RUN_INTEGRATION=1 npm test  # also runs the DB-backed integration suite
+```
+
+The integration suite expects a development database that already has the `demo` weaver, the `merchant` user, and at least one fabric/yarn variant.
 
 ## Authentication & Initial Accounts
 

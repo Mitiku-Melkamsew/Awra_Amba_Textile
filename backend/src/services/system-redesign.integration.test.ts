@@ -7,7 +7,19 @@ import {
 } from "./direct-transaction.service.js";
 import { WorkOrderStatus, DirectTxnStatus } from "@prisma/client";
 
-describe("System Redesign Integration - Production, Settlement & Direct Transactions", () => {
+/**
+ * End-to-end test that talks to a real PostgreSQL database and requires a
+ * development database seeded with the `demo` weaver, `merchant` user and at
+ * least one fabric/yarn variant (see backend/prisma/seed.ts and scripts/import-csv.ts).
+ *
+ * It is skipped by default so `npm test` stays green on a fresh checkout.
+ * Run it explicitly against a disposable database:
+ *
+ *   RUN_INTEGRATION=1 npm test
+ */
+const runIntegrationTests = process.env.RUN_INTEGRATION === "1";
+
+describe.skipIf(!runIntegrationTests)("System Redesign Integration - Production, Settlement & Direct Transactions", () => {
   let weaverUserId: number;
   let adminUserId: number;
   let merchantUserId: number;
@@ -110,6 +122,8 @@ describe("System Redesign Integration - Production, Settlement & Direct Transact
       yarnGivenIds: [yarnGiven.yarnGivenId],
       paymentMethod: "Bank Transfer",
       recordedByUserId: adminUserId,
+      // Payment is explicit: reconciliation only happens once the settlement is paid.
+      markAsPaid: true,
     });
 
     expect(settlementResult.amount).toBe(48000);

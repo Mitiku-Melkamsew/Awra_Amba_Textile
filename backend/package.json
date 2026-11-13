@@ -13,9 +13,6 @@
     "db:seed": "tsx prisma/seed.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "import:csv": "tsx scripts/import-csv.ts",
-    "db:triggers": "tsx scripts/apply-triggers.ts",
-    "db:dedup": "tsx scripts/merge-duplicate-variants.ts",
-    "test:triggers": "tsx scripts/test-triggers.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

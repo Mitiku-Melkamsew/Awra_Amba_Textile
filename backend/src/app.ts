@@ -19,6 +19,20 @@ import { merchantPortalRouter } from "./presentation/routes/merchant.routes.js";
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+
+  // Behind a reverse proxy (Nginx/ALB), trust exactly one hop so req.ip reflects
+  // the real client address. Without this, every request appears to come from the
+  // proxy and the auth rate limiter would lock out all users at once.
+  // Override with TRUST_PROXY (0 disables trust, e.g. when the API is exposed directly).
+  const trustProxyEnv = process.env.TRUST_PROXY;
+  const trustProxyHops =
+    trustProxyEnv !== undefined
+      ? Number(trustProxyEnv)
+      : process.env.NODE_ENV === "production"
+        ? 1
+        : 0;
+  app.set("trust proxy", Number.isFinite(trustProxyHops) ? trustProxyHops : 0);
+
   app.use(securityHeaders);
 
   const configuredOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
