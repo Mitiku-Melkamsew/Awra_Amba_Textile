@@ -6,8 +6,8 @@ import { validateBody, validateQuery } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
 import {
   CreateDirectTransactionSchema,
-  RecordTxnPaymentSchema,
-  ListDirectTxnsQuerySchema,
+  AddDirectTxnPaymentSchema,
+  ListDirectTransactionsQuerySchema,
 } from "../dtos/direct-transaction.dto.js";
 
 export const directTransactionsRouter = Router();
@@ -17,7 +17,7 @@ directTransactionsRouter.use(authenticate);
 directTransactionsRouter.get(
   "/",
   requireCapability(Capability.DIRECT_TRANSACTIONS_READ_ALL),
-  validateQuery(ListDirectTxnsQuerySchema),
+  validateQuery(ListDirectTransactionsQuerySchema),
   DirectTransactionController.list,
 );
 
@@ -37,7 +37,7 @@ directTransactionsRouter.post(
 directTransactionsRouter.post(
   "/:id/payments",
   requireCapability(Capability.DIRECT_TRANSACTIONS_MANAGE),
-  validateBody(RecordTxnPaymentSchema),
+  validateBody(AddDirectTxnPaymentSchema),
   DirectTransactionController.recordPayment,
 );
 

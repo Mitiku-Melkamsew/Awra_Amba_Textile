@@ -57,9 +57,12 @@ export class AuthController {
 
       const passwordHash = await PasswordService.hash(body.password);
       const chosenRole = body.role === "merchant" ? UserRole.merchant : UserRole.weaver;
+      // `fullName` is canonical; fall back to the legacy signup fields still sent
+      // by the web and Flutter clients.
       const fullName =
+        body.fullName?.trim() ||
         body.companyName?.trim() ||
-        `${body.firstName.trim()} ${body.lastName.trim()}`.trim();
+        `${body.firstName ?? ""} ${body.lastName ?? ""}`.trim();
 
       const user = await prisma.user.create({
         data: {

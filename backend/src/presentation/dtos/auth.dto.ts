@@ -14,16 +14,36 @@ export const LoginSchema = z.object({
 });
 
 /**
- * Signup aligned with User model: fullName (not firstName/lastName).
- * Password rules kept from production security hardening.
+ * Signup aligned with the User model: `fullName` is the canonical field.
+ *
+ * The legacy `firstName` / `lastName` / `companyName` fields are still accepted
+ * because the web and Flutter clients post them today; the controller folds
+ * them into `fullName`. New clients should send `fullName` only.
  */
-export const SignupSchema = z.object({
-  fullName: z.string().min(1).max(120),
-  phone: z.string().max(30).optional().nullable(),
-  username: z.string().min(3).max(60),
-  password: passwordSchema,
-  role: z.enum(["weaver", "merchant"]).default("weaver"),
-});
+export const SignupSchema = z
+  .object({
+    fullName: z.string().min(1).max(120).optional(),
+    firstName: z.string().min(1).max(80).optional(),
+    lastName: z.string().min(1).max(80).optional(),
+    companyName: z.string().max(120).optional(),
+    phone: z.string().max(30).optional().nullable(),
+    username: z.string().min(3).max(60),
+    password: passwordSchema,
+    role: z.enum(["weaver", "merchant"]).default("weaver"),
+  })
+  .superRefine((data, ctx) => {
+    const hasName =
+      Boolean(data.fullName?.trim()) ||
+      Boolean(data.companyName?.trim()) ||
+      Boolean(data.firstName?.trim() && data.lastName?.trim());
+    if (!hasName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide fullName (or firstName and lastName)",
+        path: ["fullName"],
+      });
+    }
+  });
 
 export const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1),
