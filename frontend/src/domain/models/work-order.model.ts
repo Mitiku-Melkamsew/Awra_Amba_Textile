@@ -1,5 +1,6 @@
 import type { Fabric, Yarn, YarnVariant, Weaver, FabricVariant } from "./index";
 
+/** Mirrors Prisma `WorkOrderStatus` enum. */
 export type WorkOrderStatus =
   | "assigned"
   | "in_progress"
@@ -7,30 +8,30 @@ export type WorkOrderStatus =
   | "reconciled"
   | "cancelled";
 
-/** Canonical: schema uses quantity (not quantityKg). */
 export interface YarnGiven {
   yarnGivenId: number;
-  zigId?: string;
+  zigId: string;
   yarnVariantId: number;
   quantity: number | string;
   unitPrice: number | string;
   dateGiven?: string;
+  recordedByUserId?: number;
   yarnVariant?: YarnVariant | any;
   yarn?: Yarn;
   settled?: boolean;
 }
 
-/** Canonical: returnId, totalWeight (not actualWeightG). */
 export interface FabricReturn {
   returnId: number;
-  zigId?: string;
-  fabricVariantId?: number;
-  dateReturned?: string;
+  zigId: string;
+  fabricVariantId: number;
   quantityReturned: number;
   totalWeight: number | string;
   unitPrice: number | string;
   lengthCm?: number | null;
   widthCm?: number | null;
+  dateReturned?: string;
+  recordedByUserId?: number;
   remark?: string | null;
   fabricVariant?: FabricVariant;
   settled?: boolean;
@@ -38,31 +39,33 @@ export interface FabricReturn {
 
 export interface YarnReturn {
   yarnReturnId: number;
-  zigId?: string;
+  zigId: string;
   yarnVariantId: number;
   quantity: number | string;
   dateReturned?: string;
+  recordedByUserId?: number;
   remark?: string | null;
-  yarnVariant?: any;
+  yarnVariant?: YarnVariant | any;
 }
 
 export interface FabricReturnToWeaver {
   fabricReturnToWeaverId: number;
-  zigId?: string;
-  fabricVariantId?: number;
+  zigId: string;
+  fabricVariantId: number;
   quantity: number;
   dateReturned?: string;
+  recordedByUserId?: number;
   remark?: string | null;
   fabricVariant?: FabricVariant;
 }
 
-/** Canonical: zigId, weaverUserId, fabricVariantId (not weaverId/fabricId). */
 export interface WorkOrder {
   zigId: string;
   weaverUserId: number;
   fabricVariantId: number;
   status: WorkOrderStatus;
   dateIssued?: string;
+  issuedByUserId?: number;
   weaver?: Weaver;
   fabricVariant?: FabricVariant;
   fabric?: Fabric;
@@ -74,18 +77,13 @@ export interface WorkOrder {
     yarnGiven?: number;
     fabricReturns?: number;
   };
-  // Compatibility shims still used by some UI components during transition
-  workOrderId?: number;
-  weaverId?: number;
-  fabricId?: number;
 }
 
 export interface WorkOrderDetail extends WorkOrder {
-  zigId: string;
   weaver: Weaver;
   fabricVariant: FabricVariant;
-  yarnGiven: YarnGiven[];
   fabricReturns: FabricReturn[];
-  yarnReturns?: YarnReturn[];
-  fabricReturnsToWeaver?: FabricReturnToWeaver[];
+  yarnGiven: YarnGiven[];
+  yarnReturns: YarnReturn[];
+  fabricReturnsToWeaver: FabricReturnToWeaver[];
 }

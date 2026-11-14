@@ -1,50 +1,80 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { weaversApi } from "../../api";
 import type { Weaver } from "../../api";
 import { WeaverZigTabs } from "../../components/WeaverZigTabs";
 
 export function WeaverProfilePage() {
-  const { weaverId } = useParams<{ weaverId: string }>();
+  const { userId, weaverId } = useParams<{ userId?: string; weaverId?: string }>();
+  const id = Number(userId ?? weaverId);
   const [weaver, setWeaver] = useState<Weaver | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!weaverId) return;
+  const loadWeaver = useCallback(() => {
+    if (!id) return;
     weaversApi
-      .get(Number(weaverId))
+      .get(id)
       .then(setWeaver)
       .catch((err) => setError(err.message));
-  }, [weaverId]);
+  }, [id]);
+
+  useEffect(() => {
+    loadWeaver();
+  }, [loadWeaver]);
 
   if (!weaver && !error)
     return (
-      <div className="page">
-        <p className="muted" style={{ fontSize: 13 }}>
-          Loading weaver...
-        </p>
+      <div style={{ width: "100%", padding: "2rem", color: "#64748b" }}>
+        Loading weaver profile…
       </div>
     );
 
   if (!weaver)
     return (
-      <div className="page">
-        <div className="error-msg">
-          <span>!</span> {error}
+      <div style={{ width: "100%", padding: "2rem" }}>
+        <div
+          style={{
+            background: "#fee2e2",
+            border: "1px solid #fca5a5",
+            borderRadius: "8px",
+            padding: "0.85rem",
+            color: "#b91c1c",
+            fontSize: "0.9rem",
+          }}
+        >
+          {error || "Weaver not found"}
         </div>
       </div>
     );
 
   return (
-    <div className="page">
-      <Link to="/admin/weavers" className="back-link">
-        &larr; All Weavers
-      </Link>
+    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: "1.5rem 2rem" }}>
+      {/* Back Link (Image 3) */}
+      <div style={{ marginBottom: "1rem" }}>
+        <Link
+          to="/admin/weavers"
+          style={{
+            color: "var(--brand, #c2410c)",
+            fontSize: "0.92rem",
+            fontWeight: 600,
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.35rem",
+          }}
+        >
+          ‹ Weavers
+        </Link>
+      </div>
+
       <WeaverZigTabs
         weaver={weaver}
         zigLinkPrefix="/admin/zigs"
-        issueZigLink={`/admin/weavers/${weaver.weaverId}/issue-zig`}
+        issueZigLink={`/admin/weavers/${weaver.userId}/issue-zig`}
+        onWeaverUpdated={loadWeaver}
       />
     </div>
   );
 }
+
+export default WeaverProfilePage;

@@ -1,70 +1,90 @@
-import type { Weaver, WorkOrder } from "./index";
+import type { Weaver, WorkOrder, Fabric, YarnVariant } from "./index";
 
-export type SettlementBatchStatus = "draft" | "paid" | "cancelled";
+/** Mirrors Prisma `SettlementStatus` and `SettlementBatchStatus` enums. */
+export type SettlementStatus = "draft" | "paid" | "cancelled";
+export type SettlementBatchStatus = "draft" | "committed";
 
-export interface SettlementLineFabric {
-  settlementLineFabricId: number;
-  settlementId: number;
-  fabricReturnId: number;
-  quantity: number;
-  unitPrice: number | string;
-  totalAmount: number | string;
-  fabricReturn?: {
-    fabricReturnId: number;
-    workOrderId: number;
-    actualWeightG: number | string;
-    avgWeight?: number | string;
-    workOrder?: WorkOrder;
-  };
+export interface SettlementLineReturn {
+  settlementLineId: number;
+  returnId: number;
 }
 
-export interface SettlementLineYarnGiven {
-  settlementLineYarnGivenId: number;
+export interface SettlementLine {
+  settlementLineId: number;
   settlementId: number;
+  zigId: string;
+  fabricId: number;
+  totalQuantity: number;
+  totalWeight: number | string;
+  averageWeight: number | string;
+  standardWeightG: number | string;
+  standardLengthCm?: number | string | null;
+  standardWidthCm?: number | string | null;
+  unitPrice: number | string;
+  deductionFactor: string;
+  deductionUnit: string;
+  deductionPerPiece: number | string;
+  deductionAmount: number | string;
+  grossFabricValue: number | string;
+  netFabricValue: number | string;
+  fabric?: Fabric;
+  workOrder?: WorkOrder;
+  returns?: SettlementLineReturn[];
+}
+
+export interface SettlementYarnLine {
+  settlementYarnLineId: number;
+  settlementId: number;
+  zigId: string;
   yarnGivenId: number;
-  quantityKg: number | string;
+  yarnVariantId: number;
+  issuedQuantity: number | string;
+  returnedQuantity: number | string;
+  netQuantity: number | string;
   unitPrice: number | string;
   totalCost: number | string;
-  yarnGiven?: {
-    yarnGivenId: number;
-    workOrderId: number;
-    yarn?: { materialName: string };
-  };
+  workOrder?: WorkOrder;
+  yarnVariant?: YarnVariant;
 }
 
-export interface SettlementDeduction {
-  settlementDeductionId: number;
+export interface SettlementPayment {
+  settlementPaymentId: number;
   settlementId: number;
-  reason: string;
   amount: number | string;
+  paymentMethod?: string | null;
+  paymentDate: string;
+  recordedByUserId?: number;
+  notes?: string | null;
 }
 
 export interface Settlement {
   settlementId: number;
-  settlementBatchId: number;
-  weaverId: number;
-  periodStart: string;
-  periodEnd: string;
-  totalFabricAmount: number | string;
-  totalYarnDeduction: number | string;
-  totalOtherDeductions: number | string;
-  netPayout: number | string;
-  status: "unpaid" | "paid";
+  batchId: number;
+  weaverUserId: number;
+  status: SettlementStatus;
+  grossFabricValue: number | string;
+  totalDeductions: number | string;
+  totalYarnCost: number | string;
+  netAmount: number | string;
+  createdByUserId: number;
   createdAt: string;
+  paidAt?: string | null;
+  notes?: string | null;
   weaver?: Weaver;
-  linesFabric?: SettlementLineFabric[];
-  linesYarnGiven?: SettlementLineYarnGiven[];
-  deductions?: SettlementDeduction[];
+  lines?: SettlementLine[];
+  yarnLines?: SettlementYarnLine[];
+  payments?: SettlementPayment[];
 }
 
 export interface SettlementBatch {
-  settlementBatchId: number;
-  periodStart: string;
-  periodEnd: string;
-  batchStatus: SettlementBatchStatus;
+  batchId: number;
+  status: SettlementBatchStatus;
+  snapshot: any;
   totalAmount: number | string;
-  notes?: string | null;
+  amountPaid: number | string;
+  createdByUserId: number;
   createdAt: string;
+  committedAt?: string | null;
   settlements?: Settlement[];
   _count?: {
     settlements?: number;
@@ -126,7 +146,7 @@ export interface GroupedFabricLine {
 
 export interface CommittedSettlementSummary {
   previewId: string;
-  batchId?: number;
+  batchId: number;
   createdAt: string;
   committedAt: string | null;
   cutoffDate: string | null;
@@ -142,6 +162,7 @@ export interface CommittedSettlementSummary {
 
 export interface HisabReport {
   paymentId: number;
+  settlementId?: number;
   paymentDate: string;
   weaver: Weaver;
   amount: number;

@@ -25,7 +25,7 @@ export function fabricNameFromParts(
 
 export function fabricVariantName(variant: FabricVariant): string {
   return fabricNameFromParts(
-    variant.fabric?.name ?? variant.product?.name ?? "Fabric",
+    variant.fabric?.name ?? "Fabric",
     variant.warpColor?.name,
     variant.weftColor?.name,
     variant.design?.name,
@@ -38,7 +38,7 @@ export function fabricVariantName(variant: FabricVariant): string {
  */
 export function yarnVariantLabels(variants: YarnVariantOption[]): Map<number, string> {
   const base = (v: YarnVariantOption) =>
-    [v.yarnType?.materialName, v.color?.name].filter(Boolean).join("-") || v.sku;
+    [v.yarn?.name, v.color?.name].filter(Boolean).join("-") || v.sku;
 
   const counts = new Map<string, number>();
   for (const v of variants) counts.set(base(v), (counts.get(base(v)) ?? 0) + 1);

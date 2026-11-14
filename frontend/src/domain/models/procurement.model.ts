@@ -1,24 +1,22 @@
 import type { Supplier, YarnVariant } from "./index";
 
+/** Mirrors Prisma `YarnPurchaseLine` (yarn_purchase_lines). */
 export interface YarnPurchaseLine {
-  yarnPurchaseLineId: number;
-  yarnPurchaseId: number;
+  lineId: number;
+  purchaseId: number;
   yarnVariantId: number;
-  quantityKg: number | string;
-  unitCost: number | string;
-  lineTotal: number | string;
+  quantity: number | string;
+  unitPrice: number | string;
   yarnVariant?: YarnVariant;
 }
 
+/** Mirrors Prisma `YarnPurchase` (yarn_purchases). */
 export interface YarnPurchase {
-  yarnPurchaseId: number;
-  purchaseId?: number;
+  purchaseId: number;
   supplierId: number;
   purchaseDate: string;
-  invoiceNumber?: string | null;
-  totalCost: number | string;
+  createdByUserId: number;
   notes?: string | null;
-  createdAt: string;
   supplier?: Supplier;
   lines?: YarnPurchaseLine[];
 }

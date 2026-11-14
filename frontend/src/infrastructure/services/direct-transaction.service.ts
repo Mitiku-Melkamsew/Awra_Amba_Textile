@@ -1,50 +1,31 @@
 import { request } from "../http/api-client";
 import type {
+  CommercialTxnType,
   DirectTransaction,
-  DirectTransactionType,
   DirectTransactionStatus,
   DirectPayment,
 } from "../../domain/models";
 
+/** Payload matching the canonical backend CreateDirectTransactionSchema. */
 export interface CreateDirectTransactionDto {
-  transactionType?: DirectTransactionType;
-  type?: DirectTransactionType;
+  type: CommercialTxnType;
   supplierId?: number | null;
-  weaverId?: number | null;
   weaverUserId?: number | null;
-  merchantId?: number | null;
   merchantUserId?: number | null;
-  transactionDate?: string;
   notes?: string | null;
-  items?: Array<{
+  lines: Array<{
     fabricVariantId?: number | null;
     yarnVariantId?: number | null;
     quantity: number;
     unitPrice: number;
-    description?: string;
+    description?: string | null;
   }>;
-  lines?: Array<{
-    fabricVariantId?: number | null;
-    yarnVariantId?: number | null;
-    quantity: number;
-    unitPrice: number;
-    description?: string;
-  }>;
-  initialPaymentAmount?: number;
-  paymentMethod?: string;
-  initialPayment?: {
-    amount: number;
-    paymentMethod: string;
-    referenceNumber?: string;
-    notes?: string;
-  };
 }
 
 export const directTransactionService = {
   async listTransactions(params?: {
-    type?: DirectTransactionType;
+    type?: CommercialTxnType;
     status?: DirectTransactionStatus;
-    counterpartyId?: number;
     weaverUserId?: number;
     merchantUserId?: number;
     limit?: number;
@@ -53,7 +34,6 @@ export const directTransactionService = {
     const query = new URLSearchParams();
     if (params?.type) query.append("type", params.type);
     if (params?.status) query.append("status", params.status);
-    if (params?.counterpartyId) query.append("counterpartyId", params.counterpartyId.toString());
     if (params?.weaverUserId) query.append("weaverUserId", params.weaverUserId.toString());
     if (params?.merchantUserId) query.append("merchantUserId", params.merchantUserId.toString());
     if (params?.limit) query.append("limit", params.limit.toString());
@@ -70,21 +50,22 @@ export const directTransactionService = {
   },
 
   async createTransaction(data: CreateDirectTransactionDto): Promise<DirectTransaction> {
-    const payload = {
-      ...data,
-      type: data.type ?? data.transactionType,
-      transactionType: data.transactionType ?? data.type,
-      supplierId: data.supplierId,
-      weaverUserId: data.weaverUserId ?? data.weaverId,
-      weaverId: data.weaverId ?? data.weaverUserId,
-      merchantUserId: data.merchantUserId ?? data.merchantId,
-      merchantId: data.merchantId ?? data.merchantUserId,
-      lines: data.lines ?? data.items ?? [],
-      items: data.items ?? data.lines ?? [],
-    };
     return request<DirectTransaction>("/direct-transactions", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        type: data.type,
+        supplierId: data.supplierId ?? undefined,
+        weaverUserId: data.weaverUserId ?? undefined,
+        merchantUserId: data.merchantUserId ?? undefined,
+        notes: data.notes,
+        lines: data.lines.map((l) => ({
+          fabricVariantId: l.fabricVariantId ?? null,
+          yarnVariantId: l.yarnVariantId ?? null,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+          ...(l.description ? { description: l.description } : {}),
+        })),
+      }),
     });
   },
 
@@ -94,7 +75,6 @@ export const directTransactionService = {
       amount: number;
       paymentMethod: string;
       paymentDate?: string;
-      referenceNumber?: string;
       notes?: string;
     }
   ): Promise<DirectPayment> {

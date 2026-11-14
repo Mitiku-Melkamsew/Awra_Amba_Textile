@@ -11,9 +11,10 @@ export class WorkOrderController {
         !req.user?.roles?.includes(UserRole.admin);
 
       const { status, limit, offset } = req.query as any;
+      const rawWeaverId = req.query.weaverUserId;
       const weaverUserId = isOnlyWeaver
         ? req.user!.userId
-        : (req.query.weaverUserId ? Number(req.query.weaverUserId) : undefined);
+        : (rawWeaverId ? Number(rawWeaverId) : undefined);
 
       const result = await WorkOrderService.listWorkOrders({
         status,
@@ -94,7 +95,12 @@ export class WorkOrderController {
     try {
       const zigId = String(req.params.zigId);
       const actorUserId = req.user!.userId;
-      const lines = req.body.lines ?? [req.body];
+      const rawLines = req.body.lines ?? [req.body];
+      const lines = rawLines.map((l: any) => ({
+        yarnVariantId: Number(l.yarnVariantId),
+        quantity: Number(l.quantity),
+        unitPrice: Number(l.unitPrice ?? 0),
+      }));
       const created = await WorkOrderService.addYarnGiven(zigId, lines, actorUserId);
       res.status(201).json(created);
     } catch (error) {

@@ -60,8 +60,8 @@ function App() {
               <Route element={<Layout />}>
                 <Route index element={<Navigate to="/admin/weavers" replace />} />
                 <Route path="weavers" element={<WeaversPage />} />
-                <Route path="weavers/:weaverId" element={<WeaverProfilePage />} />
-                <Route path="weavers/:weaverId/issue-zig" element={<IssueZigPage />} />
+                <Route path="weavers/:userId" element={<WeaverProfilePage />} />
+                <Route path="weavers/:userId/issue-zig" element={<IssueZigPage />} />
                 <Route path="zigs/:zigId" element={<ZigDetailPage />} />
                 <Route path="users" element={<UsersPage />} />
                 <Route path="prices" element={<PricesPage />} />

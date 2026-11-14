@@ -33,26 +33,32 @@ export function deriveDirectTxnStatus(totalAmount: number, amountPaid: number): 
 }
 
 export async function createDirectTransaction(input: CreateDirectTransactionInput) {
-  let resolvedType = input.type;
-  if ((resolvedType as any) === "fabric_sale") resolvedType = DirectTxnType.fabric_sale_to_merchant;
-  if ((resolvedType as any) === "yarn_sale") resolvedType = DirectTxnType.yarn_sale_to_weaver;
-  if ((resolvedType as any) === "fabric_purchase") resolvedType = DirectTxnType.fabric_purchase_from_weaver;
+  const resolvedType = input.type;
 
   const isSale = resolvedType === DirectTxnType.fabric_sale_to_merchant || resolvedType === DirectTxnType.yarn_sale_to_weaver;
 
-  // Validate counterparty
+  // Validate counterparty against the canonical DirectTxnType semantics.
   if (resolvedType === DirectTxnType.fabric_purchase_from_weaver) {
     if (!input.weaverUserId) {
       throw new Error("VALIDATION: weaverUserId is required for weaver direct transactions.");
     }
+    const weaver = await prisma.user.findUnique({ where: { userId: input.weaverUserId } });
+    if (!weaver) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} not found.`);
+    if (!weaver.isActive) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} is deactivated.`);
   } else if (resolvedType === DirectTxnType.yarn_sale_to_weaver) {
-    if (!input.weaverUserId && !input.merchantUserId) {
-      throw new Error("VALIDATION: A buyer (weaver or merchant) is required for yarn sales.");
+    if (!input.weaverUserId) {
+      throw new Error("VALIDATION: weaverUserId is required for yarn_sale_to_weaver.");
     }
+    const weaver = await prisma.user.findUnique({ where: { userId: input.weaverUserId } });
+    if (!weaver) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} not found.`);
+    if (!weaver.isActive) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} is deactivated.`);
   } else if (resolvedType === DirectTxnType.fabric_sale_to_merchant) {
-    if (!input.merchantUserId && !input.weaverUserId) {
-      throw new Error("VALIDATION: merchantUserId is required for merchant direct transactions.");
+    if (!input.merchantUserId) {
+      throw new Error("VALIDATION: merchantUserId is required for fabric_sale_to_merchant.");
     }
+    const merchant = await prisma.user.findUnique({ where: { userId: input.merchantUserId } });
+    if (!merchant) throw new Error(`VALIDATION: Merchant user ${input.merchantUserId} not found.`);
+    if (!merchant.isActive) throw new Error(`VALIDATION: Merchant user ${input.merchantUserId} is deactivated.`);
   }
 
   if (!input.lines || input.lines.length === 0) {

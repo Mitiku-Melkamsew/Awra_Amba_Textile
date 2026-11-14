@@ -3,7 +3,6 @@ import type { FabricVariant } from "../api";
 import {
   applyFabricVariantToLine,
   createFabricLineDraft,
-  type FabricCatalogLookup,
   type FabricLineDraft,
 } from "../utils/fabricLines";
 import { fabricVariantName } from "../utils/variantNames";
@@ -12,9 +11,7 @@ import { VariantSearch } from "./VariantSearch";
 interface FabricLinesEditorProps {
   lines: FabricLineDraft[];
   onChange: (lines: FabricLineDraft[]) => void;
-  lookup: FabricCatalogLookup;
   fabricVariants: FabricVariant[];
-  defaultEntryMode?: "catalog" | "variant";
   txnType?: string;
 }
 
@@ -36,7 +33,7 @@ export function FabricLinesEditor({
   fabricVariants,
   txnType,
 }: FabricLinesEditorProps) {
-  const isSale = txnType === "fabric_sale" || txnType === "fabric_sale_to_merchant";
+  const isSale = txnType === "fabric_sale_to_merchant";
 
   const activeVariants = useMemo(
     () => fabricVariants.filter((v) => v.isActive !== false),
@@ -75,7 +72,7 @@ export function FabricLinesEditor({
   }
 
   function addLine() {
-    const draft = createFabricLineDraft(undefined, "variant");
+    const draft = createFabricLineDraft();
     const pool = isSale ? inStockVariants : activeVariants;
     if (pool[0]) {
       const first = pool[0];
@@ -206,7 +203,11 @@ export function FabricLinesEditor({
                 </select>
               ) : (
                 <VariantSearch
-                  variants={activeVariants}
+                  label="Fabric variant"
+                  items={activeVariants}
+                  getId={(v) => String(v.fabricVariantId)}
+                  getLabel={(v) => fabricVariantName(v)}
+                  getSearchText={(v) => v.sku ?? ""}
                   selectedId={line.fabricVariantId}
                   onSelect={(v) => handleSelectVariant(line.id, v)}
                   onClear={() =>

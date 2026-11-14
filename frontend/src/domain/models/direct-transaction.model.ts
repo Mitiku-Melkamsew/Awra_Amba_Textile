@@ -1,86 +1,61 @@
-import type { Weaver, Merchant, FabricVariant, YarnVariant } from "./index";
+import type { Weaver, Merchant, FabricVariant, YarnVariant, Supplier } from "./index";
 
+/** Mirrors the Prisma `DirectTxnType` enum. */
 export type DirectTransactionType =
   | "fabric_purchase_from_weaver"
   | "yarn_sale_to_weaver"
   | "fabric_sale_to_merchant";
 
-export type CommercialTxnType =
-  | "yarn_purchase"
-  | "fabric_purchase"
-  | "yarn_sale"
-  | "fabric_sale"
-  | "weaver_payout"
-  | DirectTransactionType;
+/**
+ * Direct transactions plus `yarn_purchase`, which routes to
+ * YarnPurchase / YarnPurchaseLine procurement flow.
+ */
+export type CommercialTxnType = "yarn_purchase" | DirectTransactionType;
 
+/** Mirrors the Prisma `DirectTxnStatus` enum. */
 export type DirectTransactionStatus =
   | "unpaid"
   | "partially_paid"
   | "paid"
   | "cancelled";
 
-export type CommercialTxnStatus =
-  | "pending"
-  | "in_progress"
-  | "awaiting_delivery"
-  | "awaiting_payment"
-  | "completed"
-  | "cancelled"
-  | DirectTransactionStatus;
-
-export type PaymentTerms = "prepaid" | "on_delivery" | "installment";
-
 export interface DirectTransactionItem {
-  directTransactionItemId: number;
-  lineId?: number;
-  directTransactionId: number;
+  lineId: number;
+  transactionId: number;
   fabricVariantId?: number | null;
   yarnVariantId?: number | null;
   quantity: number | string;
   unitPrice: number | string;
-  totalPrice?: number | string;
-  deliveredQuantity?: string;
+  lineTotal?: number | string;
   description?: string | null;
   fabricVariant?: FabricVariant | null;
   yarnVariant?: YarnVariant | null;
 }
 
 export interface DirectPayment {
-  directPaymentId: number;
-  installmentId?: number;
-  directTransactionId: number;
+  paymentId: number;
+  transactionId: number;
   amount: number | string;
   paymentDate: string;
-  paymentMethod: string;
-  referenceNumber?: string | null;
+  paymentMethod?: string | null;
   notes?: string | null;
   recordedByUserId?: number;
 }
 
 export interface DirectTransaction {
-  directTransactionId: number;
-  transactionId?: string;
-  transactionType: DirectTransactionType | CommercialTxnType;
-  type?: CommercialTxnType;
-  weaverId?: number | null;
-  merchantId?: number | null;
-  supplierId?: number | null;
+  transactionId: number | string;
+  type: CommercialTxnType;
+  status: DirectTransactionStatus;
+  weaverUserId?: number | null;
+  merchantUserId?: number | null;
   transactionDate: string;
   totalAmount: number | string;
-  paidAmount: number | string;
-  amountPaid?: number | string;
-  balanceDue?: number | string;
-  paymentStatus: DirectTransactionStatus | CommercialTxnStatus;
-  status?: CommercialTxnStatus;
-  paymentTerms?: PaymentTerms;
-  deliveredAt?: string | null;
+  amountPaid: number | string;
   notes?: string | null;
-  linkedPaymentId?: number | null;
   createdAt: string;
-  weaver?: Weaver | { firstName: string; lastName: string } | null;
-  merchant?: Merchant | { companyName: string | null; contactPhone: string } | null;
-  supplier?: { name: string } | null;
-  items?: DirectTransactionItem[];
+  weaver?: Weaver | null;
+  merchant?: Merchant | null;
+  supplier?: Supplier | null;
   lines?: DirectTransactionItem[];
   payments?: DirectPayment[];
 }

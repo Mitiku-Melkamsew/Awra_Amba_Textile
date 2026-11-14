@@ -4,6 +4,7 @@ import {
   normalizeYarnPurchase,
 } from "../../application/services/direct-transaction.service.js";
 import { ProcurementService } from "../../application/services/procurement.service.js";
+import { ValidationError } from "../../domain/errors/domain-errors.js";
 
 export class DirectTransactionController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -38,9 +39,37 @@ export class DirectTransactionController {
     try {
       const actorUserId = req.user!.userId;
       const body = req.body;
-      // Yarn purchases belong to /api/v1/procurement, not direct transactions.
-      // DirectTxnType only: fabric_purchase_from_weaver | yarn_sale_to_weaver | fabric_sale_to_merchant
-      const type = body.type;
+
+      // Yarn purchases use the procurement schema (YarnPurchase / YarnPurchaseLine).
+      // `yarn_purchase` is accepted on this endpoint as a thin facade so the
+      // commercial transactions UI has a single creation path.
+      if (body.type === "yarn_purchase") {
+        if (body.supplierId == null) {
+          throw new ValidationError("supplierId is required for yarn purchases.");
+        }
+        const lines = (body.lines ?? []).map((l: any) => {
+          if (l.yarnVariantId == null) {
+            throw new ValidationError(
+              "yarnVariantId is required for each yarn purchase line.",
+            );
+          }
+          return {
+            yarnVariantId: Number(l.yarnVariantId),
+            quantity: Number(l.quantity),
+            unitPrice: Number(l.unitPrice),
+          };
+        });
+        const createdPurchase = await ProcurementService.createPurchase(
+          {
+            supplierId: Number(body.supplierId),
+            notes: body.notes ?? null,
+            lines,
+          },
+          actorUserId,
+        );
+        return res.status(201).json(normalizeYarnPurchase(createdPurchase));
+      }
+
       const lines = (body.lines ?? []).map((l: any) => ({
         fabricVariantId: l.fabricVariantId != null ? Number(l.fabricVariantId) : null,
         yarnVariantId: l.yarnVariantId != null ? Number(l.yarnVariantId) : null,
@@ -50,15 +79,11 @@ export class DirectTransactionController {
       }));
 
       const created = await DirectTransactionService.createTransaction({
-        type,
+        type: body.type,
         weaverUserId: body.weaverUserId != null ? Number(body.weaverUserId) : null,
         merchantUserId: body.merchantUserId != null ? Number(body.merchantUserId) : null,
         lines,
-        initialPaymentAmount:
-          body.initialPaymentAmount != null ? Number(body.initialPaymentAmount) : undefined,
-        paymentMethod: body.paymentMethod ?? undefined,
         notes: body.notes ?? null,
-        transactionDate: body.transactionDate ? new Date(body.transactionDate) : undefined,
         createdByUserId: actorUserId,
       });
       res.status(201).json(created);

@@ -19,7 +19,7 @@ export function ZigCard({ order, to }: ZigCardProps) {
   const warp = variant?.warpColor?.name;
   const weft = variant?.weftColor?.name;
   const design = variant?.design?.name;
-  const zigId = order.zigId ?? String(order.workOrderId);
+  const zigId = order.zigId;
 
   return (
     <Link to={to} className="zig-card">
@@ -34,7 +34,7 @@ export function ZigCard({ order, to }: ZigCardProps) {
       </div>
 
       <p className="zig-card-product">
-        {variant?.fabric?.name ?? variant?.product?.name ?? order.fabric?.name ?? "Handwoven Fabric"}
+        {variant?.fabric?.name ?? order.fabric?.name ?? "Handwoven Fabric"}
       </p>
 
       {(warp || weft || design) && (
@@ -67,7 +67,7 @@ export function ZigCard({ order, to }: ZigCardProps) {
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px solid var(--border-subtle)" }}>
         <span style={{ fontSize: "12px", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-          <span>📅</span> {formatDateDDMMYY(order.dateIssued ?? order.assignedDate ?? new Date())}
+          <span>📅</span> {formatDateDDMMYY(order.dateIssued ?? new Date())}
         </span>
         {order._count && (
           <div style={{ display: "flex", gap: "0.4rem", fontSize: "11.5px", fontWeight: 600, color: "var(--text-muted)" }}>

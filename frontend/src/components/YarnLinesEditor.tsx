@@ -1,21 +1,18 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import type {
   YarnCatalogLookup,
   YarnLineDraft,
   YarnVariantOption,
 } from "../utils/yarnLines";
-import {
-  applyYarnVariantToLine,
-  createYarnLineDraft,
-  YARN_DETAILS_EDITED,
-} from "../utils/yarnLines";
+import { applyYarnVariantToLine, createYarnLineDraft } from "../utils/yarnLines";
 import { yarnVariantLabels } from "../utils/variantNames";
 import { VariantSearch } from "./VariantSearch";
 
 interface YarnLinesEditorProps {
   lines: YarnLineDraft[];
   onChange: (lines: YarnLineDraft[]) => void;
-  lookup: YarnCatalogLookup;
+  /** Kept for callers that already load catalog data; lines no longer use it. */
+  lookup?: YarnCatalogLookup;
   yarnVariants?: YarnVariantOption[];
   quantityHint?: string;
   singleLine?: boolean;
@@ -33,13 +30,12 @@ function updateLine(
 export function YarnLinesEditor({
   lines,
   onChange,
-  lookup,
   yarnVariants = [],
   quantityHint,
   singleLine = false,
   txnType,
 }: YarnLinesEditorProps) {
-  const isSale = txnType === "yarn_sale";
+  const isSale = txnType === "yarn_sale_to_weaver";
   const labels = useMemo(() => yarnVariantLabels(yarnVariants), [yarnVariants]);
 
   const activeVariants = useMemo(
@@ -57,53 +53,14 @@ export function YarnLinesEditor({
     [activeVariants],
   );
 
-  useEffect(() => {
-    if (isSale || lookup.yarnTypes.length === 0) return;
-    const needsUpdate = lines.some(
-      (l) => !l.yarnTypeId && l.entryMode !== "variant",
-    );
-    if (needsUpdate) {
-      const y0 = lookup.yarnTypes[0];
-      const autoPrice =
-        txnType === "yarn_purchase"
-          ? ((y0 as any).purchasePrice ?? (y0 as any).basePrice)
-          : (y0 as any).basePrice;
-      onChange(
-        lines.map((l) => {
-          if (l.yarnTypeId || l.entryMode === "variant") return l;
-          return {
-            ...l,
-            yarnTypeId: String(y0?.yarnTypeId ?? ""),
-            supplierId:
-              l.supplierId || String(lookup.suppliers[0]?.supplierId ?? ""),
-            colorId: l.colorId || String(lookup.colors[0]?.colorId ?? ""),
-            unitPrice: l.unitPrice || (autoPrice ? String(autoPrice) : ""),
-          };
-        }),
-      );
-    }
-  }, [isSale, lookup, lines, onChange, txnType]);
-
   function addLine() {
-    const draft = createYarnLineDraft(lookup);
+    const draft = createYarnLineDraft();
     if (isSale && inStockVariants.length > 0) {
       const first = inStockVariants[0];
       const autoPrice = (first as any).sellingPrice ?? first.basePrice;
-      draft.entryMode = "variant";
       draft.yarnVariantId = String(first.yarnVariantId);
-      draft.yarnTypeId = String(first.yarnTypeId ?? (first as any).yarnId ?? "");
-      draft.supplierId = String(first.supplierId ?? "");
-      draft.colorId = String(first.colorId ?? "");
       draft.unitPrice = autoPrice ? String(autoPrice) : "";
       draft.quantity = "1";
-    } else {
-      const y0 = lookup.yarnTypes[0];
-      const autoPrice = y0
-        ? txnType === "yarn_purchase"
-          ? ((y0 as any).purchasePrice ?? (y0 as any).basePrice)
-          : (y0 as any).basePrice
-        : "";
-      if (autoPrice) draft.unitPrice = String(autoPrice);
     }
     onChange([...lines, draft]);
   }
@@ -123,8 +80,6 @@ export function YarnLinesEditor({
         l.id === lineId
           ? {
               ...applyYarnVariantToLine(l, variant),
-              entryMode: "variant",
-              yarnVariantId: String(variant.yarnVariantId),
               unitPrice: autoPrice ? String(autoPrice) : l.unitPrice,
               quantity: l.quantity && Number(l.quantity) > 0 ? l.quantity : "1",
             }
@@ -166,7 +121,7 @@ export function YarnLinesEditor({
         const unitPriceNum = Number(line.unitPrice || 0);
         const lineSubtotal = Math.round(qtyNum * unitPriceNum * 100) / 100;
         const exceedsStock =
-          (isSale || txnType === "issue_zig") &&
+          isSale &&
           availableStock !== null &&
           qtyNum > availableStock;
 
@@ -258,7 +213,6 @@ export function YarnLinesEditor({
                     } else {
                       onChange(
                         updateLine(lines, line.id, {
-                          entryMode: "variant",
                           yarnVariantId: "",
                           unitPrice: "",
                         }),
@@ -338,8 +292,8 @@ export function YarnLinesEditor({
                 )}
               </div>
             ) : (
-              /* Non-Sale Mode (Procurement or Work Order issue): Variant Search & Direct Details */
-              <>
+              /* Non-sale (procurement / work-order issue): select an existing yarn variant. */
+              <div style={{ marginBottom: "0.75rem" }}>
                 <VariantSearch
                   label="Find existing yarn / ክር ፈልግ"
                   placeholder="Type a name or SKU, e.g. cotton-white"
@@ -347,72 +301,11 @@ export function YarnLinesEditor({
                   getId={(v) => String(v.yarnVariantId)}
                   getLabel={(v) => `${labels.get(v.yarnVariantId) ?? v.sku} (${(v as any).stockSnapshot ?? 0} in stock)`}
                   getSearchText={(v) => v.sku}
-                  selectedId={line.entryMode === "variant" ? line.yarnVariantId : ""}
+                  selectedId={line.yarnVariantId}
                   onSelect={(variant) => handleSelectVariant(line.id, variant)}
-                  onClear={() => onChange(updateLine(lines, line.id, { ...YARN_DETAILS_EDITED }))}
+                  onClear={() => onChange(updateLine(lines, line.id, { yarnVariantId: "" }))}
                 />
-                <p className="muted" style={{ fontSize: "0.85rem", margin: "0.25rem 0" }}>
-                  Not in the list? Specify custom details below:
-                </p>
-
-                <div className="form-row form-row-3">
-                  <label>
-                    Type / ዓይነት
-                    <select
-                      value={line.yarnTypeId}
-                      onChange={(e) => {
-                        const y = lookup.yarnTypes.find((t) => String(t.yarnTypeId) === e.target.value);
-                        const autoPrice = (y as any)?.purchasePrice ?? (y as any)?.basePrice;
-                        onChange(
-                          updateLine(lines, line.id, {
-                            ...YARN_DETAILS_EDITED,
-                            yarnTypeId: e.target.value,
-                            unitPrice: autoPrice ? String(autoPrice) : line.unitPrice,
-                          }),
-                        );
-                      }}
-                    >
-                      {lookup.yarnTypes.map((t) => (
-                        <option key={t.yarnTypeId} value={t.yarnTypeId}>
-                          {t.materialName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Supplier
-                    <select
-                      value={line.supplierId}
-                      onChange={(e) =>
-                        onChange(updateLine(lines, line.id, { ...YARN_DETAILS_EDITED, supplierId: e.target.value }))
-                      }
-                    >
-                      {lookup.suppliers.map((s) => (
-                        <option key={s.supplierId} value={s.supplierId}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Color / ቀለም
-                    <select
-                      value={line.colorId}
-                      onChange={(e) =>
-                        onChange(updateLine(lines, line.id, { ...YARN_DETAILS_EDITED, colorId: e.target.value }))
-                      }
-                    >
-                      {lookup.colors.map((c) => (
-                        <option key={c.colorId} value={c.colorId}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-              </>
+              </div>
             )}
 
             {/* Quantity and Price */}

@@ -64,7 +64,7 @@ export const AddFabricReturnSchema = z.object({
   lengthCm: z.coerce.number().positive().optional().nullable(),
   widthCm: z.coerce.number().positive().optional().nullable(),
   remark: z.string().max(500).optional().nullable(),
-  returnDate: z.string().optional(),
+  dateReturned: z.string().optional(),
 });
 
 export const UpdateFabricReturnSchema = z.object({
@@ -80,12 +80,12 @@ export const AddYarnReturnSchema = z.object({
   yarnVariantId: z.coerce.number().int().positive(),
   quantity: z.coerce.number().positive(),
   remark: z.string().optional().nullable(),
-  returnDate: z.string().optional(),
+  dateReturned: z.string().optional(),
 });
 
 export const AddFabricReturnToWeaverSchema = z.object({
   fabricVariantId: z.coerce.number().int().positive(),
   quantity: z.coerce.number().int().positive(),
   remark: z.string().optional().nullable(),
-  returnDate: z.string().optional(),
+  dateReturned: z.string().optional(),
 });

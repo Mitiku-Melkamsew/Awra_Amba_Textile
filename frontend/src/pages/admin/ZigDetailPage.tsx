@@ -21,8 +21,9 @@ export function ZigDetailPage() {
   if (!order && !error) return <p className="muted">Loading...</p>;
   if (!order) return <p className="error">{error}</p>;
 
+  const weaverUserId = order.weaverUserId ?? order.weaver?.userId;
   const backLink =
-    order.weaverId != null ? `/admin/weavers/${order.weaverId}` : "/admin/weavers";
+    weaverUserId != null ? `/admin/weavers/${weaverUserId}` : "/admin/weavers";
 
   return (
     <ZigDetailView

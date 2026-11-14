@@ -3,7 +3,7 @@ import type {
   SettlementBatch,
   SettlementBatchPreview,
   Settlement,
-  SettlementDeduction,
+  HisabReport,
 } from "../../domain/models";
 
 export const settlementService = {
@@ -51,12 +51,6 @@ export const settlementService = {
     return request<SettlementBatch>(`/settlements/batches/${id}`);
   },
 
-  async markBatchPaid(id: string | number): Promise<SettlementBatch> {
-    return request<SettlementBatch>(`/settlements/batches/${id}/pay`, {
-      method: "POST",
-    });
-  },
-
   async payBatch(
     id: string | number,
     data?: { amount?: number; paymentMethod?: string; notes?: string }
@@ -71,60 +65,7 @@ export const settlementService = {
     return request<Settlement>(`/settlements/${id}`);
   },
 
-  async addDeduction(
-    settlementId: string | number,
-    data: { reason: string; amount: number }
-  ): Promise<SettlementDeduction> {
-    return request<SettlementDeduction>(`/settlements/${settlementId}/deductions`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  async getHisabStatement(settlementId: string | number): Promise<{
-    settlementId: number;
-    weaver: {
-      weaverId: number;
-      fullName: string;
-      phone: string | null;
-      bankAccountNumber: string | null;
-    };
-    periodStart: string;
-    periodEnd: string;
-    fabricReturns: Array<{
-      fabricReturnId: number;
-      workOrderId: number;
-      fabricName: string;
-      returnDate: string;
-      quantity: number;
-      actualWeightG: number;
-      unitPrice: number;
-      totalCredit: number;
-    }>;
-    yarnDebits: Array<{
-      yarnGivenId: number;
-      yarnName: string;
-      quantityKg: number;
-      unitPrice: number;
-      totalCost: number;
-    }>;
-    qualityDeductions: Array<{
-      reason: string;
-      amount: number;
-    }>;
-    otherDeductions: Array<{
-      reason: string;
-      amount: number;
-    }>;
-    totals: {
-      fabricPieces: number;
-      grossFabricCredit: number;
-      totalYarnDebits: number;
-      totalDeductions: number;
-      netPayout: number;
-      amountInWordsAmharic?: string;
-    };
-  }> {
-    return request(`/settlements/${settlementId}/hisab-statement`);
+  async getHisabStatement(settlementId: string | number): Promise<HisabReport> {
+    return request<HisabReport>(`/settlements/${settlementId}/hisab-statement`);
   },
 };

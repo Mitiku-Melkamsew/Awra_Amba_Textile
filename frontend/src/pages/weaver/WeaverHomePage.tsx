@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { weaverPortalApi } from "../../api";
+import { weaverPortalApi, type Weaver } from "../../api";
 
 export function WeaverHomePage() {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<{ firstName: string; lastName: string; phone: string | null } | null>(null);
+  const [profile, setProfile] = useState<Weaver | null>(null);
   const [stats, setStats] = useState({ zigs: 0, inProgress: 0, returned: 0, payments: 0 });
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user?.weaverId) return;
+    const uid = user?.userId;
+    if (!uid) return;
     Promise.all([
-      weaverPortalApi.profile(user.weaverId),
+      weaverPortalApi.profile(uid),
       weaverPortalApi.workOrders(),
       weaverPortalApi.payments(),
     ])
@@ -26,7 +27,7 @@ export function WeaverHomePage() {
         });
       })
       .catch((err) => setError(err.message));
-  }, [user?.weaverId]);
+  }, [user?.userId]);
 
   return (
     <section className="weaver-page">
@@ -34,7 +35,7 @@ export function WeaverHomePage() {
         <div>
           <p className="eyebrow">Welcome back</p>
           <h2>
-            {profile ? `${profile.firstName} ${profile.lastName}` : "Loading..."}
+            {profile ? profile.fullName : "Loading..."}
           </h2>
           <p className="muted">
             View your work orders, fabric returns, and payment history.

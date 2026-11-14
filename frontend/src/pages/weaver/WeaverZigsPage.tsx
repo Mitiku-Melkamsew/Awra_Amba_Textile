@@ -32,7 +32,7 @@ export function WeaverZigsPage() {
           </thead>
           <tbody>
             {zigs.map((zig: any) => {
-              const id = zig.zigId ?? zig.workOrderId;
+              const id = zig.zigId;
               const fabName = zig.fabricVariant?.fabric?.name ?? zig.fabric?.name ?? "Handwoven Fabric";
               return (
                 <tr key={id}>

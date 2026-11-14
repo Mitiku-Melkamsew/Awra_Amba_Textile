@@ -19,20 +19,17 @@ export class ReportService {
       },
     });
 
-    return payments.map((payment) => {
-      const [firstName = "", ...lastName] = payment.settlement.weaver.fullName.split(" ");
-      return {
-        paymentId: payment.settlementPaymentId,
-        settlementId: payment.settlementId,
-        amount: Number(payment.amount),
-        paymentDate: payment.paymentDate,
-        weaver: {
-          weaverId: payment.settlement.weaver.userId,
-          firstName,
-          lastName: lastName.join(" "),
-        },
-      };
-    });
+    return payments.map((payment) => ({
+      paymentId: payment.settlementPaymentId,
+      settlementId: payment.settlementId,
+      amount: Number(payment.amount),
+      paymentDate: payment.paymentDate,
+      weaver: {
+        weaverUserId: payment.settlement.weaver.userId,
+        userId: payment.settlement.weaver.userId,
+        fullName: payment.settlement.weaver.fullName,
+      },
+    }));
   }
 
   /**

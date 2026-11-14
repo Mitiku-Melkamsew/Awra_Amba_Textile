@@ -38,19 +38,21 @@ export class WorkOrderService {
   static async listWorkOrders(filter: {
     status?: WorkOrderStatus;
     weaverUserId?: number;
+    userId?: number;
     limit?: number;
     offset?: number;
   } = {}) {
     const where: any = {};
     if (filter.status) where.status = filter.status;
-    if (filter.weaverUserId) where.weaverUserId = filter.weaverUserId;
+    const wid = filter.weaverUserId ?? filter.userId;
+    if (wid) where.weaverUserId = wid;
 
     const [workOrders, total] = await Promise.all([
       prisma.workOrder.findMany({
         where,
         include: {
           weaver: {
-            select: { userId: true, fullName: true, username: true, phone: true },
+            select: { userId: true, fullName: true, username: true, phone: true, isActive: true },
           },
           fabricVariant: { include: fabricVariantInclude },
           _count: {
@@ -133,6 +135,9 @@ export class WorkOrderService {
       include: { roles: true },
     });
     if (!weaver) throw new NotFoundError(`Weaver user ${weaverUserId} not found`);
+    if (!weaver.isActive) {
+      throw new ValidationError(`Cannot issue work order to deactivated weaver (User ID: ${weaverUserId})`);
+    }
     if (!weaver.roles.some((r) => r.role === "weaver")) {
       throw new ValidationError(`User ${weaverUserId} is not assigned the weaver role`);
     }

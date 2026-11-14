@@ -70,7 +70,7 @@ export class SettlementService {
 
       const snapshot = batch.snapshot as {
         weavers?: Array<{
-          weaverId: number;
+          weaverUserId?: number;
           weaverName: string;
           returnIds: number[];
           yarnGivenIds: number[];
@@ -100,7 +100,7 @@ export class SettlementService {
         results.push(await legacyCommitSettlement(
           {
             batchId: batch.batchId,
-            weaverUserId: weaver.weaverId,
+            weaverUserId: weaver.weaverUserId!,
             returnIds: weaver.returnIds,
             yarnGivenIds: weaver.yarnGivenIds,
             paymentMethod: input.paymentMethod,

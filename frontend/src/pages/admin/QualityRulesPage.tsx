@@ -16,7 +16,6 @@ export function QualityRulesPage() {
   const [factor, setFactor] = useState("weight");
   const [unit, setUnit] = useState("g");
   const [deduction, setDeduction] = useState("");
-  const [notes, setNotes] = useState("");
 
   // Inline edit state
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -51,10 +50,8 @@ export function QualityRulesPage() {
         factor,
         unit,
         deductionPerUnit: Number(deduction),
-        notes: notes || undefined,
       });
       setDeduction("");
-      setNotes("");
       setMessage("Quality rule added successfully.");
       await loadRules();
     } catch (err: any) {
@@ -105,8 +102,7 @@ export function QualityRulesPage() {
       if (!q) return true;
       return (
         r.factor.toLowerCase().includes(q) ||
-        r.unit.toLowerCase().includes(q) ||
-        (r.notes && r.notes.toLowerCase().includes(q))
+        r.unit.toLowerCase().includes(q)
       );
     });
   }, [rules, showInactive, q]);
@@ -183,14 +179,6 @@ export function QualityRulesPage() {
               required
             />
           </label>
-          <label>
-            <span>Notes / ማብራሪያ (optional)</span>
-            <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Applied when fabric weight is below standard"
-            />
-          </label>
         </div>
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={saving}>
@@ -229,7 +217,6 @@ export function QualityRulesPage() {
                   <th>Factor / Dimension</th>
                   <th>Unit</th>
                   <th>Deduction Rate (ETB / unit)</th>
-                  <th>Notes</th>
                   <th>Status</th>
                   <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
@@ -237,7 +224,7 @@ export function QualityRulesPage() {
               <tbody>
                 {filteredRules.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={5}>
                       <div className="empty-state">
                         <span className="empty-icon">⚖️</span>
                         No quality rules matching criteria.
@@ -276,9 +263,6 @@ export function QualityRulesPage() {
                           ) : (
                             `${Number(r.deductionPerUnit).toFixed(2)} ETB / ${r.unit}`
                           )}
-                        </td>
-                        <td style={{ color: "var(--text-muted)", fontSize: 12.5 }}>
-                          {r.notes || "—"}
                         </td>
                         <td>
                           <span className={`badge ${r.isActive ? "badge-green" : "badge-gray"}`}>

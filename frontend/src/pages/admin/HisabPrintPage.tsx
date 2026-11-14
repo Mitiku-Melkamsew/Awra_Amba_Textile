@@ -123,9 +123,9 @@ export function HisabPrintPage() {
           <div>
             አሸጋይ / Artisan Weaver:{" "}
             <strong>
-              {report.weaver.firstName} {report.weaver.lastName}
+              {report.weaver.fullName}
             </strong>{" "}
-            (ID: #{report.weaver.weaverId})
+            (ID: #{report.weaver.userId})
           </div>
           <div>
             ጠቅላላ ክፍያ / Total Paid:{" "}

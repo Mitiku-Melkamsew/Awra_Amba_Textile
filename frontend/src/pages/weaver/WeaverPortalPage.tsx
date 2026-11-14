@@ -24,13 +24,14 @@ export function WeaverPortalPage() {
         if (user) {
           const parts = (user.fullName || user.username).split(" ");
           setWeaver({
-            weaverId: user.weaverId ?? user.userId,
+            userId: user.userId,
+            weaverId: user.userId,
             firstName: parts[0] || user.username,
             lastName: parts.slice(1).join(" ") || "",
             fullName: user.fullName || user.username,
             phone: null,
             email: null,
-            bankAccountNumber: null,
+            isActive: user.isActive ?? true,
           });
         } else {
           setError(err.message || "Failed to load weaver profile");

@@ -289,9 +289,9 @@ export class CatalogController {
       const b = req.body;
       const created = await CatalogService.createFabricPrice(
         {
-          fabricId: b.fabricId,
-          weaverRate: b.weaverRate ?? b.weaverUnitPrice,
-          sellingPrice: b.sellingPrice ?? b.sellingUnitPrice,
+          fabricId: Number(b.fabricId),
+          weaverRate: Number(b.weaverRate),
+          sellingPrice: Number(b.sellingPrice),
           effectiveFrom: b.effectiveFrom ? new Date(b.effectiveFrom) : undefined,
         },
         actorUserId,
@@ -329,10 +329,10 @@ export class CatalogController {
       const b = req.body;
       const created = await CatalogService.createYarnPrice(
         {
-          yarnId: b.yarnId,
-          supplierId: b.supplierId,
-          purchasePrice: b.purchasePrice ?? b.costPerKg,
-          sellingPrice: b.sellingPrice ?? b.sellingPricePerKg,
+          yarnId: Number(b.yarnId),
+          supplierId: Number(b.supplierId),
+          purchasePrice: Number(b.purchasePrice),
+          sellingPrice: Number(b.sellingPrice),
           effectiveFrom: b.effectiveFrom ? new Date(b.effectiveFrom) : undefined,
         },
         actorUserId,

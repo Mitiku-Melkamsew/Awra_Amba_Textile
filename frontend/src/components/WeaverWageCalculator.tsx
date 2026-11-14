@@ -31,7 +31,7 @@ export function WeaverWageCalculator() {
           setSelectedFabricId(String(f0.fabricId));
           setCustomTargetWeight(String(f0.standardWeightG ?? 500));
           setActualWeightG(String(f0.standardWeightG ?? 500));
-          const rate = (f0 as any).weaverRate ?? (f0.prices?.[0] as any)?.weaverUnitPrice ?? (f0.prices?.[0] as any)?.weaverRate ?? 150;
+          const rate = (f0 as any).weaverRate ?? (f0.prices?.[0] as any)?.weaverRate ?? 150;
           setCustomPieceRate(String(rate));
         }
 
@@ -50,7 +50,7 @@ export function WeaverWageCalculator() {
 
     setCustomTargetWeight(String(fabric.standardWeightG ?? 500));
     setActualWeightG(String(fabric.standardWeightG ?? 500));
-    const rate = (fabric as any).weaverRate ?? (fabric.prices?.[0] as any)?.weaverUnitPrice ?? (fabric.prices?.[0] as any)?.weaverRate ?? 150;
+    const rate = (fabric as any).weaverRate ?? (fabric.prices?.[0] as any)?.weaverRate ?? 150;
     setCustomPieceRate(String(rate));
   }
 

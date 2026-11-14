@@ -22,7 +22,8 @@ interface YarnLineItem {
 }
 
 export function IssueZigPage() {
-  const { weaverId } = useParams<{ weaverId: string }>();
+  const { userId, weaverId } = useParams<{ userId?: string; weaverId?: string }>();
+  const targetUserId = userId ?? weaverId;
   const navigate = useNavigate();
 
   // Core data states
@@ -63,25 +64,28 @@ export function IssueZigPage() {
 
   // Load initial data
   useEffect(() => {
-    if (!weaverId) return;
+    if (!targetUserId) return;
     setLoading(true);
+    const wid = Number(targetUserId);
 
     Promise.all([
-      userService.getUser(Number(weaverId)).then((u) => {
+      userService.getUser(wid).then((u) => {
         const parts = u.fullName.split(" ");
         return {
-          weaverId: u.weaverProfile?.weaverId ?? u.userId,
+          userId: u.userId,
+          weaverId: u.userId,
+          fullName: u.fullName,
           firstName: parts[0] || u.fullName,
           lastName: parts.slice(1).join(" ") || "",
           phone: u.phone,
-          email: u.weaverProfile?.email ?? null,
-          bankAccountNumber: u.weaverProfile?.bankAccountNumber ?? null,
+          email: u.email ?? null,
+          isActive: u.isActive,
         } as Weaver;
       }),
       catalogApi.lookup(),
       catalogApi.fabricVariants(),
       catalogApi.yarnVariants(),
-      workOrdersApi.list({ weaverId: Number(weaverId) }).catch(() => []),
+      workOrdersApi.list({ weaverUserId: wid }).catch(() => []),
     ])
       .then(([w, lookup, fv, yv, orders]) => {
         setWeaver(w);
@@ -98,8 +102,12 @@ export function IssueZigPage() {
         }));
         setYarnVariants(enrichedYarnVariants);
 
-        // Determine weaver's last zig
-        const previousOrders = Array.isArray(orders) ? orders : [];
+        // Determine this weaver's last zig strictly
+        const rawOrders = Array.isArray(orders) ? orders : [];
+        const previousOrders = rawOrders.filter((o: any) => {
+          const orderWid = o.weaverUserId ?? o.weaver?.userId;
+          return Number(orderWid) === wid;
+        });
         const prev = previousOrders[0] ?? null;
         setLastZig(prev);
 
@@ -107,7 +115,11 @@ export function IssueZigPage() {
         let initialFabric = lookup.fabrics[0];
         let initialWarp = lookup.colors[0];
         let initialWeft = lookup.colors[0];
-        let initialDesignId = String(findZigZagDesignId(lookup.designs as any) ?? "");
+        let initialDesignId = String(
+          findZigZagDesignId(lookup.designs as any) ??
+          lookup.designs[0]?.designId ??
+          ""
+        );
 
         if (prev?.fabricVariant) {
           const pv = prev.fabricVariant;
@@ -120,7 +132,7 @@ export function IssueZigPage() {
         if (initialFabric) {
           setFabricId(String(initialFabric.fabricId));
           const p = (initialFabric as any).prices?.[0] || (initialFabric as any).currentPrice;
-          if (p) setWeaverRate(String(p.weaverUnitPrice ?? p.weaverRate ?? "0"));
+          if (p) setWeaverRate(String(p.weaverRate ?? "0"));
         }
         if (initialWarp) setWarpColorId(String(initialWarp.colorId));
         if (initialWeft) setWeftColorId(String(initialWeft.colorId));
@@ -128,21 +140,24 @@ export function IssueZigPage() {
 
         // Initialize first yarn line if yarn variants exist
         const inStockYarns = enrichedYarnVariants.filter((y) => y.stockSnapshot > 0);
-        const defaultYarn = inStockYarns[0] ?? enrichedYarnVariants[0];
+        const defaultYarn = inStockYarns[0] ?? null;
         if (defaultYarn) {
+          const safeQty = Math.min(10, defaultYarn.stockSnapshot);
           setYarnLines([
             {
               id: `yarn-${Date.now()}-1`,
               yarnVariantId: String(defaultYarn.yarnVariantId),
-              quantity: "40",
+              quantity: String(safeQty),
               unitPrice: String(defaultYarn.sellingPrice || defaultYarn.basePrice || "0"),
             },
           ]);
+        } else {
+          setYarnLines([]);
         }
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load data"))
       .finally(() => setLoading(false));
-  }, [weaverId]);
+  }, [targetUserId]);
 
   // Selected Fabric object
   const selectedFabric = useMemo(() => {
@@ -181,7 +196,7 @@ export function IssueZigPage() {
 
   // Format yarn display name (e.g. "cotton · white")
   function formatYarnName(yv: any) {
-    const mat = yv.yarnType?.materialName ?? yv.yarn?.name ?? "Yarn";
+    const mat = yv.yarn?.name ?? "Yarn";
     const col = yv.color?.name ?? "Standard";
     return `${mat} · ${col}`;
   }
@@ -198,7 +213,7 @@ export function IssueZigPage() {
       if (pv.weftColor?.colorId) setWeftColorId(String(pv.weftColor.colorId));
       if (pv.design?.designId) setDesignId(String(pv.design.designId));
 
-      const price = pv.basePrice ?? pv.currentPrice?.weaverUnitPrice;
+      const price = pv.basePrice ?? pv.currentPrice?.weaverRate;
       if (price) setWeaverRate(String(price));
       setSelectedVariantId(String(pv.fabricVariantId));
     } else if (lastZig.fabric?.fabricId) {
@@ -302,7 +317,7 @@ export function IssueZigPage() {
     const fab = fabrics.find((f) => String(f.fabricId) === modalFabricId);
     if (fab) {
       const p = (fab as any).prices?.[0] || (fab as any).currentPrice;
-      if (p) setWeaverRate(String(p.weaverUnitPrice ?? p.weaverRate ?? "0"));
+      if (p) setWeaverRate(String(p.weaverRate ?? "0"));
     }
     setIsModalOpen(false);
   }
@@ -378,14 +393,17 @@ export function IssueZigPage() {
     if (!fabricId) problems.push("Please select a fabric type.");
 
     lineCalculations.forEach((c) => {
-      if (c.isMissingVariant) {
-        problems.push(`Yarn line ${c.idx + 1}: please choose a yarn variant or remove this line.`);
-      } else if (c.isInvalidQty) {
-        problems.push(`Yarn line ${c.idx + 1}: quantity cannot be negative.`);
-      } else if (c.isExceeded) {
-        problems.push(
-          `Yarn line ${c.idx + 1} is more than the stock available (only ${c.stock} in stock).`,
-        );
+      const hasAnyInput = Boolean(c.line.yarnVariantId || c.line.quantity);
+      if (hasAnyInput) {
+        if (!c.line.yarnVariantId) {
+          problems.push(`Yarn line ${c.idx + 1}: please choose a yarn variant or remove this line.`);
+        } else if (c.isInvalidQty || c.qty <= 0) {
+          problems.push(`Yarn line ${c.idx + 1}: quantity must be greater than zero.`);
+        } else if (c.isExceeded) {
+          problems.push(
+            `Yarn line ${c.idx + 1} is more than the stock available (only ${c.stock} in stock).`,
+          );
+        }
       }
     });
 
@@ -395,7 +413,14 @@ export function IssueZigPage() {
   // Form Submit Handler
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!weaverId || validationProblems.length > 0) return;
+    if (!targetUserId) {
+      setError("Artisan / Weaver ID is missing.");
+      return;
+    }
+    if (validationProblems.length > 0) {
+      setError(validationProblems[0]);
+      return;
+    }
     setSaving(true);
     setError("");
 
@@ -411,12 +436,12 @@ export function IssueZigPage() {
         );
         if (match) {
           finalVariantId = match.fabricVariantId;
-        } else if (fabricId) {
+        } else if (fabricId && warpColorId && weftColorId && designId) {
           const createdFv = await catalogApi.createFabricVariant({
             fabricId: Number(fabricId),
-            warpColorId: warpColorId ? Number(warpColorId) : null,
-            weftColorId: weftColorId ? Number(weftColorId) : null,
-            designId: designId ? Number(designId) : null,
+            warpColorId: Number(warpColorId),
+            weftColorId: Number(weftColorId),
+            designId: Number(designId),
           });
           finalVariantId = createdFv.fabricVariantId;
         }
@@ -427,7 +452,7 @@ export function IssueZigPage() {
       }
 
       await workOrderService.createWorkOrder({
-        weaverUserId: Number(weaverId),
+        weaverUserId: Number(targetUserId),
         fabricVariantId: finalVariantId,
         yarnLines: lineCalculations
           .filter((c) => c.line.yarnVariantId && c.qty > 0)
@@ -438,7 +463,7 @@ export function IssueZigPage() {
           })),
       });
 
-      navigate(`/admin/weavers/${weaverId}`);
+      navigate(`/admin/weavers/${targetUserId}`);
     } catch (err: any) {
       setError(err.message || "Failed to issue work order");
     } finally {
@@ -456,6 +481,60 @@ export function IssueZigPage() {
     );
   }
 
+  const weaverDisplayName =
+    weaver.fullName ||
+    `${weaver.firstName ?? ""} ${weaver.lastName ?? ""}`.trim() ||
+    `Weaver #${weaver.userId}`;
+
+  const isDeactivated = weaver.isActive === false || weaver.user?.isActive === false;
+
+  if (isDeactivated) {
+    return (
+      <div className="page" style={{ maxWidth: 800, margin: "2rem auto", padding: "1.5rem" }}>
+        <Link
+          to={`/admin/weavers/${targetUserId}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            textDecoration: "none",
+            color: "var(--brand, #c2410c)",
+            fontSize: "0.88rem",
+            fontWeight: 600,
+            marginBottom: "1rem",
+          }}
+        >
+          <span>‹</span> Back to {weaverDisplayName}
+        </Link>
+        <div
+          style={{
+            padding: "1.5rem",
+            borderRadius: "10px",
+            background: "#fff1f2",
+            border: "1px solid #fecdd3",
+            color: "#9f1239",
+          }}
+        >
+          <h2 style={{ margin: "0 0 0.5rem 0", fontSize: "1.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>🚫</span> Cannot Issue Zig to Deactivated Weaver
+          </h2>
+          <p style={{ margin: "0 0 1rem 0", fontSize: "0.95rem", lineHeight: 1.5, color: "#881337" }}>
+            <strong>{weaverDisplayName}</strong> (User ID: #{targetUserId}) is currently marked as deactivated in the system.
+            Work orders and yarn cannot be issued to inactive weavers.
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            <Link to={`/admin/weavers/${targetUserId}`} className="btn-secondary" style={{ textDecoration: "none" }}>
+              View Weaver History
+            </Link>
+            <Link to="/admin/users" className="btn-primary" style={{ textDecoration: "none" }}>
+              Go to User Accounts to Reactivate
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const lastZigFabricTitle = lastZig
     ? lastZig.fabricVariant
       ? fabricVariantName(lastZig.fabricVariant).split("-").join(" · ")
@@ -463,10 +542,10 @@ export function IssueZigPage() {
     : null;
 
   return (
-    <div className="page" style={{ maxWidth: 1200, margin: "0 auto", padding: "1.5rem 1.75rem" }}>
+    <div className="page" style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: "1.5rem 2rem" }}>
       {/* Top Breadcrumb Link (Image 2) */}
       <Link
-        to={`/admin/weavers/${weaverId}`}
+        to={`/admin/weavers/${targetUserId}`}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -478,7 +557,7 @@ export function IssueZigPage() {
           marginBottom: "0.75rem",
         }}
       >
-        <span>‹</span> {weaver.firstName} {weaver.lastName}
+        <span>‹</span> {weaverDisplayName}
       </Link>
 
       {/* Page Header (Image 2) */}
@@ -503,7 +582,7 @@ export function IssueZigPage() {
             color: "var(--text-main, #0f172a)",
           }}
         >
-          Issue zig for {weaver.firstName} {weaver.lastName}
+          Issue zig for {weaverDisplayName}
         </h1>
       </div>
 
@@ -967,7 +1046,7 @@ export function IssueZigPage() {
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "#64748b" }}>Weaver</span>
                   <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                    {weaver.firstName} {weaver.lastName}
+                    {weaverDisplayName}
                   </span>
                 </div>
 
@@ -1085,7 +1164,7 @@ export function IssueZigPage() {
               </button>
 
               <Link
-                to={`/admin/weavers/${weaverId}`}
+                to={`/admin/weavers/${targetUserId}`}
                 style={{
                   display: "flex",
                   alignItems: "center",

@@ -29,7 +29,6 @@ export const CreateUserSchema = z.object({
     .transform((val) => (val && val.trim() ? val.trim() : null)),
   roles: z.array(z.nativeEnum(UserRole)).optional(),
   role: z.nativeEnum(UserRole).optional(),
-  companyName: z.string().optional().nullable(),
 });
 
 export const UpdateUserSchema = z.object({
@@ -37,7 +36,6 @@ export const UpdateUserSchema = z.object({
   phone: z.string().max(30).optional().nullable(),
   email: z.string().email().optional().nullable(),
   isActive: z.boolean().optional(),
-  companyName: z.string().optional().nullable(),
 });
 
 export const SetUserStatusSchema = z.object({

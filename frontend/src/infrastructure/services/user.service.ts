@@ -18,26 +18,39 @@ export interface UpdateUserDto {
 }
 
 export const userService = {
-  async listUsers(role?: UserRole): Promise<UserSummary[]> {
-    const query = role ? `?role=${role}` : "";
+  async listUsers(filter?: { role?: UserRole; isActive?: boolean } | UserRole): Promise<UserSummary[]> {
+    const params = new URLSearchParams();
+    if (typeof filter === "string") {
+      params.append("role", filter);
+    } else if (filter) {
+      if (filter.role) params.append("role", filter.role);
+      if (filter.isActive !== undefined) params.append("isActive", String(filter.isActive));
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
     const res = await request<any>(`/users${query}`);
     return Array.isArray(res) ? res : (res.users ?? []);
   },
 
-  async listWeavers(): Promise<Weaver[]> {
-    const res = await request<any>("/users?role=weaver");
+  async listWeavers(filter?: { isActive?: boolean }): Promise<Weaver[]> {
+    const params = new URLSearchParams({ role: "weaver" });
+    if (filter?.isActive !== undefined) {
+      params.append("isActive", String(filter.isActive));
+    }
+    const res = await request<any>(`/users?${params.toString()}`);
     const users: UserSummary[] = Array.isArray(res) ? res : (res.users ?? []);
     return users.map((u) => {
       const parts = u.fullName.split(" ");
       return {
-        weaverId: u.weaverProfile?.weaverId ?? u.userId,
+        // Users with the weaver role are the weavers; the schema has no separate
+        // weavers table, so weaverId is the user's id.
+        weaverId: u.userId,
         userId: u.userId,
         firstName: parts[0] || u.fullName,
         lastName: parts.slice(1).join(" ") || "",
         fullName: u.fullName,
         phone: u.phone,
-        email: u.weaverProfile?.email ?? null,
-        bankAccountNumber: u.weaverProfile?.bankAccountNumber ?? null,
+        email: u.email ?? null,
+        isActive: u.isActive,
         user: {
           userId: u.userId,
           username: u.username,

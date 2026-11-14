@@ -24,17 +24,21 @@ export const workOrderService = {
   async listWorkOrders(params?: {
     status?: WorkOrderStatus;
     weaverUserId?: number;
+    weaverId?: number;
   }): Promise<WorkOrder[]> {
     const query = new URLSearchParams();
     if (params?.status) query.append("status", params.status);
-    if (params?.weaverUserId) query.append("weaverUserId", params.weaverUserId.toString());
+    const wid = params?.weaverUserId ?? params?.weaverId;
+    if (wid != null && !isNaN(Number(wid))) {
+      query.append("weaverUserId", wid.toString());
+    }
     const queryString = query.toString() ? `?${query.toString()}` : "";
     const res = await request<any>(`/work-orders${queryString}`);
     return Array.isArray(res) ? res : (res.workOrders ?? []);
   },
 
-  async getWorkOrder(id: string | number): Promise<WorkOrder> {
-    return request<WorkOrder>(`/work-orders/${id}`);
+  async getWorkOrder(zigId: string): Promise<WorkOrder> {
+    return request<WorkOrder>(`/work-orders/${zigId}`);
   },
 
   async createWorkOrder(data: CreateWorkOrderDto): Promise<WorkOrder> {
@@ -49,15 +53,15 @@ export const workOrderService = {
     });
   },
 
-  async updateStatus(id: string | number, status: WorkOrderStatus): Promise<WorkOrder> {
-    return request<WorkOrder>(`/work-orders/${id}/status`, {
+  async updateStatus(zigId: string, status: WorkOrderStatus): Promise<WorkOrder> {
+    return request<WorkOrder>(`/work-orders/${zigId}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
   },
 
-  async cancelWorkOrder(id: string | number, reason?: string): Promise<WorkOrder> {
-    return request<WorkOrder>(`/work-orders/${id}/cancel`, {
+  async cancelWorkOrder(zigId: string, reason?: string): Promise<WorkOrder> {
+    return request<WorkOrder>(`/work-orders/${zigId}/cancel`, {
       method: "POST",
       body: JSON.stringify({ reason }),
     });
@@ -65,14 +69,14 @@ export const workOrderService = {
 
   // --- Yarn Given ---
   async addYarnGiven(
-    workOrderId: string | number,
+    zigId: string,
     data: {
       yarnVariantId: number;
       quantity: number;
       unitPrice?: number;
     }
   ): Promise<YarnGiven> {
-    return request<YarnGiven>(`/work-orders/${workOrderId}/yarn-given`, {
+    return request<YarnGiven>(`/work-orders/${zigId}/yarn-given`, {
       method: "POST",
       body: JSON.stringify({
         yarnVariantId: data.yarnVariantId,
@@ -106,19 +110,19 @@ export const workOrderService = {
 
   // --- Fabric Returns ---
   async addFabricReturn(
-    workOrderId: string | number,
+    zigId: string,
     data: {
       fabricVariantId: number;
       quantityReturned: number;
       totalWeight: number;
       unitPrice?: number;
-      lengthCm?: number;
-      widthCm?: number;
-      remark?: string;
-      returnDate?: string;
+      lengthCm?: number | null;
+      widthCm?: number | null;
+      remark?: string | null;
+      dateReturned?: string;
     }
   ): Promise<FabricReturn> {
-    return request<FabricReturn>(`/work-orders/${workOrderId}/fabric-returns`, {
+    return request<FabricReturn>(`/work-orders/${zigId}/fabric-returns`, {
       method: "POST",
       body: JSON.stringify({
         fabricVariantId: data.fabricVariantId,
@@ -128,54 +132,51 @@ export const workOrderService = {
         lengthCm: data.lengthCm,
         widthCm: data.widthCm,
         remark: data.remark,
-        returnDate: data.returnDate,
+        dateReturned: data.dateReturned,
       }),
     });
   },
 
   async updateFabricReturn(
-    fabricReturnId: number,
+    returnId: number,
     data: {
       quantityReturned?: number;
       totalWeight?: number;
       unitPrice?: number;
-      remark?: string;
+      lengthCm?: number | null;
+      widthCm?: number | null;
+      remark?: string | null;
     }
   ): Promise<FabricReturn> {
-    return request<FabricReturn>(`/work-orders/fabric-returns/${fabricReturnId}`, {
+    return request<FabricReturn>(`/work-orders/fabric-returns/${returnId}`, {
       method: "PATCH",
-      body: JSON.stringify({
-        quantityReturned: data.quantityReturned,
-        totalWeight: data.totalWeight,
-        unitPrice: data.unitPrice,
-        remark: data.remark,
-      }),
+      body: JSON.stringify(data),
     });
   },
 
-  async deleteFabricReturn(fabricReturnId: number): Promise<void> {
-    return request<void>(`/work-orders/fabric-returns/${fabricReturnId}`, {
+  async deleteFabricReturn(returnId: number): Promise<void> {
+    return request<void>(`/work-orders/fabric-returns/${returnId}`, {
       method: "DELETE",
     });
   },
 
   // --- Yarn Returns ---
   async addYarnReturn(
-    workOrderId: string | number,
+    zigId: string,
     data: {
       yarnVariantId: number;
       quantity: number;
-      remark?: string;
-      returnDate?: string;
+      remark?: string | null;
+      dateReturned?: string;
     }
   ): Promise<YarnReturn> {
-    return request<YarnReturn>(`/work-orders/${workOrderId}/yarn-returns`, {
+    return request<YarnReturn>(`/work-orders/${zigId}/yarn-returns`, {
       method: "POST",
       body: JSON.stringify({
         yarnVariantId: data.yarnVariantId,
         quantity: data.quantity,
         remark: data.remark,
-        returnDate: data.returnDate,
+        dateReturned: data.dateReturned,
       }),
     });
   },
@@ -188,23 +189,23 @@ export const workOrderService = {
 
   // --- Fabric Returns To Weaver ---
   async addFabricReturnToWeaver(
-    workOrderId: string | number,
+    zigId: string,
     data: {
       fabricVariantId: number;
       quantity: number;
-      remark?: string;
-      returnDate?: string;
+      remark?: string | null;
+      dateReturned?: string;
     }
   ): Promise<FabricReturnToWeaver> {
     return request<FabricReturnToWeaver>(
-      `/work-orders/${workOrderId}/returns-to-weaver`,
+      `/work-orders/${zigId}/returns-to-weaver`,
       {
         method: "POST",
         body: JSON.stringify({
           fabricVariantId: data.fabricVariantId,
           quantity: data.quantity,
           remark: data.remark,
-          returnDate: data.returnDate,
+          dateReturned: data.dateReturned,
         }),
       }
     );

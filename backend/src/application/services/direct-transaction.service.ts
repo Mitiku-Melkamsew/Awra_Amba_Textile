@@ -66,7 +66,6 @@ export function normalizeYarnPurchase(p: any) {
 
   return {
     transactionId: p.purchaseId,
-    directTransactionId: p.purchaseId,
     type: "yarn_purchase",
     status: DirectTxnStatus.paid,
     totalAmount,

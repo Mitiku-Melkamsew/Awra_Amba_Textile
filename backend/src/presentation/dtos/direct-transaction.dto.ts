@@ -4,13 +4,23 @@ import { DirectTxnType, DirectTxnStatus } from "@prisma/client";
 /**
  * Canonical direct-transaction DTOs aligned with Prisma schema.
  * Removed: productId, weaverId, merchantId, counterpartyId, yarnTypeId,
- * legacy type aliases (yarn_purchase, fabric_purchase, etc.).
+ * legacy type aliases (fabric_purchase, yarn_sale, fabric_sale).
  *
- * Allowed types (enum DirectTxnType):
- *   - fabric_purchase_from_weaver
- *   - yarn_sale_to_weaver
- *   - fabric_sale_to_merchant
+ * Allowed types:
+ *   - fabric_purchase_from_weaver (enum DirectTxnType)
+ *   - yarn_sale_to_weaver          (enum DirectTxnType)
+ *   - fabric_sale_to_merchant      (enum DirectTxnType)
+ *   - yarn_purchase                (procurement facade -> YarnPurchase)
  */
+
+/**
+ * `yarn_purchase` is not a DirectTxnType: the controller routes it to
+ * ProcurementService. It is allowed here only as a request discriminator.
+ */
+export const CreateDirectTxnTypeSchema = z.union([
+  z.nativeEnum(DirectTxnType),
+  z.literal("yarn_purchase"),
+]);
 
 export const CreateDirectTxnLineSchema = z
   .object({
@@ -27,13 +37,24 @@ export const CreateDirectTxnLineSchema = z
 
 export const CreateDirectTransactionSchema = z
   .object({
-    type: z.nativeEnum(DirectTxnType),
+    type: CreateDirectTxnTypeSchema,
+    supplierId: z.coerce.number().int().positive().optional().nullable(),
     weaverUserId: z.coerce.number().int().positive().optional().nullable(),
     merchantUserId: z.coerce.number().int().positive().optional().nullable(),
     notes: z.string().max(500).optional().nullable(),
     lines: z.array(CreateDirectTxnLineSchema).min(1),
   })
   .superRefine((data, ctx) => {
+    if (data.type === "yarn_purchase") {
+      if (data.supplierId == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "supplierId is required for yarn_purchase",
+          path: ["supplierId"],
+        });
+      }
+      return;
+    }
     if (
       (data.type === DirectTxnType.fabric_purchase_from_weaver ||
         data.type === DirectTxnType.yarn_sale_to_weaver) &&

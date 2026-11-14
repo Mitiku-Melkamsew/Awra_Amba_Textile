@@ -7,7 +7,7 @@ interface Payment {
   paymentId: number;
   amount: string;
   paymentDate: string;
-  weaver: { firstName: string; lastName: string };
+  weaver: { userId?: number; fullName: string };
 }
 
 export function ReportsPage() {
@@ -30,8 +30,7 @@ export function ReportsPage() {
     return payments.filter(
       (p) =>
         String(p.paymentId).includes(q) ||
-        p.weaver.firstName.toLowerCase().includes(q) ||
-        p.weaver.lastName.toLowerCase().includes(q)
+        (p.weaver.fullName ?? "").toLowerCase().includes(q)
     );
   }, [payments, search]);
 
@@ -106,7 +105,7 @@ export function ReportsPage() {
                     #{payment.paymentId}
                   </td>
                   <td style={{ fontWeight: 600 }}>
-                    {payment.weaver.firstName} {payment.weaver.lastName}
+                    {payment.weaver.fullName}
                   </td>
                   <td style={{ color: "var(--text-muted)" }}>
                     {formatDateDDMMYY(payment.paymentDate)}

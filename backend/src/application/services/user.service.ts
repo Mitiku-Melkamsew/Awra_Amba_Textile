@@ -20,7 +20,6 @@ export interface CreateUserInput {
   email?: string | null;
   roles?: UserRole[];
   role?: UserRole;
-  companyName?: string | null;
 }
 
 export function generateUsernameFromName(fullName: string): string {

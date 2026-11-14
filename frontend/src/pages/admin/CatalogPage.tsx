@@ -51,7 +51,6 @@ export function CatalogPage() {
       stockSnapshot: string;
       basePrice: string | null;
       isActive?: boolean;
-      yarnType: { materialName: string };
       yarn?: { name: string };
       color: { name: string };
       supplier: { name: string };
@@ -223,9 +222,9 @@ export function CatalogPage() {
         setFvCustomSku("");
         setMessage("Fabric variant registered.");
       } else if (tab === "yarns") {
-        await catalogApi.createYarnType({ materialName: yarnName.trim() });
+        await catalogApi.createYarn({ name: yarnName.trim() });
         setYarnName("");
-        setMessage("Yarn material added.");
+        setMessage("Yarn added.");
       } else if (tab === "yarnVariants") {
         await catalogApi.createYarnVariant({
           yarnId: Number(yvYarnId),
@@ -366,7 +365,7 @@ export function CatalogPage() {
     return fabricVariants.filter((v) => {
       if (!showInactive && v.isActive === false) return false;
       if (!q) return true;
-      const fName = v.fabric?.name ?? v.product?.name ?? "";
+      const fName = v.fabric?.name ?? "";
       return (
         v.sku.toLowerCase().includes(q) ||
         fName.toLowerCase().includes(q) ||
@@ -389,7 +388,7 @@ export function CatalogPage() {
     return yarnVariants.filter((v) => {
       if (!showInactive && v.isActive === false) return false;
       if (!q) return true;
-      const yName = v.yarn?.name ?? v.yarnType?.materialName ?? "";
+      const yName = v.yarn?.name ?? "";
       return (
         v.sku.toLowerCase().includes(q) ||
         yName.toLowerCase().includes(q) ||
@@ -1025,7 +1024,7 @@ export function CatalogPage() {
                         {v.sku}
                       </td>
                       <td style={{ fontWeight: 700 }}>
-                        {v.fabric?.name ?? v.product?.name ?? "Fabric"}
+                        {v.fabric?.name ?? "Fabric"}
                       </td>
                       <td>{v.warpColor?.name ?? "—"}</td>
                       <td>{v.weftColor?.name ?? "—"}</td>
@@ -1187,7 +1186,7 @@ export function CatalogPage() {
                         {v.sku}
                       </td>
                       <td style={{ fontWeight: 700 }}>
-                        {v.yarn?.name ?? v.yarnType?.materialName}
+                        {v.yarn?.name ?? "Yarn"}
                       </td>
                       <td>{v.supplier?.name ?? "—"}</td>
                       <td>{v.color?.name ?? "—"}</td>

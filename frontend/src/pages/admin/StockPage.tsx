@@ -6,7 +6,8 @@ interface YarnRow {
   yarnVariantId: number;
   sku: string;
   stockSnapshot: string;
-  yarnType: { materialName: string };
+  yarn?: { name: string };
+  yarnType?: { materialName: string };
   color: { name: string };
 }
 
@@ -58,7 +59,7 @@ export function StockPage() {
     return yarns.filter(
       (y) =>
         y.sku.toLowerCase().includes(q) ||
-        y.yarnType.materialName.toLowerCase().includes(q) ||
+        (y.yarn?.name ?? y.yarnType?.materialName ?? "").toLowerCase().includes(q) ||
         y.color.name.toLowerCase().includes(q),
     );
   }, [yarns, search]);
@@ -69,7 +70,7 @@ export function StockPage() {
     return fabrics.filter(
       (f) =>
         f.sku.toLowerCase().includes(q) ||
-        (f.fabric?.name ?? f.product?.name ?? "").toLowerCase().includes(q) ||
+        (f.fabric?.name ?? "").toLowerCase().includes(q) ||
         (f.warpColor?.name && f.warpColor.name.toLowerCase().includes(q)) ||
         (f.weftColor?.name && f.weftColor.name.toLowerCase().includes(q)),
     );
@@ -191,7 +192,7 @@ export function StockPage() {
                           {row.sku}
                         </td>
                         <td style={{ fontWeight: 600 }}>
-                          {row.yarnType.materialName}
+                          {row.yarn?.name ?? row.yarnType?.materialName ?? "Yarn"}
                         </td>
                         <td>
                           <span
@@ -270,7 +271,6 @@ export function StockPage() {
                             }}
                           >
                             {row.fabric?.name ??
-                              row.product?.name ??
                               "Handwoven Fabric"}
                           </div>
                           {(row.warpColor || row.weftColor || row.design) && (

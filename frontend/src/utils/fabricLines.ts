@@ -1,5 +1,4 @@
 import type { FabricVariant } from "../api";
-import type { LineEntryMode } from "./yarnLines";
 
 /**
  * Fabric line drafts aligned with Prisma schema:
@@ -11,12 +10,11 @@ export interface FabricCatalogLookup {
   colors: Array<{ colorId: number; colorCode?: string; name: string }>;
   designs: Array<{ designId: number; name: string }>;
   /** @deprecated kept optional for older callers; prefer fabricVariants */
-  products?: Array<{ productId?: number; fabricId?: number; name?: string; basePrice?: number; category?: string }>;
+  products?: Array<{ productId?: number; fabricId?: number; name?: string; basePrice?: number | string; category?: string }>;
 }
 
 export interface FabricLineDraft {
   id: string;
-  entryMode: LineEntryMode;
   fabricVariantId: string;
   quantity: string;
   unitPrice: string;
@@ -30,13 +28,9 @@ export interface FabricLinePayload {
 
 let nextId = 0;
 
-export function createFabricLineDraft(
-  _lookup?: FabricCatalogLookup,
-  entryMode: LineEntryMode = "variant",
-): FabricLineDraft {
+export function createFabricLineDraft(): FabricLineDraft {
   return {
     id: `fabric-line-${++nextId}`,
-    entryMode,
     fabricVariantId: "",
     quantity: "",
     unitPrice: "",
@@ -55,14 +49,10 @@ export function applyFabricVariantToLine(
 
   return {
     ...line,
-    entryMode: "variant",
     fabricVariantId: String(variant.fabricVariantId),
     unitPrice: price ? String(price) : line.unitPrice,
   };
 }
-
-/** Clear variant selection when user switches mode or clears search. */
-export const DETAILS_EDITED = { entryMode: "variant" as const, fabricVariantId: "" };
 
 export function parseFabricLines(lines: FabricLineDraft[]): FabricLinePayload[] {
   return lines

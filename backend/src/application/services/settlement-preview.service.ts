@@ -122,6 +122,7 @@ export async function buildDetailedBatchSnapshot(
     });
 
     return {
+      weaverUserId: bundle.weaverUserId,
       weaverId: bundle.weaverUserId,
       weaverName: bundle.weaverName,
       zigIds: bundle.zigIds,

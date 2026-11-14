@@ -24,11 +24,9 @@ export const catalogService = {
   },
   async createFabric(data: {
     name: string;
-    standardLengthCm?: number | null;
-    standardWidthCm?: number | null;
-    standardWeightG?: number | null;
-    weaverUnitPrice?: number;
-    sellingUnitPrice?: number;
+    standardLengthCm: number;
+    standardWidthCm: number;
+    standardWeightG: number;
   }): Promise<Fabric> {
     return request<Fabric>("/catalog/fabrics", {
       method: "POST",
@@ -39,13 +37,14 @@ export const catalogService = {
     id: number,
     data: {
       name?: string;
-      standardLengthCm?: number | null;
-      standardWidthCm?: number | null;
-      standardWeightG?: number | null;
+      standardLengthCm?: number;
+      standardWidthCm?: number;
+      standardWeightG?: number;
+      isActive?: boolean;
     }
   ): Promise<Fabric> {
     return request<Fabric>(`/catalog/fabrics/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },
@@ -60,15 +59,15 @@ export const catalogService = {
   async listYarns(): Promise<Yarn[]> {
     return request<Yarn[]>("/catalog/yarns");
   },
-  async createYarn(data: { materialName: string }): Promise<Yarn> {
+  async createYarn(data: { name: string }): Promise<Yarn> {
     return request<Yarn>("/catalog/yarns", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ name: data.name }),
     });
   },
-  async updateYarn(id: number, data: { materialName: string }): Promise<Yarn> {
+  async updateYarn(id: number, data: { name?: string; isActive?: boolean }): Promise<Yarn> {
     return request<Yarn>(`/catalog/yarns/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },
@@ -83,15 +82,15 @@ export const catalogService = {
   async listColors(): Promise<Color[]> {
     return request<Color[]>("/catalog/colors");
   },
-  async createColor(data: { name: string; colorCode?: string }): Promise<Color> {
+  async createColor(data: { name: string }): Promise<Color> {
     return request<Color>("/catalog/colors", {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
-  async updateColor(id: number, data: { name: string; colorCode?: string }): Promise<Color> {
+  async updateColor(id: number, data: { name: string }): Promise<Color> {
     return request<Color>(`/catalog/colors/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },
@@ -103,15 +102,15 @@ export const catalogService = {
   async listDesigns(): Promise<Design[]> {
     return request<Design[]>("/catalog/designs");
   },
-  async createDesign(data: { name: string; description?: string }): Promise<Design> {
+  async createDesign(data: { name: string }): Promise<Design> {
     return request<Design>("/catalog/designs", {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
-  async updateDesign(id: number, data: { name: string; description?: string }): Promise<Design> {
+  async updateDesign(id: number, data: { name: string }): Promise<Design> {
     return request<Design>(`/catalog/designs/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },
@@ -125,10 +124,7 @@ export const catalogService = {
   },
   async createSupplier(data: {
     name: string;
-    contactName?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
+    contactPhone?: string | null;
   }): Promise<Supplier> {
     return request<Supplier>("/catalog/suppliers", {
       method: "POST",
@@ -139,14 +135,12 @@ export const catalogService = {
     id: number,
     data: {
       name?: string;
-      contactName?: string;
-      phone?: string;
-      email?: string;
-      address?: string;
+      contactPhone?: string | null;
+      isActive?: boolean;
     }
   ): Promise<Supplier> {
     return request<Supplier>(`/catalog/suppliers/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },
@@ -163,9 +157,10 @@ export const catalogService = {
   },
   async createFabricVariant(data: {
     fabricId: number;
-    warpColorId?: number | null;
-    weftColorId?: number | null;
-    designId?: number | null;
+    warpColorId: number;
+    weftColorId: number;
+    designId: number;
+    sku?: string;
   }): Promise<FabricVariant> {
     return request<FabricVariant>("/catalog/fabric-variants", {
       method: "POST",
@@ -185,7 +180,8 @@ export const catalogService = {
   async createYarnVariant(data: {
     yarnId: number;
     supplierId: number;
-    colorId?: number | null;
+    colorId: number;
+    sku?: string;
   }): Promise<YarnVariant> {
     return request<YarnVariant>("/catalog/yarn-variants", {
       method: "POST",
@@ -202,61 +198,45 @@ export const catalogService = {
   // Prices
   async listFabricPrices(fabricId?: number): Promise<FabricPrice[]> {
     const qs = fabricId ? `?fabricId=${fabricId}` : "";
-    const rows = await request<any[]>(`/catalog/fabric-prices${qs}`);
-    return rows.map((row) => ({
-      ...row,
-      weaverUnitPrice: row.weaverUnitPrice ?? row.weaverRate ?? 0,
-      sellingUnitPrice: row.sellingUnitPrice ?? row.sellingPrice ?? 0,
-    }));
+    return request<FabricPrice[]>(`/catalog/fabric-prices${qs}`);
   },
   async createFabricPrice(data: {
     fabricId: number;
-    weaverUnitPrice?: number;
-    weaverRate?: number;
-    sellingUnitPrice?: number;
-    sellingPrice?: number;
+    weaverRate: number;
+    sellingPrice: number;
     effectiveFrom?: string;
   }): Promise<FabricPrice> {
-    const payload = {
-      ...data,
-      weaverRate: data.weaverRate ?? data.weaverUnitPrice,
-      weaverUnitPrice: data.weaverUnitPrice ?? data.weaverRate,
-      sellingPrice: data.sellingPrice ?? data.sellingUnitPrice,
-      sellingUnitPrice: data.sellingUnitPrice ?? data.sellingPrice,
-    };
     return request<FabricPrice>("/catalog/fabric-prices", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        fabricId: data.fabricId,
+        weaverRate: data.weaverRate,
+        sellingPrice: data.sellingPrice,
+        effectiveFrom: data.effectiveFrom,
+      }),
     });
   },
 
-  async listYarnPrices(): Promise<YarnPrice[]> {
-    const rows = await request<any[]>("/catalog/yarn-prices");
-    return rows.map((row) => ({
-      ...row,
-      costPerKg: row.costPerKg ?? row.purchasePrice ?? 0,
-      sellingPricePerKg: row.sellingPricePerKg ?? row.sellingPrice ?? 0,
-    }));
+  async listYarnPrices(yarnId?: number): Promise<YarnPrice[]> {
+    const qs = yarnId ? `?yarnId=${yarnId}` : "";
+    return request<YarnPrice[]>(`/catalog/yarn-prices${qs}`);
   },
   async createYarnPrice(data: {
     yarnId: number;
     supplierId: number;
-    costPerKg?: number;
-    purchasePrice?: number;
-    sellingPricePerKg?: number;
-    sellingPrice?: number;
+    purchasePrice: number;
+    sellingPrice: number;
     effectiveFrom?: string;
   }): Promise<YarnPrice> {
-    const payload = {
-      ...data,
-      purchasePrice: data.purchasePrice ?? data.costPerKg,
-      costPerKg: data.costPerKg ?? data.purchasePrice,
-      sellingPrice: data.sellingPrice ?? data.sellingPricePerKg,
-      sellingPricePerKg: data.sellingPricePerKg ?? data.sellingPrice,
-    };
     return request<YarnPrice>("/catalog/yarn-prices", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        yarnId: data.yarnId,
+        supplierId: data.supplierId,
+        purchasePrice: data.purchasePrice,
+        sellingPrice: data.sellingPrice,
+        effectiveFrom: data.effectiveFrom,
+      }),
     });
   },
 
@@ -268,7 +248,6 @@ export const catalogService = {
     factor: string;
     unit: string;
     deductionPerUnit: number;
-    notes?: string;
   }): Promise<QualityRule> {
     return request<QualityRule>("/catalog/quality-rules", {
       method: "POST",
@@ -281,11 +260,11 @@ export const catalogService = {
       factor?: string;
       unit?: string;
       deductionPerUnit?: number;
-      notes?: string;
+      isActive?: boolean;
     }
   ): Promise<QualityRule> {
     return request<QualityRule>(`/catalog/quality-rules/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   },

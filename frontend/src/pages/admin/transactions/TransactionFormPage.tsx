@@ -1,617 +1,1084 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FabricLinesEditor } from "../../../components/FabricLinesEditor";
-import { YarnLinesEditor } from "../../../components/YarnLinesEditor";
 import {
   catalogApi,
   merchantsApi,
   transactionsApi,
   weaversApi,
-  type PaymentTerms,
+  type Weaver,
 } from "../../../api";
-import {
-  createFabricLineDraft,
-  parseFabricLines,
-  type FabricCatalogLookup,
-  type FabricLineDraft,
-} from "../../../utils/fabricLines";
-import { PAYMENT_TERMS_LABELS, txnTypeFromRoute } from "../../../utils/transactionTypes";
-import {
-  createYarnLineDraft,
-  parseYarnLines,
-  type YarnCatalogLookup,
-  type YarnLineDraft,
-  type YarnVariantOption,
-} from "../../../utils/yarnLines";
+import { txnTypeFromRoute } from "../../../utils/transactionTypes";
+
+type TxnCategory =
+  | "yarn_purchase"
+  | "fabric_purchase_from_weaver"
+  | "yarn_sale_to_weaver"
+  | "fabric_sale_to_merchant";
+
+interface LineItemDraft {
+  id: string;
+  variantId: string;
+  quantity: string;
+  unitPrice: string;
+}
 
 export function TransactionFormPage() {
-  const { direction, goods } = useParams<{ direction: string; goods: string }>();
+  const { direction, goods } = useParams<{ direction?: string; goods?: string }>();
   const navigate = useNavigate();
-  const txnType = txnTypeFromRoute(direction ?? "", goods ?? "");
 
-  const [transactionId, setTransactionId] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState<PaymentTerms>("on_delivery");
+  // Determine initial category from route or default to fabric_sale_to_merchant
+  const initialCategory: TxnCategory = useMemo(() => {
+    if (direction && goods) {
+      const mapped = txnTypeFromRoute(direction, goods);
+      if (mapped) return mapped as TxnCategory;
+    }
+    return "fabric_sale_to_merchant";
+  }, [direction, goods]);
+
+  const [category, setCategory] = useState<TxnCategory>(initialCategory);
+
+  // Counterparty selection
   const [supplierId, setSupplierId] = useState("");
-  const [weaverId, setWeaverId] = useState("");
-  const [merchantId, setMerchantId] = useState("");
-  const [yarnBuyerType, setYarnBuyerType] = useState<"weaver" | "merchant">("weaver");
+  const [weaverUserId, setWeaverUserId] = useState("");
+  const [merchantUserId, setMerchantUserId] = useState("");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
-  const [yarnLines, setYarnLines] = useState<YarnLineDraft[]>([createYarnLineDraft()]);
-  const [fabricLines, setFabricLines] = useState<FabricLineDraft[]>([
-    createFabricLineDraft(undefined, "variant"),
+  const [notesOpen, setNotesOpen] = useState(false);
+
+  // Lines
+  const [lines, setLines] = useState<LineItemDraft[]>([
+    { id: "1", variantId: "", quantity: "10", unitPrice: "" },
   ]);
 
-  const [catalogLookup, setCatalogLookup] = useState<FabricCatalogLookup & YarnCatalogLookup>({
-    colors: [],
-    designs: [],
-    products: [],
-    suppliers: [],
-    yarnTypes: [],
-  });
-  const [weavers, setWeavers] = useState<
-    Array<{ weaverId: number; firstName: string; lastName: string }>
-  >([]);
+  // Catalogs & reference data
+  const [suppliers, setSuppliers] = useState<Array<{ supplierId: number; name: string }>>([]);
+  const [weavers, setWeavers] = useState<Weaver[]>([]);
   const [merchants, setMerchants] = useState<
-    Array<{ merchantId: number; companyName: string | null; contactPhone: string }>
+    Array<{ userId: number; companyName: string | null; contactPhone: string }>
   >([]);
-  const [yarnVariants, setYarnVariants] = useState<YarnVariantOption[]>([]);
-  const [fabricVariants, setFabricVariants] = useState<
-    Awaited<ReturnType<typeof catalogApi.fabricVariants>>
-  >([]);
-  const [newMerchantName, setNewMerchantName] = useState("");
-  const [newMerchantPhone, setNewMerchantPhone] = useState("");
-  const [error, setError] = useState("");
+  const [fabricVariants, setFabricVariants] = useState<any[]>([]);
+  const [yarnVariants, setYarnVariants] = useState<any[]>([]);
+
+  // Quick Add Modal state
+  const [showAddPartyModal, setShowAddPartyModal] = useState(false);
+  const [newPartyName, setNewPartyName] = useState("");
+  const [newPartyPhone, setNewPartyPhone] = useState("");
+
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const isFabric = goods === "fabric";
-  const isFabricPurchase = txnType === "fabric_purchase";
-  const isSale = txnType === "fabric_sale" || txnType === "yarn_sale";
-
+  // Load catalogs
   useEffect(() => {
-    if (!txnType) return;
     let isMounted = true;
-
-    async function loadData() {
+    async function load() {
       try {
-        const [next, lookup, w, m, y, f] = await Promise.all([
-          transactionsApi.nextId().catch(() => ({
-            transactionId: `TXN-${Date.now().toString().slice(-4)}`,
-          })),
+        const [lookup, w, m, f, y] = await Promise.all([
           catalogApi.lookup(),
-          weaversApi.list().catch(() => []),
-          merchantsApi.list().catch(() => []),
-          catalogApi.yarnVariants().catch(() => []),
+          weaversApi.list({ active: true }).catch(() => []),
+          merchantsApi.list({ active: true }).catch(() => []),
           catalogApi.fabricVariants().catch(() => []),
+          catalogApi.yarnVariants().catch(() => []),
         ]);
 
         if (!isMounted) return;
 
-        setTransactionId(next.transactionId);
-        setCatalogLookup(lookup);
-        setWeavers(w);
-        setMerchants(m);
-        setYarnVariants(y as YarnVariantOption[]);
-        setFabricVariants(f);
-
-        // Pre-initialize lines for sale vs purchase
-        if (txnType === "fabric_sale") {
-          const inStock = f.filter((v: any) => v.isActive !== false && Number(v.stockSnapshot ?? 0) > 0);
-          const first = inStock[0] ?? f[0];
-          const draft = createFabricLineDraft(lookup, "variant");
-          if (first) {
-            const autoPrice = (first as any).sellingPrice ?? (first as any).product?.sellingPrice ?? first.basePrice;
-            draft.fabricVariantId = String(first.fabricVariantId);
-            draft.productId = String(first.fabricId ?? first.fabric?.fabricId ?? "");
-            draft.unitPrice = autoPrice ? String(autoPrice) : "";
-            draft.quantity = "1";
-          }
-          setFabricLines([draft]);
-        } else {
-          setFabricLines([createFabricLineDraft(lookup, isFabricPurchase ? "catalog" : "variant")]);
-        }
-
-        if (txnType === "yarn_sale") {
-          const inStock = (y as any[]).filter((v: any) => v.isActive !== false && Number(v.stockSnapshot ?? 0) > 0);
-          const first = inStock[0] ?? y[0];
-          const draft = createYarnLineDraft(lookup);
-          if (first) {
-            const autoPrice = (first as any).sellingPrice ?? first.basePrice;
-            draft.entryMode = "variant";
-            draft.yarnVariantId = String(first.yarnVariantId);
-            draft.yarnTypeId = String(first.yarnTypeId ?? (first as any).yarnId ?? "");
-            draft.supplierId = String(first.supplierId ?? "");
-            draft.colorId = String(first.colorId ?? "");
-            draft.unitPrice = autoPrice ? String(autoPrice) : "";
-            draft.quantity = "1";
-          }
-          setYarnLines([draft]);
-        } else {
-          setYarnLines([createYarnLineDraft(lookup)]);
-        }
+        setSuppliers(lookup.suppliers || []);
+        setWeavers(w || []);
+        setMerchants(m || []);
+        setFabricVariants(f || []);
+        setYarnVariants(y || []);
 
         if (lookup.suppliers?.[0]) setSupplierId(String(lookup.suppliers[0].supplierId));
-        if (w?.[0]) setWeaverId(String(w[0].weaverId));
-        if (m?.[0]) setMerchantId(String(m[0].merchantId));
-      } catch (err) {
-        if (isMounted) setError(err instanceof Error ? err.message : "Failed to load transaction data");
+        if (w?.[0]) setWeaverUserId(String(w[0].userId));
+        if (m?.[0]) {
+          setMerchantUserId(String(m[0].userId));
+        }
+
+        // Initialize first item default variant
+        if (f.length > 0) {
+          const inStock = f.filter((v: any) => Number(v.stockSnapshot ?? 0) > 0);
+          const pick = inStock[0] || f[0];
+          setLines([
+            {
+              id: "1",
+              variantId: String(pick.fabricVariantId),
+              quantity: "10",
+              unitPrice: pick.sellingPrice ? String(pick.sellingPrice) : String(pick.basePrice || "1380"),
+            },
+          ]);
+        }
+      } catch (err: any) {
+        if (isMounted) setError(err.message || "Failed to load catalog data");
       }
     }
-
-    loadData();
-
+    load();
     return () => {
       isMounted = false;
     };
-  }, [txnType, isFabricPurchase]);
+  }, []);
 
-  // Compute live totals and stock warnings
-  const parsedLines = useMemo(() => {
-    return isFabric ? parseFabricLines(fabricLines) : parseYarnLines(yarnLines);
-  }, [isFabric, fabricLines, yarnLines]);
+  // When category changes, reset line selections if appropriate
+  const isFabric = category === "fabric_sale_to_merchant" || category === "fabric_purchase_from_weaver";
+  const isSale = category === "fabric_sale_to_merchant" || category === "yarn_sale_to_weaver";
+
+  const handleCategoryChange = (newCat: TxnCategory) => {
+    setCategory(newCat);
+    const isNowFabric = newCat === "fabric_sale_to_merchant" || newCat === "fabric_purchase_from_weaver";
+    if (isNowFabric && fabricVariants.length > 0) {
+      const pick = fabricVariants[0];
+      setLines([
+        {
+          id: "1",
+          variantId: String(pick.fabricVariantId),
+          quantity: "10",
+          unitPrice: pick.sellingPrice ? String(pick.sellingPrice) : String(pick.basePrice || "1380"),
+        },
+      ]);
+    } else if (!isNowFabric && yarnVariants.length > 0) {
+      const pick = yarnVariants[0];
+      setLines([
+        {
+          id: "1",
+          variantId: String(pick.yarnVariantId),
+          quantity: "10",
+          unitPrice: pick.sellingPrice ? String(pick.sellingPrice) : String(pick.basePrice || "250"),
+        },
+      ]);
+    }
+  };
+
+  const handleAddLine = () => {
+    const nextId = String(Date.now());
+    if (isFabric) {
+      const pick = fabricVariants[0];
+      setLines((prev) => [
+        ...prev,
+        {
+          id: nextId,
+          variantId: pick ? String(pick.fabricVariantId) : "",
+          quantity: "10",
+          unitPrice: pick ? (pick.sellingPrice ? String(pick.sellingPrice) : String(pick.basePrice || "1380")) : "",
+        },
+      ]);
+    } else {
+      const pick = yarnVariants[0];
+      setLines((prev) => [
+        ...prev,
+        {
+          id: nextId,
+          variantId: pick ? String(pick.yarnVariantId) : "",
+          quantity: "10",
+          unitPrice: pick ? (pick.sellingPrice ? String(pick.sellingPrice) : String(pick.basePrice || "250")) : "",
+        },
+      ]);
+    }
+  };
+
+  const handleRemoveLine = (id: string) => {
+    if (lines.length <= 1) return;
+    setLines((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  const handleUpdateLine = (id: string, field: keyof LineItemDraft, val: string) => {
+    setLines((prev) =>
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        const updated = { ...l, [field]: val };
+        // Auto-fill price if variant changes
+        if (field === "variantId") {
+          if (isFabric) {
+            const fv = fabricVariants.find((f) => String(f.fabricVariantId) === val);
+            if (fv) {
+              updated.unitPrice = fv.sellingPrice ? String(fv.sellingPrice) : String(fv.basePrice || "");
+            }
+          } else {
+            const yv = yarnVariants.find((y) => String(y.yarnVariantId) === val);
+            if (yv) {
+              updated.unitPrice = yv.sellingPrice ? String(yv.sellingPrice) : String(yv.basePrice || "");
+            }
+          }
+        }
+        return updated;
+      })
+    );
+  };
+
+  // Calculations
+  const calculatedGrandTotal = useMemo(() => {
+    return lines.reduce((sum, l) => {
+      const q = parseFloat(l.quantity) || 0;
+      const p = parseFloat(l.unitPrice) || 0;
+      return sum + q * p;
+    }, 0);
+  }, [lines]);
 
   const totalQuantity = useMemo(() => {
-    return parsedLines.reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
-  }, [parsedLines]);
+    return lines.reduce((sum, l) => sum + (parseFloat(l.quantity) || 0), 0);
+  }, [lines]);
 
-  const grandTotal = useMemo(() => {
-    return parsedLines.reduce(
-      (sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0),
-      0,
-    );
-  }, [parsedLines]);
-
-  const stockValidationErrors = useMemo(() => {
-    const errs: string[] = [];
-    if (txnType === "fabric_sale") {
-      fabricLines.forEach((l, idx) => {
-        if (!l.fabricVariantId) {
-          errs.push(`Line ${idx + 1}: Please select an available fabric variant.`);
-          return;
-        }
-        const v = fabricVariants.find((fv) => String(fv.fabricVariantId) === l.fabricVariantId);
-        const stock = v ? Number((v as any).stockSnapshot ?? 0) : 0;
-        const qty = Number(l.quantity || 0);
-        if (qty <= 0) {
-          errs.push(`Line ${idx + 1}: Quantity must be at least 1 piece.`);
-        } else if (qty > stock) {
-          errs.push(`Line ${idx + 1}: Requested ${qty} pcs exceeds available stock (${stock} pcs).`);
-        }
-      });
-    } else if (txnType === "yarn_sale") {
-      yarnLines.forEach((l, idx) => {
-        if (!l.yarnVariantId) {
-          errs.push(`Line ${idx + 1}: Please select an available yarn variant.`);
-          return;
-        }
-        const v = yarnVariants.find((yv) => String(yv.yarnVariantId) === l.yarnVariantId);
-        const stock = v ? Number((v as any).stockSnapshot ?? 0) : 0;
-        const qty = Number(l.quantity || 0);
-        if (qty <= 0) {
-          errs.push(`Line ${idx + 1}: Quantity must be at least 1 piece.`);
-        } else if (qty > stock) {
-          errs.push(`Line ${idx + 1}: Requested ${qty} pieces exceeds available stock (${stock} pieces).`);
-        }
-      });
+  // Selected counterparty name
+  const counterpartySummaryName = useMemo(() => {
+    if (category === "fabric_sale_to_merchant") {
+      const m = merchants.find((x) => String(x.userId) === merchantUserId);
+      return m ? m.companyName || `Merchant #${m.userId}` : "[merchant]";
     }
-    return errs;
-  }, [txnType, fabricLines, yarnLines, fabricVariants, yarnVariants]);
+    if (category === "yarn_purchase") {
+      const s = suppliers.find((x) => String(x.supplierId) === supplierId);
+      return s ? s.name : "[supplier]";
+    }
+    const w = weavers.find((x) => String(x.userId) === weaverUserId);
+    return w ? w.fullName : "[weaver]";
+  }, [category, merchantUserId, supplierId, weaverUserId, merchants, suppliers, weavers]);
 
-  async function handleAddMerchant() {
-    if (!newMerchantPhone) return;
+  const categoryLabel = useMemo(() => {
+    switch (category) {
+      case "fabric_sale_to_merchant":
+        return "Sell fabric";
+      case "fabric_purchase_from_weaver":
+        return "Buy fabric";
+      case "yarn_sale_to_weaver":
+        return "Sell yarn";
+      case "yarn_purchase":
+        return "Buy yarn";
+    }
+  }, [category]);
+
+  // Quick Add Party handler
+  const handleQuickAddParty = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!newPartyName.trim()) return;
     try {
-      const merchant = await merchantsApi.create({
-        companyName: newMerchantName || undefined,
-        contactPhone: newMerchantPhone,
-      });
-      setMerchants((prev) => [...prev, merchant]);
-      setMerchantId(String(merchant.merchantId));
-      setNewMerchantName("");
-      setNewMerchantPhone("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to register merchant");
+      if (category === "fabric_sale_to_merchant") {
+        const m = await merchantsApi.create({
+          companyName: newPartyName.trim(),
+          contactPhone: newPartyPhone.trim(),
+        });
+        setMerchants((prev) => [...prev, m]);
+        setMerchantUserId(String(m.userId));
+      } else if (category === "yarn_purchase") {
+        // Mock add supplier if needed
+        const newSupp = { supplierId: Date.now(), name: newPartyName.trim() };
+        setSuppliers((prev) => [...prev, newSupp]);
+        setSupplierId(String(newSupp.supplierId));
+      } else {
+        const w = await weaversApi.create({
+          fullName: newPartyName.trim(),
+          phone: newPartyPhone.trim(),
+        });
+        setWeavers((prev) => [...prev, w as any]);
+        setWeaverUserId(String(w.userId));
+      }
+      setShowAddPartyModal(false);
+      setNewPartyName("");
+      setNewPartyPhone("");
+    } catch (err: any) {
+      setError(err.message || "Failed to create party");
     }
-  }
+  };
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    if (!txnType) return;
+  // Submit
+  const handleSaveTransaction = async () => {
     setSaving(true);
     setError("");
 
     try {
-      if (stockValidationErrors.length > 0) {
-        setError(stockValidationErrors[0]);
-        setSaving(false);
-        return;
-      }
+      // Validate lines
+      const parsedLines = lines.map((l) => ({
+        fabricVariantId: isFabric ? (l.variantId ? Number(l.variantId) : null) : null,
+        yarnVariantId: !isFabric ? (l.variantId ? Number(l.variantId) : null) : null,
+        quantity: Number(l.quantity || 0),
+        unitPrice: Number(l.unitPrice || 0),
+      }));
 
-      const lines = isFabric ? parseFabricLines(fabricLines) : parseYarnLines(yarnLines);
-      if (lines.length === 0) {
-        setError("Add at least one item line with valid quantity and price.");
-        setSaving(false);
-        return;
-      }
-
-      if (txnType === "fabric_sale") {
-        for (const l of lines as any[]) {
-          if (!l.fabricVariantId) {
-            setError("Please select an available fabric variant for every line.");
-            setSaving(false);
-            return;
-          }
-          const v = fabricVariants.find((fv) => fv.fabricVariantId === l.fabricVariantId);
-          const stock = v ? Number((v as any).stockSnapshot ?? 0) : 0;
-          if (l.quantity > stock) {
-            setError(`Cannot sell ${l.quantity} pcs of "${v?.sku ?? "fabric"}": available stock is ${stock} pcs.`);
-            setSaving(false);
-            return;
-          }
+      for (let i = 0; i < parsedLines.length; i++) {
+        const line = parsedLines[i];
+        if (isFabric && !line.fabricVariantId) {
+          throw new Error(`Line ${i + 1}: Please select a fabric variant.`);
+        }
+        if (!isFabric && !line.yarnVariantId) {
+          throw new Error(`Line ${i + 1}: Please select a yarn variant.`);
+        }
+        if (line.quantity <= 0) {
+          throw new Error(`Line ${i + 1}: Quantity must be greater than 0.`);
         }
       }
 
-      if (txnType === "yarn_sale") {
-        for (const l of lines as any[]) {
-          if (!l.yarnVariantId) {
-            setError("Please select an available yarn variant for every line.");
-            setSaving(false);
-            return;
-          }
-          const v = yarnVariants.find((yv) => yv.yarnVariantId === l.yarnVariantId);
-          const stock = v ? Number((v as any).stockSnapshot ?? 0) : 0;
-          if (l.quantity > stock) {
-            setError(`Cannot sell ${l.quantity} pieces of "${v?.sku ?? "yarn"}": available stock is ${stock} pieces.`);
-            setSaving(false);
-            return;
-          }
-        }
-      }
-
-      const txn = await transactionsApi.create({
-        transactionId,
-        type: txnType,
-        paymentTerms,
-        supplierId: txnType === "yarn_purchase" ? Number(supplierId) : undefined,
-        weaverId:
-          txnType === "fabric_purchase" || (txnType === "yarn_sale" && yarnBuyerType === "weaver")
-            ? Number(weaverId)
+      const res = await transactionsApi.create({
+        type: category,
+        supplierId: category === "yarn_purchase" ? Number(supplierId) : undefined,
+        weaverUserId:
+          category === "fabric_purchase_from_weaver" || category === "yarn_sale_to_weaver"
+            ? Number(weaverUserId)
             : undefined,
-        merchantId:
-          txnType === "fabric_sale" || (txnType === "yarn_sale" && yarnBuyerType === "merchant")
-            ? Number(merchantId)
-            : undefined,
+        merchantUserId:
+          category === "fabric_sale_to_merchant" ? Number(merchantUserId) : undefined,
         notes: notes || undefined,
-        lines,
+        lines: parsedLines,
       });
 
-      navigate(`/admin/transactions/${txn.transactionId ?? txn.directTransactionId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save transaction");
-    } finally {
+      navigate(`/admin/transactions/${res.transactionId}`);
+    } catch (err: any) {
+      setError(err.message || "Failed to save transaction");
       setSaving(false);
     }
-  }
-
-  if (!txnType) {
-    return (
-      <div className="page">
-        <div className="error-msg"><span>⚠️</span> Invalid transaction route or parameters.</div>
-        <Link to="/admin/transactions" className="back-link">Back to Transactions</Link>
-      </div>
-    );
-  }
-
-  const title =
-    txnType === "yarn_purchase"
-      ? "Buy Raw Yarn from Supplier"
-      : txnType === "fabric_purchase"
-        ? "Buy Handwoven Fabric from Weaver"
-        : txnType === "yarn_sale"
-          ? "Sell Yarn Cones"
-          : "Sell Finished Fabric to Merchant";
+  };
 
   return (
-    <div className="page">
-      <Link to={`/admin/transactions/new/${direction}`} className="back-link">
-        ← Back to Step 2
-      </Link>
+    <div style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: "1.5rem 2rem 3rem" }}>
+      {/* Back Link */}
+      <div style={{ marginBottom: "0.5rem" }}>
+        <Link
+          to="/admin/transactions"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.35rem",
+            color: "#c2410c",
+            fontWeight: 600,
+            fontSize: "14px",
+            textDecoration: "none",
+          }}
+        >
+          <span>&lt;</span> Transactions
+        </Link>
+      </div>
 
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">ደረጃ 3 ከ 3 / Final Step</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-            <h1 className="page-title">{title}</h1>
-            <span
+      {/* Header */}
+      <div style={{ marginBottom: "1.5rem" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.25rem" }}>
+          ግብይት · NEW TRANSACTION
+        </div>
+        <h1 style={{ margin: 0, fontSize: "28px", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>
+          New transaction
+        </h1>
+      </div>
+
+      {/* 4 Top Category Cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "1rem",
+          marginBottom: "1.75rem",
+        }}
+      >
+        {[
+          {
+            id: "yarn_purchase" as TxnCategory,
+            title: "Buy yarn · ግዢ",
+            sub: "From a supplier",
+          },
+          {
+            id: "fabric_purchase_from_weaver" as TxnCategory,
+            title: "Buy fabric · ግዢ",
+            sub: "From a weaver",
+          },
+          {
+            id: "yarn_sale_to_weaver" as TxnCategory,
+            title: "Sell yarn · ሽያጭ",
+            sub: "To a weaver",
+          },
+          {
+            id: "fabric_sale_to_merchant" as TxnCategory,
+            title: "Sell fabric · ሽያጭ",
+            sub: "To a merchant",
+          },
+        ].map((c) => {
+          const isSelected = category === c.id;
+          return (
+            <div
+              key={c.id}
+              onClick={() => handleCategoryChange(c.id)}
               style={{
-                fontFamily: "monospace",
-                fontWeight: 700,
-                background: "var(--brand-light, #eff6ff)",
-                color: "var(--brand, #2563eb)",
-                padding: "0.2rem 0.6rem",
-                borderRadius: "8px",
+                position: "relative",
+                background: "#ffffff",
+                border: isSelected ? "2px solid #c2410c" : "1px solid #e2e8f0",
+                borderRadius: "12px",
+                padding: "1.1rem 1.25rem",
+                cursor: "pointer",
+                boxShadow: isSelected ? "0 2px 8px rgba(194, 65, 12, 0.08)" : "0 1px 2px rgba(0,0,0,0.02)",
+                transition: "all 0.15s ease",
               }}
             >
-              #{transactionId}
-            </span>
+              <div style={{ fontWeight: 800, fontSize: "15px", color: "#0f172a", marginBottom: "0.25rem" }}>
+                {c.title}
+              </div>
+              <div style={{ fontSize: "13px", color: "#64748b" }}>
+                {c.sub}
+              </div>
+
+              {isSelected && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "1rem",
+                    right: "1rem",
+                    color: "#0f172a",
+                    fontSize: "14px",
+                    fontWeight: 800,
+                  }}
+                >
+                  ✓
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {error && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", padding: "0.75rem 1rem", borderRadius: "8px", marginBottom: "1.25rem", fontSize: "14px", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span>⚠️</span> {error}
+        </div>
+      )}
+
+      {/* 2-Column Form Layout */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) 360px",
+          gap: "1.5rem",
+          alignItems: "start",
+        }}
+      >
+        {/* Left Column: Details, Items, Notes */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* Details Card */}
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "12px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+              padding: "1.25rem 1.5rem",
+            }}
+          >
+            <h3 style={{ margin: "0 0 1rem", fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>
+              Details
+            </h3>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "1rem" }}>
+              {/* Counterparty field */}
+              <div>
+                <label style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "#475569", marginBottom: "0.35rem" }}>
+                  {category === "fabric_sale_to_merchant"
+                    ? "Merchant · ገዢ ነጋዴ"
+                    : category === "yarn_purchase"
+                    ? "Supplier · አቅራቢ"
+                    : "Weaver · ሸማኔ"}
+                </label>
+
+                {category === "fabric_sale_to_merchant" ? (
+                  <select
+                    value={merchantUserId}
+                    onChange={(e) => setMerchantUserId(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem 0.75rem",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      background: "#ffffff",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    {merchants.map((m) => (
+                      <option key={m.userId} value={String(m.userId)}>
+                        {m.companyName || `Merchant #${m.userId}`} {m.contactPhone ? `(${m.contactPhone})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : category === "yarn_purchase" ? (
+                  <select
+                    value={supplierId}
+                    onChange={(e) => setSupplierId(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem 0.75rem",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      background: "#ffffff",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    {suppliers.map((s) => (
+                      <option key={s.supplierId} value={String(s.supplierId)}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={weaverUserId}
+                    onChange={(e) => setWeaverUserId(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.6rem 0.75rem",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "14px",
+                      background: "#ffffff",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    {weavers.map((w) => (
+                      <option key={w.userId} value={String(w.userId)}>
+                        {w.fullName} {w.phone ? `(${w.phone})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <div style={{ marginTop: "0.4rem" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPartyModal(true)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      color: "#c2410c",
+                      fontSize: "12.5px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    + Add a new{" "}
+                    {category === "fabric_sale_to_merchant"
+                      ? "merchant"
+                      : category === "yarn_purchase"
+                      ? "supplier"
+                      : "weaver"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Date field */}
+              <div>
+                <label style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "#475569", marginBottom: "0.35rem" }}>
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.6rem 0.75rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                    background: "#ffffff",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+            </div>
           </div>
-          <p className="page-subtitle">
-            {isSale
-              ? "Select from available warehouse stock. Inventory decreases automatically upon transaction confirmation."
-              : "Configure counterparties, payment terms, and item lines. Stock adjusts automatically upon confirmation."}
-          </p>
+
+          {/* Items Card */}
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "12px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+              padding: "1.25rem 1.5rem",
+            }}
+          >
+            <h3 style={{ margin: "0 0 1rem", fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>
+              Items
+            </h3>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {lines.map((l, index) => {
+                const selectedVariant = isFabric
+                  ? fabricVariants.find((f) => String(f.fabricVariantId) === l.variantId)
+                  : yarnVariants.find((y) => String(y.yarnVariantId) === l.variantId);
+
+                const currentStock = Number((selectedVariant as any)?.stockSnapshot ?? selectedVariant?.currentStock ?? 0);
+                const requestedQty = parseFloat(l.quantity) || 0;
+                const unitPriceNum = parseFloat(l.unitPrice) || 0;
+                const lineTotal = requestedQty * unitPriceNum;
+                const afterStock = isSale ? currentStock - requestedQty : currentStock + requestedQty;
+
+                return (
+                  <div key={l.id} style={{ paddingBottom: "1rem", borderBottom: "1px solid #f1f5f9" }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1.8fr 0.7fr 1fr 0.8fr 36px",
+                        gap: "0.75rem",
+                        alignItems: "center",
+                      }}
+                    >
+                      {/* Variant Select */}
+                      <div>
+                        {index === 0 && (
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "0.25rem" }}>
+                            {isFabric ? "Fabric" : "Yarn"}
+                          </label>
+                        )}
+                        <select
+                          value={l.variantId}
+                          onChange={(e) => handleUpdateLine(l.id, "variantId", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "0.55rem 0.65rem",
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "13.5px",
+                            background: "#fffdf5",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <option value="">Select {isFabric ? "fabric" : "yarn"}…</option>
+                          {isFabric
+                            ? fabricVariants.map((f) => {
+                                const name = f.fabric?.name || f.product?.name || "medebegna";
+                                const warp = f.warpColor?.name || f.color?.name || "";
+                                const weft = f.weftColor?.name || "";
+                                const design = f.design?.name || "";
+                                const label = [name, warp, weft, design].filter(Boolean).join(" · ");
+                                return (
+                                  <option key={f.fabricVariantId} value={String(f.fabricVariantId)}>
+                                    {label || f.sku}
+                                  </option>
+                                );
+                              })
+                            : yarnVariants.map((y) => {
+                                const label = [y.yarn?.name, y.color?.name, y.sku].filter(Boolean).join(" · ");
+                                return (
+                                  <option key={y.yarnVariantId} value={String(y.yarnVariantId)}>
+                                    {label}
+                                  </option>
+                                );
+                              })}
+                        </select>
+                      </div>
+
+                      {/* Qty */}
+                      <div>
+                        {index === 0 && (
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "0.25rem" }}>
+                            Qty
+                          </label>
+                        )}
+                        <input
+                          type="number"
+                          min="1"
+                          value={l.quantity}
+                          onChange={(e) => handleUpdateLine(l.id, "quantity", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "0.55rem 0.5rem",
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "13.5px",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+
+                      {/* Unit Price */}
+                      <div>
+                        {index === 0 && (
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "0.25rem" }}>
+                            Unit price
+                          </label>
+                        )}
+                        <input
+                          type="number"
+                          step="any"
+                          value={l.unitPrice}
+                          onChange={(e) => handleUpdateLine(l.id, "unitPrice", e.target.value)}
+                          placeholder="Price"
+                          style={{
+                            width: "100%",
+                            padding: "0.55rem 0.5rem",
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "13.5px",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+
+                      {/* Total */}
+                      <div>
+                        {index === 0 && (
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#64748b", marginBottom: "0.25rem" }}>
+                            Total
+                          </label>
+                        )}
+                        <div style={{ fontWeight: 700, fontSize: "13.5px", color: "#0f172a", paddingTop: index === 0 ? "0.25rem" : "0" }}>
+                          [{lineTotal > 0 ? lineTotal.toLocaleString() : "0"}]
+                        </div>
+                      </div>
+
+                      {/* Delete */}
+                      <div style={{ textAlign: "center", paddingTop: index === 0 ? "1.25rem" : "0" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLine(l.id)}
+                          disabled={lines.length <= 1}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: lines.length <= 1 ? "#cbd5e1" : "#94a3b8",
+                            cursor: lines.length <= 1 ? "not-allowed" : "pointer",
+                            fontSize: "16px",
+                            padding: "0.25rem",
+                          }}
+                          title="Delete item"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stock Indicator Badge */}
+                    {selectedVariant && (
+                      <div style={{ marginTop: "0.5rem" }}>
+                        {isSale && afterStock < 0 ? (
+                          <span
+                            style={{
+                              background: "#fee2e2",
+                              color: "#991b1b",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              padding: "0.2rem 0.6rem",
+                              borderRadius: "999px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            ⚠️ Only [{currentStock}] in stock (shortage of [{requestedQty - currentStock}])
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              background: "#ecfdf5",
+                              color: "#065f46",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              padding: "0.2rem 0.6rem",
+                              borderRadius: "999px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            ✓ [{currentStock}] in stock → [{afterStock}] after
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* + Add item Button */}
+              <button
+                type="button"
+                onClick={handleAddLine}
+                style={{
+                  background: "#ffffff",
+                  border: "1px dashed #cbd5e1",
+                  borderRadius: "8px",
+                  padding: "0.65rem",
+                  fontSize: "13.5px",
+                  fontWeight: 600,
+                  color: "#475569",
+                  cursor: "pointer",
+                  width: "100%",
+                  transition: "border-color 0.15s ease",
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.borderColor = "#c2410c")}
+                onMouseOut={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+              >
+                + Add item
+              </button>
+            </div>
+          </div>
+
+          {/* Add a note (optional) Collapsible */}
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "12px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+              overflow: "hidden",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setNotesOpen(!notesOpen)}
+              style={{
+                width: "100%",
+                background: "none",
+                border: "none",
+                padding: "1rem 1.25rem",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "#334155",
+              }}
+            >
+              <span>Add a note (optional)</span>
+              <span style={{ fontSize: "12px", transform: notesOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                ▼
+              </span>
+            </button>
+
+            {notesOpen && (
+              <div style={{ padding: "0 1.25rem 1.25rem" }}>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Additional delivery instructions, payment terms, or reference notes…"
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "0.6rem 0.75rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "13.5px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Summary Card */}
+        <div
+          style={{
+            position: "sticky",
+            top: "1.5rem",
+            background: "#ffffff",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+            padding: "1.5rem",
+          }}
+        >
+          <h3 style={{ margin: "0 0 1.25rem", fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+            Summary
+          </h3>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "14px", marginBottom: "1.25rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#64748b" }}>Type</span>
+              <span style={{ fontWeight: 600, color: "#0f172a" }}>{categoryLabel}</span>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#64748b" }}>
+                {category === "fabric_sale_to_merchant"
+                  ? "Merchant"
+                  : category === "yarn_purchase"
+                  ? "Supplier"
+                  : "Weaver"}
+              </span>
+              <span style={{ fontWeight: 600, color: "#0f172a" }}>[{counterpartySummaryName}]</span>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#64748b" }}>Items</span>
+              <span style={{ fontWeight: 600, color: "#0f172a" }}>
+                {lines.length} · {totalQuantity} pcs
+              </span>
+            </div>
+
+            <div style={{ borderTop: "1px solid #e2e8f0", margin: "0.5rem 0" }} />
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontWeight: 800, fontSize: "16px", color: "#0f172a" }}>Total</span>
+              <span style={{ fontWeight: 800, fontSize: "20px", color: "#c2410c" }}>
+                [{calculatedGrandTotal.toLocaleString()}] ETB
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            <button
+              type="button"
+              onClick={handleSaveTransaction}
+              disabled={saving}
+              style={{
+                background: "#c2410c",
+                color: "#ffffff",
+                border: "none",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: saving ? "not-allowed" : "pointer",
+                boxShadow: "0 1px 2px rgba(194, 65, 12, 0.2)",
+                transition: "background 0.15s ease",
+              }}
+              onMouseOver={(e) => {
+                if (!saving) e.currentTarget.style.background = "#9a3412";
+              }}
+              onMouseOut={(e) => {
+                if (!saving) e.currentTarget.style.background = "#c2410c";
+              }}
+            >
+              {saving ? "Saving…" : "Save transaction"}
+            </button>
+
+            <Link
+              to="/admin/transactions"
+              style={{
+                background: "#ffffff",
+                color: "#475569",
+                border: "1px solid #cbd5e1",
+                padding: "0.65rem",
+                borderRadius: "8px",
+                fontWeight: 600,
+                fontSize: "14px",
+                textAlign: "center",
+                textDecoration: "none",
+                transition: "background 0.15s ease",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = "#f8fafc")}
+              onMouseOut={(e) => (e.currentTarget.style.background = "#ffffff")}
+            >
+              Cancel
+            </Link>
+          </div>
+
+          <div style={{ fontSize: "12px", color: "#64748b", marginTop: "1rem", lineHeight: 1.4 }}>
+            You can record payments after saving, in full or in parts.
+          </div>
         </div>
       </div>
 
-      <form className="card form" onSubmit={handleSubmit} style={{ maxWidth: 880 }}>
-        <h3 className="section-title" style={{ margin: 0 }}>
-          <span>📋</span> General Transaction Details
-        </h3>
-
-        <label>
-          <span>Payment Terms / የክፍያ ሁኔታ</span>
-          <select
-            value={paymentTerms}
-            onChange={(e) => setPaymentTerms(e.target.value as PaymentTerms)}
-            style={{ height: 42 }}
-          >
-            {Object.entries(PAYMENT_TERMS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* Counterparty for Yarn Purchase */}
-        {txnType === "yarn_purchase" && (
-          <label>
-            <span>Yarn Supplier / የጥጥ አቅራቢ</span>
-            <select value={supplierId} onChange={(e) => setSupplierId(e.target.value)} required style={{ height: 42 }}>
-              {catalogLookup.suppliers.length === 0 ? (
-                <option value="">No active suppliers configured</option>
-              ) : (
-                catalogLookup.suppliers.map((s) => (
-                  <option key={s.supplierId} value={s.supplierId}>
-                    {s.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-        )}
-
-        {/* Counterparty for Fabric Purchase */}
-        {txnType === "fabric_purchase" && (
-          <label>
-            <span>Artisan Weaver (Seller) / አሸጋይ</span>
-            <select value={weaverId} onChange={(e) => setWeaverId(e.target.value)} required style={{ height: 42 }}>
-              {weavers.length === 0 ? (
-                <option value="">No active weavers found</option>
-              ) : (
-                weavers.map((w) => (
-                  <option key={w.weaverId} value={w.weaverId}>
-                    {w.firstName} {w.lastName} (#{w.weaverId})
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-        )}
-
-        {/* Counterparty for Yarn Sale (can sell to Weaver or Merchant) */}
-        {txnType === "yarn_sale" && (
-          <>
-            <div className="form-row">
-              <label>
-                <span>Buyer Type / የገዢ ዓይነት</span>
-                <select
-                  value={yarnBuyerType}
-                  onChange={(e) => setYarnBuyerType(e.target.value as "weaver" | "merchant")}
-                  style={{ height: 42 }}
-                >
-                  <option value="weaver">Artisan Weaver / አሸጋይ</option>
-                  <option value="merchant">Merchant / ነጋዴ</option>
-                </select>
-              </label>
-
-              {yarnBuyerType === "weaver" ? (
-                <label>
-                  <span>Weaver (Buyer) / አሸጋይ ገዢ</span>
-                  <select value={weaverId} onChange={(e) => setWeaverId(e.target.value)} required style={{ height: 42 }}>
-                    {weavers.length === 0 ? (
-                      <option value="">No weavers registered</option>
-                    ) : (
-                      weavers.map((w) => (
-                        <option key={w.weaverId} value={w.weaverId}>
-                          {w.firstName} {w.lastName} (#{w.weaverId})
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-              ) : (
-                <label>
-                  <span>Merchant (Buyer) / ገዢ ነጋዴ</span>
-                  <select value={merchantId} onChange={(e) => setMerchantId(e.target.value)} required style={{ height: 42 }}>
-                    {merchants.length === 0 ? (
-                      <option value="">No merchants registered yet</option>
-                    ) : (
-                      merchants.map((m) => (
-                        <option key={m.merchantId} value={m.merchantId}>
-                          {m.companyName ?? m.contactPhone}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Counterparty for Fabric Sale */}
-        {txnType === "fabric_sale" && (
-          <>
-            <label>
-              <span>Merchant (Buyer) / ገዢ ነጋዴ <span style={{ color: "var(--red, #dc2626)" }}>*</span></span>
-              <select value={merchantId} onChange={(e) => setMerchantId(e.target.value)} required style={{ height: 42 }}>
-                {merchants.length === 0 ? (
-                  <option value="">No merchants registered yet — register below</option>
-                ) : (
-                  merchants.map((m) => (
-                    <option key={m.merchantId} value={m.merchantId}>
-                      {m.companyName ?? m.contactPhone}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-
-            <div style={{ background: "var(--bg-subtle, #f8fafc)", padding: "1rem", borderRadius: "10px", marginTop: "0.25rem", border: "1px dashed var(--border, #cbd5e1)" }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-muted, #64748b)", display: "block", marginBottom: "0.5rem" }}>
-                + Register New Merchant (if not in dropdown)
-              </span>
-              <div className="form-row">
-                <label>
-                  <span>Company Name / የድርጅት ስም</span>
-                  <input
-                    value={newMerchantName}
-                    onChange={(e) => setNewMerchantName(e.target.value)}
-                    placeholder="e.g. Merkato Textile Wholesalers"
-                  />
-                </label>
-                <label>
-                  <span>Phone Number / ስልክ ቁጥር</span>
-                  <input
-                    value={newMerchantPhone}
-                    onChange={(e) => setNewMerchantPhone(e.target.value)}
-                    placeholder="+251 9xx xxx xxx"
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                className="btn-ghost btn-sm"
-                onClick={handleAddMerchant}
-                style={{ marginTop: "0.75rem" }}
-              >
-                + Register Merchant
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Transaction Items */}
-        <div style={{ borderTop: "1.5px solid var(--border, #e2e8f0)", paddingTop: "1.25rem", marginTop: "0.75rem" }}>
-          <h3 className="section-title">
-            <span>📦</span> Transaction Lines / የዕቃ ዝርዝር
-          </h3>
-
-          {isFabric ? (
-            <FabricLinesEditor
-              lines={fabricLines}
-              onChange={setFabricLines}
-              lookup={catalogLookup}
-              fabricVariants={fabricVariants}
-              defaultEntryMode={isFabricPurchase ? "catalog" : "variant"}
-              txnType={txnType}
-            />
-          ) : (
-            <YarnLinesEditor
-              lines={yarnLines}
-              onChange={setYarnLines}
-              lookup={catalogLookup}
-              yarnVariants={yarnVariants}
-              txnType={txnType}
-            />
-          )}
-        </div>
-
-        {/* Live Order Summary Card */}
+      {/* Quick Add Party Modal */}
+      {showAddPartyModal && (
         <div
           style={{
-            background: "var(--bg-subtle, #f8fafc)",
-            border: "1.5px solid var(--border, #e2e8f0)",
-            borderRadius: "10px",
-            padding: "1.1rem 1.25rem",
-            marginTop: "1.25rem",
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(2px)",
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
-            flexWrap: "wrap",
-            gap: "1rem",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "1rem",
           }}
+          onClick={() => setShowAddPartyModal(false)}
         >
-          <div>
-            <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text-main, #0f172a)" }}>
-              Order Summary / ጠቅላላ ማጠቃለያ
-            </div>
-            <div style={{ fontSize: "0.85rem", color: "var(--text-muted, #64748b)", marginTop: "4px" }}>
-              Total lines: <strong>{parsedLines.length}</strong> · Quantity: <strong>{totalQuantity} {isFabric ? "pieces" : "pieces/cones"}</strong>
-            </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: "12px", color: "var(--text-muted, #64748b)", display: "block", textTransform: "uppercase", fontWeight: 600 }}>
-              Grand Total
-            </span>
-            <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--brand, #2563eb)" }}>
-              ETB {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-        </div>
-
-        <label style={{ marginTop: "0.75rem" }}>
-          <span>Internal Transaction Notes / ማስታወሻ (optional)</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add delivery location, terms, or reference notes…"
-            rows={2}
-          />
-        </label>
-
-        {/* Errors Banner */}
-        {error && (
-          <div className="error-msg" style={{ marginTop: "0.5rem" }}>
-            <span>⚠️</span> {error}
-          </div>
-        )}
-
-        {stockValidationErrors.length > 0 && (
           <div
             style={{
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: "8px",
-              padding: "0.75rem 1rem",
-              marginTop: "0.5rem",
-              color: "#b91c1c",
-              fontSize: "0.88rem",
+              background: "#ffffff",
+              borderRadius: "16px",
+              padding: "1.75rem",
+              width: "100%",
+              maxWidth: "420px",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <strong>⚠️ Cannot proceed — inventory stock issues:</strong>
-            <ul style={{ margin: "0.4rem 0 0 1.25rem", padding: 0 }}>
-              {stockValidationErrors.map((msg, i) => (
-                <li key={i}>{msg}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+            <h3 style={{ margin: "0 0 1rem", fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+              Add New{" "}
+              {category === "fabric_sale_to_merchant"
+                ? "Merchant"
+                : category === "yarn_purchase"
+                ? "Supplier"
+                : "Weaver"}
+            </h3>
 
-        <div className="form-actions" style={{ marginTop: "1rem" }}>
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={saving || stockValidationErrors.length > 0}
-            style={{ minWidth: 200 }}
-          >
-            {saving ? "Creating Transaction…" : "✓ Create Transaction / መዝግብ"}
-          </button>
-          <Link to="/admin/transactions" className="btn-ghost">
-            Cancel
-          </Link>
+            <form onSubmit={handleQuickAddParty} style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>
+                  Name / Business Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newPartyName}
+                  onChange={(e) => setNewPartyName(e.target.value)}
+                  placeholder="e.g. Merkato Textile Trader"
+                  style={{
+                    width: "100%",
+                    padding: "0.55rem 0.75rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={newPartyPhone}
+                  onChange={(e) => setNewPartyPhone(e.target.value)}
+                  placeholder="e.g. 0911234567"
+                  style={{
+                    width: "100%",
+                    padding: "0.55rem 0.75rem",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "0.5rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddPartyModal(false)}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    padding: "0.55rem 1rem",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#475569",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    background: "#c2410c",
+                    border: "none",
+                    padding: "0.55rem 1rem",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    fontWeight: 700,
+                    color: "#ffffff",
+                    cursor: "pointer",
+                  }}
+                >
+                  Save & Select
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
+      )}
     </div>
   );
 }
