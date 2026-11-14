@@ -5,7 +5,7 @@ import {
   recordDirectTransactionPayment as coreRecordPayment,
   cancelDirectTransaction as coreCancelTxn,
   type CreateDirectTransactionInput,
-} from "../../services/direct-transaction.service.js";
+} from "./direct-transaction-core.service.js";
 import { NotFoundError } from "../../domain/errors/domain-errors.js";
 
 const txnInclude = {

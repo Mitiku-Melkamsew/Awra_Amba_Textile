@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "../lib/prisma.js";
-import { AuditService } from "../application/services/audit.service.js";
+import { prisma } from "../../lib/prisma.js";
+import { AuditService } from "./audit.service.js";
 import {
   buildSettlementPreview,
   type LineOverride,

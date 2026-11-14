@@ -4,7 +4,7 @@ import {
   buildHisabReport,
   buildHisabReportByPaymentId,
   hisabToCsv,
-} from "../../services/hisab-report.service.js";
+} from "./hisab-report.service.js";
 import { NotFoundError } from "../../domain/errors/domain-errors.js";
 
 export class ReportService {

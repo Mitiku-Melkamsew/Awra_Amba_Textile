@@ -1,31 +1,29 @@
-import type { FabricVariant, Product } from "../api";
+import type { FabricVariant } from "../api";
 import type { LineEntryMode } from "./yarnLines";
-import { findZigZagDesignId } from "./defaultDesign";
+
+/**
+ * Fabric line drafts aligned with Prisma schema:
+ * WorkOrder / FabricReturn / DirectTransactionLine use fabricVariantId.
+ * No productId.
+ */
 
 export interface FabricCatalogLookup {
-  colors: Array<{ colorId: number; colorCode: string; name: string }>;
+  colors: Array<{ colorId: number; colorCode?: string; name: string }>;
   designs: Array<{ designId: number; name: string }>;
-  products: Product[];
+  /** @deprecated kept optional for older callers; prefer fabricVariants */
+  products?: Array<{ productId?: number; fabricId?: number; name?: string; basePrice?: number; category?: string }>;
 }
 
 export interface FabricLineDraft {
   id: string;
   entryMode: LineEntryMode;
   fabricVariantId: string;
-  productId: string;
-  warpColorId: string;
-  weftColorId: string;
-  designId: string;
   quantity: string;
   unitPrice: string;
 }
 
 export interface FabricLinePayload {
-  fabricVariantId?: number;
-  productId?: number;
-  warpColorId?: number;
-  weftColorId?: number;
-  designId?: number | null;
+  fabricVariantId: number;
   quantity: number;
   unitPrice: number;
 }
@@ -33,22 +31,15 @@ export interface FabricLinePayload {
 let nextId = 0;
 
 export function createFabricLineDraft(
-  lookup?: FabricCatalogLookup,
-  entryMode: LineEntryMode = "catalog",
+  _lookup?: FabricCatalogLookup,
+  entryMode: LineEntryMode = "variant",
 ): FabricLineDraft {
-  const fabricProducts =
-    lookup?.products.filter((p) => p.category === "fabric" || !p.category) ?? [];
-  const zigZagId = lookup ? findZigZagDesignId(lookup.designs) : null;
   return {
     id: `fabric-line-${++nextId}`,
     entryMode,
     fabricVariantId: "",
-    productId: fabricProducts[0] ? String(fabricProducts[0].productId) : "",
-    warpColorId: lookup?.colors[0] ? String(lookup.colors[0].colorId) : "",
-    weftColorId: lookup?.colors[0] ? String(lookup.colors[0].colorId) : "",
-    designId: zigZagId ? String(zigZagId) : "",
     quantity: "",
-    unitPrice: fabricProducts[0] ? String(fabricProducts[0].basePrice) : "",
+    unitPrice: "",
   };
 }
 
@@ -56,45 +47,34 @@ export function applyFabricVariantToLine(
   line: FabricLineDraft,
   variant: FabricVariant,
 ): FabricLineDraft {
-  const productId = String(
-    variant.product?.productId ?? variant.fabricId ?? variant.fabric?.fabricId ?? "",
-  );
+  const price =
+    (variant as any).basePrice ??
+    (variant as any).fabric?.prices?.[0]?.weaverRate ??
+    (variant as any).fabric?.prices?.[0]?.sellingPrice ??
+    line.unitPrice;
+
   return {
     ...line,
     entryMode: "variant",
     fabricVariantId: String(variant.fabricVariantId),
-    productId,
-    warpColorId: variant.warpColor ? String(variant.warpColor.colorId) : line.warpColorId,
-    weftColorId: variant.weftColor ? String(variant.weftColor.colorId) : line.weftColorId,
-    designId: variant.design ? String(variant.design.designId) : "",
-    unitPrice: variant.basePrice
-      ? String(variant.basePrice)
-      : variant.product?.basePrice
-        ? String(variant.product.basePrice)
-        : line.unitPrice,
+    unitPrice: price ? String(price) : line.unitPrice,
   };
 }
 
-/** A line uses an existing variant only when one is actually chosen; otherwise it saves from the typed details. */
-const usesVariant = (line: FabricLineDraft) =>
-  line.entryMode === "variant" && Boolean(line.fabricVariantId);
-
-/** Editing any detail field means the line no longer refers to the chosen variant. */
-export const DETAILS_EDITED = { entryMode: "catalog", fabricVariantId: "" } as const;
+/** Clear variant selection when user switches mode or clears search. */
+export const DETAILS_EDITED = { entryMode: "variant" as const, fabricVariantId: "" };
 
 export function parseFabricLines(lines: FabricLineDraft[]): FabricLinePayload[] {
   return lines
-    .filter((line) => Number.isInteger(Number(line.quantity)) && Number(line.quantity) > 0 && Number(line.unitPrice) >= 0)
-    .filter((line) => usesVariant(line) || Boolean(line.productId))
+    .filter(
+      (line) =>
+        Boolean(line.fabricVariantId) &&
+        Number.isFinite(Number(line.quantity)) &&
+        Number(line.quantity) > 0 &&
+        Number(line.unitPrice) >= 0,
+    )
     .map((line) => ({
-      ...(usesVariant(line)
-        ? { fabricVariantId: Number(line.fabricVariantId) }
-        : {
-            productId: Number(line.productId),
-            warpColorId: line.warpColorId ? Number(line.warpColorId) : undefined,
-            weftColorId: line.weftColorId ? Number(line.weftColorId) : undefined,
-            designId: line.designId ? Number(line.designId) : null,
-          }),
+      fabricVariantId: Number(line.fabricVariantId),
       quantity: Number(line.quantity),
       unitPrice: Number(line.unitPrice),
     }));

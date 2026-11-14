@@ -26,16 +26,20 @@ export class ProcurementController {
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
       const actorUserId = req.user!.userId;
+      // Schema fields only: yarnVariantId, quantity, unitPrice
       const lines = (req.body.lines ?? []).map((l: any) => ({
-        yarnVariantId: l.yarnVariantId,
-        quantity: l.quantity ?? l.quantityKg,
-        unitPrice: l.unitPrice ?? l.unitCost,
+        yarnVariantId: Number(l.yarnVariantId),
+        quantity: Number(l.quantity),
+        unitPrice: Number(l.unitPrice),
       }));
       const created = await ProcurementService.createPurchase(
         {
-          ...req.body,
+          supplierId: Number(req.body.supplierId),
+          notes: req.body.notes ?? null,
           lines,
-          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
+          purchaseDate: req.body.purchaseDate
+            ? new Date(req.body.purchaseDate)
+            : undefined,
         },
         actorUserId,
       );

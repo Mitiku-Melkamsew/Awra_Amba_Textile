@@ -7,89 +7,65 @@ export type WorkOrderStatus =
   | "reconciled"
   | "cancelled";
 
+/** Canonical: schema uses quantity (not quantityKg). */
 export interface YarnGiven {
   yarnGivenId: number;
-  workOrderId?: number;
-  yarnId?: number;
-  yarnVariantId?: number | null;
-  supplierId?: number | null;
-  quantityKg?: number | string;
-  quantity?: number | string;
+  zigId?: string;
+  yarnVariantId: number;
+  quantity: number | string;
   unitPrice: number | string;
   dateGiven?: string;
-  paymentId?: number | null;
-  yarn?: Yarn;
   yarnVariant?: YarnVariant | any;
-  supplier?: { supplierId: number; name: string } | null;
+  yarn?: Yarn;
   settled?: boolean;
 }
 
+/** Canonical: returnId, totalWeight (not actualWeightG). */
 export interface FabricReturn {
-  fabricReturnId?: number;
-  returnId?: number;
-  workOrderId?: number;
-  returnDate?: string;
+  returnId: number;
+  zigId?: string;
+  fabricVariantId?: number;
   dateReturned?: string;
   quantityReturned: number;
-  actualWeightG?: number | string;
-  totalWeight?: number | string;
-  avgWeight?: number | string;
+  totalWeight: number | string;
   unitPrice: number | string;
   lengthCm?: number | null;
   widthCm?: number | null;
-  notes?: string | null;
   remark?: string | null;
-  paymentId?: number | null;
   fabricVariant?: FabricVariant;
   settled?: boolean;
 }
 
 export interface YarnReturn {
   yarnReturnId: number;
-  workOrderId?: number;
-  yarnId?: number;
-  yarnVariantId?: number;
-  quantityKg?: number | string;
-  quantity?: number | string;
-  returnDate?: string;
+  zigId?: string;
+  yarnVariantId: number;
+  quantity: number | string;
   dateReturned?: string;
   remark?: string | null;
-  yarn?: Yarn;
   yarnVariant?: any;
 }
 
 export interface FabricReturnToWeaver {
   fabricReturnToWeaverId: number;
-  workOrderId?: number;
+  zigId?: string;
   fabricVariantId?: number;
   quantity: number;
-  returnDate?: string;
   dateReturned?: string;
-  reason?: string | null;
   remark?: string | null;
   fabricVariant?: FabricVariant;
 }
 
+/** Canonical: zigId, weaverUserId, fabricVariantId (not weaverId/fabricId). */
 export interface WorkOrder {
-  workOrderId: number;
-  zigId?: string;
-  orderNumber?: string;
-  weaverId: number;
-  fabricId: number;
-  fabricVariantId?: number;
-  warpColorId?: number | null;
-  weftColorId?: number | null;
-  designId?: number | null;
+  zigId: string;
+  weaverUserId: number;
+  fabricVariantId: number;
   status: WorkOrderStatus;
-  assignedDate: string;
   dateIssued?: string;
-  expectedDate?: string | null;
-  returnedDate?: string | null;
-  notes?: string | null;
-  weaverUnitPriceSnapshot?: number | string;
   weaver?: Weaver;
-  fabric?: Fabric;
   fabricVariant?: FabricVariant;
+  fabric?: Fabric;
   yarnGiven?: YarnGiven[];
   fabricReturns?: FabricReturn[];
   yarnReturns?: YarnReturn[];
@@ -98,6 +74,10 @@ export interface WorkOrder {
     yarnGiven?: number;
     fabricReturns?: number;
   };
+  // Compatibility shims still used by some UI components during transition
+  workOrderId?: number;
+  weaverId?: number;
+  fabricId?: number;
 }
 
 export interface WorkOrderDetail extends WorkOrder {

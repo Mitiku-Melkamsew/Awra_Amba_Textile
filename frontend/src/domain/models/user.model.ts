@@ -6,6 +6,7 @@ export interface AuthUser {
   fullName?: string;
   role: UserRole;
   roles: UserRole[];
+  /** @deprecated use userId when role is weaver; no separate weaverId in schema */
   weaverId: number | null;
   merchantId: number | null;
 }
@@ -15,31 +16,24 @@ export interface UserSummary {
   username: string;
   fullName: string;
   phone: string | null;
+  email?: string | null;
   roles: UserRole[];
   isActive: boolean;
   createdAt: string;
   initialPassword?: string;
-  weaverProfile?: {
-    weaverId: number;
-    email?: string | null;
-    bankAccountNumber?: string | null;
-  } | null;
-  merchantProfile?: {
-    merchantId: number;
-    companyName: string;
-    contactPhone?: string | null;
-  } | null;
 }
 
+/**
+ * Weaver is a User with the weaver role.
+ * Schema has no separate weavers table — weaverId === userId.
+ */
 export interface Weaver {
+  /** Same as userId (schema has no separate weaver id). */
   weaverId: number;
-  userId?: number;
-  firstName: string;
-  lastName: string;
-  fullName?: string;
+  userId: number;
+  fullName: string;
   phone: string | null;
-  email: string | null;
-  bankAccountNumber: string | null;
+  email?: string | null;
   user?: {
     userId: number;
     username: string;
@@ -49,12 +43,17 @@ export interface Weaver {
     workOrders?: number;
     settlements?: number;
   };
+  // Transition helpers for UI that still splits names
+  firstName?: string;
+  lastName?: string;
+  bankAccountNumber?: string | null;
 }
 
 export interface Merchant {
   merchantId: number;
   userId: number;
-  companyName: string;
-  contactPhone: string | null;
+  companyName?: string;
+  contactPhone?: string | null;
+  fullName?: string;
   createdAt?: string;
 }

@@ -666,10 +666,7 @@ export const yarnGivenApi = {
   create: async (data: {
     zigId: string;
     lines: Array<{
-      yarnVariantId?: number;
-      yarnTypeId?: number;
-      colorId?: number;
-      supplierId?: number;
+      yarnVariantId: number;
       quantity: number;
       unitPrice: number;
     }>;
@@ -677,11 +674,9 @@ export const yarnGivenApi = {
     const results = await Promise.all(
       data.lines.map((l) =>
         workOrderService.addYarnGiven(data.zigId, {
-          yarnId: Number(l.yarnTypeId ?? l.yarnVariantId ?? 1),
-          yarnVariantId: l.yarnVariantId,
-          supplierId: l.supplierId,
-          quantityKg: l.quantity,
-          unitPrice: l.unitPrice,
+          yarnVariantId: Number(l.yarnVariantId),
+          quantity: Number(l.quantity),
+          unitPrice: Number(l.unitPrice),
         })
       )
     );
@@ -689,7 +684,7 @@ export const yarnGivenApi = {
   },
   update: async (yarnGivenId: number, data: { quantity: number; unitPrice: number }) => {
     return workOrderService.updateYarnGiven(yarnGivenId, {
-      quantityKg: data.quantity,
+      quantity: data.quantity,
       unitPrice: data.unitPrice,
     });
   },
@@ -699,20 +694,18 @@ export const yarnGivenApi = {
 export const fabricReturnsApi = {
   create: async (data: any) => {
     const zigId = String(data.zigId ?? data.workOrderId ?? "");
+    const fabricVariantId = Number(data.fabricVariantId ?? data.productId);
+    if (!fabricVariantId) {
+      throw new Error("fabricVariantId is required for fabric return");
+    }
     return workOrderService.addFabricReturn(zigId, {
       returnDate: data.returnDate ?? new Date().toISOString(),
-      fabricVariantId: data.fabricVariantId ? Number(data.fabricVariantId) : undefined,
-      productId: data.productId ? Number(data.productId) : undefined,
-      warpColorId: data.warpColorId ? Number(data.warpColorId) : undefined,
-      weftColorId: data.weftColorId ? Number(data.weftColorId) : undefined,
-      designId: data.designId ? Number(data.designId) : undefined,
+      fabricVariantId,
       quantityReturned: Number(data.quantityReturned),
       totalWeight: Number(data.totalWeight ?? data.actualWeightG ?? 0),
-      actualWeightG: Number(data.totalWeight ?? data.actualWeightG ?? 0),
       unitPrice: Number(data.unitPrice ?? 0),
       lengthCm: data.lengthCm ? Number(data.lengthCm) : undefined,
       widthCm: data.widthCm ? Number(data.widthCm) : undefined,
-      notes: data.remark ?? data.notes,
       remark: data.remark ?? data.notes,
     });
   },

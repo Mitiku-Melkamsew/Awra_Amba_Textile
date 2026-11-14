@@ -1,10 +1,10 @@
-import { prisma } from "../lib/prisma.js";
+import { prisma } from "../../lib/prisma.js";
 import {
   buildSettlementPreview,
   type LineOverride,
   type SettlementPreview,
 } from "./calculation.service.js";
-import { commitSettlement } from "./settlement.service.js";
+import { commitSettlement } from "./settlement-core.service.js";
 
 export interface WeaverSettlementBundle {
   weaverUserId: number;

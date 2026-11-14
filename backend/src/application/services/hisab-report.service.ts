@@ -1,6 +1,6 @@
-import { prisma } from "../lib/prisma.js";
-import { numberToAmharicWords } from "../utils/amharic-words.js";
-import { formatDateDDMMYY } from "../utils/format-date.js";
+import { prisma } from "../../lib/prisma.js";
+import { numberToAmharicWords } from "../../utils/amharic-words.js";
+import { formatDateDDMMYY } from "../../utils/format-date.js";
 
 export interface HisabRow {
   weaverId: string | number;

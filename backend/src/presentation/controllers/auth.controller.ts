@@ -3,7 +3,11 @@ import { UserRole } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { PasswordService } from "../../infrastructure/auth/password.js";
 import { signToken } from "../../utils/jwt.js";
-import { UnauthorizedError, ConflictError } from "../../domain/errors/domain-errors.js";
+import {
+  UnauthorizedError,
+  ConflictError,
+  ValidationError,
+} from "../../domain/errors/domain-errors.js";
 
 export class AuthController {
   static async login(req: Request, res: Response, next: NextFunction) {
@@ -57,18 +61,17 @@ export class AuthController {
 
       const passwordHash = await PasswordService.hash(body.password);
       const chosenRole = body.role === "merchant" ? UserRole.merchant : UserRole.weaver;
-      // `fullName` is canonical; fall back to the legacy signup fields still sent
-      // by the web and Flutter clients.
-      const fullName =
-        body.fullName?.trim() ||
-        body.companyName?.trim() ||
-        `${body.firstName ?? ""} ${body.lastName ?? ""}`.trim();
+      // Schema uses fullName only (no firstName/lastName columns).
+      const fullName = String(body.fullName ?? "").trim();
+      if (!fullName) {
+        throw new ValidationError("fullName is required");
+      }
 
       const user = await prisma.user.create({
         data: {
           username: body.username,
           fullName,
-          phone: body.phone,
+          phone: body.phone ?? null,
           passwordHash,
           roles: {
             create: [{ role: chosenRole }],

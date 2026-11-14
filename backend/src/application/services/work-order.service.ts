@@ -1,7 +1,6 @@
 import { WorkOrderStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AuditService } from "./audit.service.js";
-import { resolveFabricVariant } from "../../services/variant.service.js";
 import {
   NotFoundError,
   ConflictError,
@@ -126,7 +125,7 @@ export class WorkOrderService {
       throw new ConflictError(`Work order ${zigId} already exists`);
     }
 
-    const weaverUserId = input.weaverUserId ?? (input as any).weaverId;
+    const weaverUserId = input.weaverUserId;
     if (!weaverUserId) throw new ValidationError("weaverUserId is required");
 
     const weaver = await prisma.user.findUnique({
@@ -151,11 +150,10 @@ export class WorkOrderService {
     const resolvedYarnLines: Array<{ yarnVariantId: number; quantity: number; unitPrice: number }> = [];
     if (input.yarnLines && input.yarnLines.length > 0) {
       for (const line of input.yarnLines) {
-        const qty = line.quantity ?? (line as any).quantityKg ?? 0;
-        if (qty <= 0) continue;
+        if (line.quantity <= 0) continue;
         resolvedYarnLines.push({
           yarnVariantId: line.yarnVariantId,
-          quantity: qty,
+          quantity: line.quantity,
           unitPrice: line.unitPrice ?? 0,
         });
       }
@@ -438,20 +436,13 @@ export class WorkOrderService {
   static async addFabricReturn(
     input: {
       zigId: string;
-      fabricVariantId?: number;
-      productId?: number;
-      fabricId?: number;
-      warpColorId?: number | null;
-      weftColorId?: number | null;
-      designId?: number | null;
+      fabricVariantId: number;
       quantityReturned: number;
-      totalWeight?: number;
-      actualWeightG?: number;
+      totalWeight: number;
       unitPrice?: number;
       lengthCm?: number | null;
       widthCm?: number | null;
       remark?: string | null;
-      notes?: string | null;
     },
     actorUserId: number,
   ) {
@@ -460,29 +451,13 @@ export class WorkOrderService {
       throw new ConflictError(`Cannot add fabric return to ${order.status} work order`);
     }
 
-    let fabricVariantId = input.fabricVariantId;
-    const fabricId = input.fabricId ?? input.productId;
-    if (fabricId) {
-      let warpColorId = input.warpColorId;
-      let weftColorId = input.weftColorId;
-      if (!warpColorId || !weftColorId) {
-        const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
-        warpColorId = warpColorId ?? firstColor?.colorId ?? 1;
-        weftColorId = weftColorId ?? firstColor?.colorId ?? 1;
-      }
-      const res = await resolveFabricVariant({
-        fabricId,
-        warpColorId,
-        weftColorId,
-        designId: input.designId,
-      });
-      fabricVariantId = res.variantId;
-    } else if (!fabricVariantId) {
-      fabricVariantId = order.fabricVariantId;
-    }
+    const fabricVariantId = input.fabricVariantId;
+    const fv = await prisma.fabricVariant.findUnique({ where: { fabricVariantId } });
+    if (!fv) throw new NotFoundError(`Fabric variant ${fabricVariantId} not found`);
 
-    const totalWeight = input.totalWeight ?? input.actualWeightG ?? 0;
-    const remark = input.remark ?? input.notes ?? undefined;
+    const totalWeight = input.totalWeight;
+    if (totalWeight <= 0) throw new ValidationError("totalWeight must be greater than 0");
+    const remark = input.remark ?? undefined;
     const unitPrice = input.unitPrice ?? 0;
 
     return prisma.$transaction(async (tx) => {
@@ -534,12 +509,10 @@ export class WorkOrderService {
     data: {
       quantityReturned?: number;
       totalWeight?: number;
-      actualWeightG?: number;
       unitPrice?: number;
       lengthCm?: number | null;
       widthCm?: number | null;
       remark?: string | null;
-      notes?: string | null;
     },
     actorUserId: number,
   ) {
@@ -552,8 +525,8 @@ export class WorkOrderService {
       throw new ConflictError("Cannot modify settled fabric return record");
     }
 
-    const totalWeight = data.totalWeight ?? data.actualWeightG;
-    const remark = data.remark ?? data.notes;
+    const totalWeight = data.totalWeight;
+    const remark = data.remark;
 
     return prisma.$transaction(async (tx) => {
       const deltaQty = data.quantityReturned !== undefined ? data.quantityReturned - Number(existing.quantityReturned) : 0;
@@ -636,10 +609,8 @@ export class WorkOrderService {
   static async addYarnReturn(
     input: {
       zigId: string;
-      yarnVariantId?: number;
-      yarnId?: number;
-      quantity?: number;
-      quantityKg?: number;
+      yarnVariantId: number;
+      quantity: number;
       remark?: string | null;
     },
     actorUserId: number,
@@ -649,19 +620,11 @@ export class WorkOrderService {
       throw new ConflictError(`Cannot return yarn for ${order.status} work order`);
     }
 
-    let yarnVariantId = input.yarnVariantId;
-    if (!yarnVariantId) {
-      const match = order.yarnGiven.find((yg) => !input.yarnId || yg.yarnVariant.yarnId === input.yarnId);
-      if (match) {
-        yarnVariantId = match.yarnVariantId;
-      } else if (order.yarnGiven[0]) {
-        yarnVariantId = order.yarnGiven[0].yarnVariantId;
-      } else {
-        throw new ValidationError("yarnVariantId could not be resolved from work order");
-      }
-    }
+    const yarnVariantId = input.yarnVariantId;
+    const exists = await prisma.yarnVariant.findUnique({ where: { yarnVariantId } });
+    if (!exists) throw new NotFoundError(`Yarn variant ${yarnVariantId} not found`);
 
-    const quantity = input.quantity ?? input.quantityKg ?? 0;
+    const quantity = input.quantity;
     if (quantity <= 0) throw new ValidationError("Returned yarn quantity must be greater than 0");
 
     return prisma.$transaction(async (tx) => {

@@ -8,15 +8,13 @@ import { ProcurementService } from "../../application/services/procurement.servi
 export class DirectTransactionController {
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { type, status, weaverUserId, weaverId, merchantUserId, merchantId, limit, offset } =
+      const { type, status, weaverUserId, merchantUserId, limit, offset } =
         req.query as any;
-      const wId = weaverUserId ?? weaverId;
-      const mId = merchantUserId ?? merchantId;
       const result = await DirectTransactionService.listTransactions({
         type,
         status,
-        weaverUserId: wId ? Number(wId) : undefined,
-        merchantUserId: mId ? Number(mId) : undefined,
+        weaverUserId: weaverUserId ? Number(weaverUserId) : undefined,
+        merchantUserId: merchantUserId ? Number(merchantUserId) : undefined,
         limit: limit ? Number(limit) : undefined,
         offset: offset ? Number(offset) : undefined,
       });
@@ -40,47 +38,26 @@ export class DirectTransactionController {
     try {
       const actorUserId = req.user!.userId;
       const body = req.body;
-      const type = body.type ?? body.transactionType;
-      const lines = body.lines ?? body.items ?? [];
-
-      if (type === "yarn_purchase") {
-        const supplierId = body.supplierId ? Number(body.supplierId) : undefined;
-        if (!supplierId) {
-          throw new Error("VALIDATION: supplierId is required for yarn purchases.");
-        }
-        const createdPurchase = await ProcurementService.createPurchase(
-          {
-            supplierId,
-            notes: body.notes,
-            purchaseDate: body.transactionDate ? new Date(body.transactionDate) : undefined,
-            lines: lines.map((l: any) => ({
-              yarnVariantId: l.yarnVariantId ? Number(l.yarnVariantId) : undefined,
-              yarnId: (l.yarnId ?? l.yarnTypeId) ? Number(l.yarnId ?? l.yarnTypeId) : undefined,
-              yarnTypeId: (l.yarnTypeId ?? l.yarnId) ? Number(l.yarnTypeId ?? l.yarnId) : undefined,
-              colorId: l.colorId ? Number(l.colorId) : undefined,
-              supplierId: l.supplierId ? Number(l.supplierId) : undefined,
-              quantity: Number(l.quantity),
-              unitPrice: Number(l.unitPrice),
-            })),
-          },
-          actorUserId,
-        );
-        return res.status(201).json(normalizeYarnPurchase(createdPurchase));
-      }
-
-      const weaverUserId = body.weaverUserId ?? body.weaverId;
-      const merchantUserId = body.merchantUserId ?? body.merchantId;
-      const initialPaymentAmount = body.initialPaymentAmount ?? body.initialPayment?.amount;
-      const paymentMethod = body.paymentMethod ?? body.initialPayment?.paymentMethod;
+      // Yarn purchases belong to /api/v1/procurement, not direct transactions.
+      // DirectTxnType only: fabric_purchase_from_weaver | yarn_sale_to_weaver | fabric_sale_to_merchant
+      const type = body.type;
+      const lines = (body.lines ?? []).map((l: any) => ({
+        fabricVariantId: l.fabricVariantId != null ? Number(l.fabricVariantId) : null,
+        yarnVariantId: l.yarnVariantId != null ? Number(l.yarnVariantId) : null,
+        quantity: Number(l.quantity),
+        unitPrice: Number(l.unitPrice),
+        description: l.description ?? null,
+      }));
 
       const created = await DirectTransactionService.createTransaction({
         type,
-        weaverUserId,
-        merchantUserId,
+        weaverUserId: body.weaverUserId != null ? Number(body.weaverUserId) : null,
+        merchantUserId: body.merchantUserId != null ? Number(body.merchantUserId) : null,
         lines,
-        initialPaymentAmount,
-        paymentMethod,
-        notes: body.notes,
+        initialPaymentAmount:
+          body.initialPaymentAmount != null ? Number(body.initialPaymentAmount) : undefined,
+        paymentMethod: body.paymentMethod ?? undefined,
+        notes: body.notes ?? null,
         transactionDate: body.transactionDate ? new Date(body.transactionDate) : undefined,
         createdByUserId: actorUserId,
       });

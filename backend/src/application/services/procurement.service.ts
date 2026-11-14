@@ -1,7 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { AuditService } from "./audit.service.js";
 import { NotFoundError, ValidationError } from "../../domain/errors/domain-errors.js";
-import { resolveYarnVariant } from "../../services/variant.service.js";
 
 const purchaseInclude = {
   supplier: true,
@@ -45,17 +44,11 @@ export class ProcurementService {
     input: {
       supplierId: number;
       purchaseDate?: Date;
-      notes?: string;
+      notes?: string | null;
       lines: Array<{
-        yarnVariantId?: number;
-        yarnId?: number;
-        yarnTypeId?: number;
-        colorId?: number;
-        supplierId?: number;
-        quantity?: number;
-        quantityKg?: number;
-        unitPrice?: number;
-        unitCost?: number;
+        yarnVariantId: number;
+        quantity: number;
+        unitPrice: number;
       }>;
     },
     actorUserId: number,
@@ -64,29 +57,25 @@ export class ProcurementService {
       const resolvedLines: Array<{ yarnVariantId: number; quantity: number; unitPrice: number }> = [];
 
       for (const line of input.lines) {
-        const qty = line.quantity ?? line.quantityKg ?? 0;
-        const price = line.unitPrice ?? line.unitCost ?? 0;
-        if (qty <= 0) {
+        if (!line.yarnVariantId) {
+          throw new ValidationError("yarnVariantId is required for each procurement line");
+        }
+        if (line.quantity <= 0) {
           throw new ValidationError("Procurement line quantity must be greater than 0");
         }
+        if (line.unitPrice <= 0) {
+          throw new ValidationError("Procurement line unitPrice must be greater than 0");
+        }
 
-        let yarnVariantId = line.yarnVariantId;
-        if (!yarnVariantId) {
-          const yarnId = line.yarnId ?? line.yarnTypeId;
-          const colorId = line.colorId;
-          const supplierId = line.supplierId ?? input.supplierId;
-          if (yarnId && colorId && supplierId) {
-            const res = await resolveYarnVariant({ yarnId, colorId, supplierId }, tx);
-            yarnVariantId = res.variantId;
-          } else {
-            throw new ValidationError("yarnVariantId or (yarnId, colorId, supplierId) is required for each procurement line");
-          }
+        const yv = await tx.yarnVariant.findUnique({ where: { yarnVariantId: line.yarnVariantId } });
+        if (!yv) {
+          throw new NotFoundError(`Yarn variant ${line.yarnVariantId} not found`);
         }
 
         resolvedLines.push({
-          yarnVariantId,
-          quantity: qty,
-          unitPrice: price,
+          yarnVariantId: line.yarnVariantId,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
         });
       }
 

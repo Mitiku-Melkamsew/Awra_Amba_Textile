@@ -61,25 +61,21 @@ export function ProcurementPage() {
     setError("");
     setMessage("");
     try {
-      const linePayload: any =
-        entryMode === "variant"
-          ? {
-              yarnVariantId: Number(yarnVariantId),
-              quantityKg: Number(quantity),
-              unitCost: Number(unitCost),
-            }
-          : {
-              yarnId: Number(yarnId),
-              colorId: Number(colorId),
-              supplierId: Number(supplierId),
-              quantityKg: Number(quantity),
-              unitCost: Number(unitCost),
-            };
-
+      // Schema requires yarnVariantId + quantity + unitPrice
+      if (!yarnVariantId) {
+        setError("Select a yarn variant before recording procurement.");
+        return;
+      }
       await procurementService.recordPurchase({
         supplierId: Number(supplierId),
         notes: notes || undefined,
-        lines: [linePayload],
+        lines: [
+          {
+            yarnVariantId: Number(yarnVariantId),
+            quantity: Number(quantity),
+            unitPrice: Number(unitCost),
+          },
+        ],
       });
       setMessage(
         "Procurement recorded successfully. Yarn inventory stock snapshot updated.",

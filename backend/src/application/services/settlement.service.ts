@@ -3,14 +3,14 @@ import { AuditService } from "./audit.service.js";
 import {
   discoverReturnedSettlementBundles,
   type WeaverSettlementBundle,
-} from "../../services/batch-settlement.service.js";
+} from "./batch-settlement.service.js";
 import {
   commitSettlement as legacyCommitSettlement,
   type CommitSettlementInput,
   type SettlementOverride,
-} from "../../services/settlement.service.js";
-import type { LineOverride } from "../../services/calculation.service.js";
-import { createSettlementPreview } from "../../services/settlement-preview.service.js";
+} from "./settlement-core.service.js";
+import type { LineOverride } from "./calculation.service.js";
+import { createSettlementPreview } from "./settlement-preview.service.js";
 import { allocateBatchPayment } from "./settlement-payment.rules.js";
 import { formatAmharicAmount } from "../../utils/amharic-words.js";
 import {

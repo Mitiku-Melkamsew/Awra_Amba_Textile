@@ -8,10 +8,10 @@ import type {
   FabricReturnToWeaver,
 } from "../../domain/models";
 
+/** Payload matching backend CreateWorkOrderSchema (schema fields only). */
 export interface CreateWorkOrderDto {
   zigId?: string;
   weaverUserId: number;
-  weaverId?: number;
   fabricVariantId: number;
   yarnLines?: Array<{
     yarnVariantId: number;
@@ -23,11 +23,11 @@ export interface CreateWorkOrderDto {
 export const workOrderService = {
   async listWorkOrders(params?: {
     status?: WorkOrderStatus;
-    weaverId?: number;
+    weaverUserId?: number;
   }): Promise<WorkOrder[]> {
     const query = new URLSearchParams();
     if (params?.status) query.append("status", params.status);
-    if (params?.weaverId) query.append("weaverUserId", params.weaverId.toString());
+    if (params?.weaverUserId) query.append("weaverUserId", params.weaverUserId.toString());
     const queryString = query.toString() ? `?${query.toString()}` : "";
     const res = await request<any>(`/work-orders${queryString}`);
     return Array.isArray(res) ? res : (res.workOrders ?? []);
@@ -40,7 +40,12 @@ export const workOrderService = {
   async createWorkOrder(data: CreateWorkOrderDto): Promise<WorkOrder> {
     return request<WorkOrder>("/work-orders", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        zigId: data.zigId,
+        weaverUserId: data.weaverUserId,
+        fabricVariantId: data.fabricVariantId,
+        yarnLines: data.yarnLines,
+      }),
     });
   },
 
@@ -58,29 +63,21 @@ export const workOrderService = {
     });
   },
 
-  // Yarn Given
+  // --- Yarn Given ---
   async addYarnGiven(
     workOrderId: string | number,
     data: {
-      yarnId: number;
-      yarnVariantId?: number | null;
-      supplierId?: number | null;
-      quantityKg: number;
+      yarnVariantId: number;
+      quantity: number;
       unitPrice?: number;
     }
   ): Promise<YarnGiven> {
     return request<YarnGiven>(`/work-orders/${workOrderId}/yarn-given`, {
       method: "POST",
       body: JSON.stringify({
-        lines: [
-          {
-            yarnId: data.yarnId,
-            yarnVariantId: data.yarnVariantId,
-            supplierId: data.supplierId,
-            quantity: data.quantityKg,
-            unitPrice: data.unitPrice ?? 0,
-          },
-        ],
+        yarnVariantId: data.yarnVariantId,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice ?? 0,
       }),
     });
   },
@@ -88,14 +85,14 @@ export const workOrderService = {
   async updateYarnGiven(
     yarnGivenId: number,
     data: {
-      quantityKg?: number;
+      quantity?: number;
       unitPrice?: number;
     }
   ): Promise<YarnGiven> {
     return request<YarnGiven>(`/work-orders/yarn-given/${yarnGivenId}`, {
       method: "PATCH",
       body: JSON.stringify({
-        quantity: data.quantityKg,
+        quantity: data.quantity,
         unitPrice: data.unitPrice,
       }),
     });
@@ -107,40 +104,31 @@ export const workOrderService = {
     });
   },
 
-  // Fabric Returns
+  // --- Fabric Returns ---
   async addFabricReturn(
     workOrderId: string | number,
     data: {
-      returnDate?: string;
-      fabricVariantId?: number;
-      productId?: number;
-      warpColorId?: number;
-      weftColorId?: number;
-      designId?: number;
+      fabricVariantId: number;
       quantityReturned: number;
-      actualWeightG?: number;
-      totalWeight?: number;
+      totalWeight: number;
       unitPrice?: number;
       lengthCm?: number;
       widthCm?: number;
-      notes?: string;
       remark?: string;
+      returnDate?: string;
     }
   ): Promise<FabricReturn> {
     return request<FabricReturn>(`/work-orders/${workOrderId}/fabric-returns`, {
       method: "POST",
       body: JSON.stringify({
         fabricVariantId: data.fabricVariantId,
-        productId: data.productId,
-        warpColorId: data.warpColorId,
-        weftColorId: data.weftColorId,
-        designId: data.designId,
         quantityReturned: data.quantityReturned,
-        totalWeight: data.totalWeight ?? data.actualWeightG ?? 0,
+        totalWeight: data.totalWeight,
         unitPrice: data.unitPrice ?? 0,
         lengthCm: data.lengthCm,
         widthCm: data.widthCm,
-        remark: data.remark ?? data.notes,
+        remark: data.remark,
+        returnDate: data.returnDate,
       }),
     });
   },
@@ -149,10 +137,8 @@ export const workOrderService = {
     fabricReturnId: number,
     data: {
       quantityReturned?: number;
-      actualWeightG?: number;
       totalWeight?: number;
       unitPrice?: number;
-      notes?: string;
       remark?: string;
     }
   ): Promise<FabricReturn> {
@@ -160,9 +146,9 @@ export const workOrderService = {
       method: "PATCH",
       body: JSON.stringify({
         quantityReturned: data.quantityReturned,
-        totalWeight: data.totalWeight ?? data.actualWeightG,
+        totalWeight: data.totalWeight,
         unitPrice: data.unitPrice,
-        remark: data.remark ?? data.notes,
+        remark: data.remark,
       }),
     });
   },
@@ -173,25 +159,23 @@ export const workOrderService = {
     });
   },
 
-  // Unused Yarn Returns
+  // --- Yarn Returns ---
   async addYarnReturn(
     workOrderId: string | number,
     data: {
-      yarnId?: number;
-      yarnVariantId?: number;
-      quantityKg?: number;
-      quantity?: number;
-      returnDate?: string;
+      yarnVariantId: number;
+      quantity: number;
       remark?: string;
+      returnDate?: string;
     }
   ): Promise<YarnReturn> {
     return request<YarnReturn>(`/work-orders/${workOrderId}/yarn-returns`, {
       method: "POST",
       body: JSON.stringify({
-        yarnId: data.yarnId,
         yarnVariantId: data.yarnVariantId,
-        quantity: data.quantity ?? data.quantityKg,
+        quantity: data.quantity,
         remark: data.remark,
+        returnDate: data.returnDate,
       }),
     });
   },
@@ -202,15 +186,14 @@ export const workOrderService = {
     });
   },
 
-  // Fabric Returns To Weaver
+  // --- Fabric Returns To Weaver ---
   async addFabricReturnToWeaver(
     workOrderId: string | number,
     data: {
+      fabricVariantId: number;
       quantity: number;
-      fabricVariantId?: number;
-      returnDate?: string;
-      reason?: string;
       remark?: string;
+      returnDate?: string;
     }
   ): Promise<FabricReturnToWeaver> {
     return request<FabricReturnToWeaver>(
@@ -218,9 +201,10 @@ export const workOrderService = {
       {
         method: "POST",
         body: JSON.stringify({
-          quantity: data.quantity,
           fabricVariantId: data.fabricVariantId,
-          remark: data.remark ?? data.reason,
+          quantity: data.quantity,
+          remark: data.remark,
+          returnDate: data.returnDate,
         }),
       }
     );

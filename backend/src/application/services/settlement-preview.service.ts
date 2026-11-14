@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "../lib/prisma.js";
-import { numberToAmharicWords } from "../utils/amharic-words.js";
-import { formatDateDDMMYY } from "../utils/format-date.js";
+import { prisma } from "../../lib/prisma.js";
+import { numberToAmharicWords } from "../../utils/amharic-words.js";
+import { formatDateDDMMYY } from "../../utils/format-date.js";
 import { groupReturnsByFabricType } from "./fabric-line-grouping.js";
 import type { LineOverride } from "./calculation.service.js";
 import {

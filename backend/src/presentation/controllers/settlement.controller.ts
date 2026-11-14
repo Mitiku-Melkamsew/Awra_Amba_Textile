@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { SettlementService } from "../../application/services/settlement.service.js";
-import { exportBatchSettlementCsv } from "../../services/settlement-preview.service.js";
+import { exportBatchSettlementCsv } from "../../application/services/settlement-preview.service.js";
 
 export class SettlementController {
   static async getUnsettled(req: Request, res: Response, next: NextFunction) {

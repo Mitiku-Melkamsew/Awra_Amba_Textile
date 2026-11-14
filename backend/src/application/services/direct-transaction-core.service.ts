@@ -1,23 +1,13 @@
 import { DirectTxnStatus, DirectTxnType } from "@prisma/client";
-import { prisma } from "../lib/prisma.js";
-import { AuditService } from "../application/services/audit.service.js";
-import { resolveFabricVariant, resolveYarnVariant } from "./variant.service.js";
+import { prisma } from "../../lib/prisma.js";
+import { AuditService } from "./audit.service.js";
 
 export interface CreateDirectTxnLineInput {
   fabricVariantId?: number | null;
   yarnVariantId?: number | null;
-  productId?: number | null;
-  fabricId?: number | null;
-  warpColorId?: number | null;
-  weftColorId?: number | null;
-  designId?: number | null;
-  yarnId?: number | null;
-  yarnTypeId?: number | null;
-  colorId?: number | null;
-  supplierId?: number | null;
   quantity: number;
   unitPrice: number;
-  description?: string;
+  description?: string | null;
 }
 
 export interface CreateDirectTransactionInput {
@@ -69,82 +59,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
     throw new Error("VALIDATION: At least one transaction line is required.");
   }
 
-  // Auto-resolve variants if catalog combinations are provided
-  for (const line of input.lines) {
-    if (!line.fabricVariantId && (line.fabricId || line.productId)) {
-      const fId = Number(line.fabricId ?? line.productId);
-      let warpColorId = line.warpColorId ? Number(line.warpColorId) : undefined;
-      let weftColorId = line.weftColorId ? Number(line.weftColorId) : undefined;
-      let designId = line.designId ? Number(line.designId) : undefined;
-      if (!warpColorId || !weftColorId) {
-        const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
-        warpColorId = warpColorId ?? firstColor?.colorId ?? 1;
-        weftColorId = weftColorId ?? firstColor?.colorId ?? 1;
-      }
-      if (isSale) {
-        let defaultDesignId: number | undefined;
-        if (!designId) {
-          const firstDesign = await prisma.design.findFirst({ orderBy: { designId: "asc" } });
-          defaultDesignId = firstDesign?.designId;
-        }
-        const existing = await prisma.fabricVariant.findFirst({
-          where: {
-            fabricId: fId,
-            warpColorId,
-            weftColorId,
-            ...(designId ? { designId } : defaultDesignId ? { designId: defaultDesignId } : {}),
-          },
-        });
-        if (!existing) {
-          throw new Error("VALIDATION: Cannot sell a fabric combination that does not exist in inventory.");
-        }
-        line.fabricVariantId = existing.fabricVariantId;
-      } else {
-        const res = await resolveFabricVariant({
-          fabricId: fId,
-          warpColorId,
-          weftColorId,
-          designId,
-        });
-        line.fabricVariantId = res.variantId;
-      }
-    }
-
-    if (!line.yarnVariantId && (line.yarnId || line.yarnTypeId)) {
-      const yId = Number(line.yarnId ?? line.yarnTypeId);
-      let cId = line.colorId ? Number(line.colorId) : undefined;
-      if (!cId) {
-        const firstColor = await prisma.color.findFirst({ orderBy: { colorId: "asc" } });
-        cId = firstColor?.colorId ?? 1;
-      }
-      let sId = (line.supplierId ?? (input as any).supplierId) ? Number(line.supplierId ?? (input as any).supplierId) : undefined;
-      if (!sId) {
-        const firstSupplier = await prisma.supplier.findFirst({ orderBy: { supplierId: "asc" } });
-        sId = firstSupplier?.supplierId ?? 1;
-      }
-      if (isSale) {
-        const existing = await prisma.yarnVariant.findFirst({
-          where: {
-            yarnId: yId,
-            colorId: cId,
-            supplierId: sId,
-          },
-        });
-        if (!existing) {
-          throw new Error("VALIDATION: Cannot sell a yarn combination that does not exist in inventory.");
-        }
-        line.yarnVariantId = existing.yarnVariantId;
-      } else {
-        const res = await resolveYarnVariant({
-          yarnId: yId,
-          colorId: cId,
-          supplierId: sId,
-        });
-        line.yarnVariantId = res.variantId;
-      }
-    }
-  }
-
+  // Lines must already carry fabricVariantId or yarnVariantId (schema fields).
   // Validate line items & stock types
   let calculatedTotal = 0;
   const eventDate = input.transactionDate ?? new Date();
