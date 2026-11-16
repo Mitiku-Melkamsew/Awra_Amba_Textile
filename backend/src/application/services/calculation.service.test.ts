@@ -166,6 +166,44 @@ describe("buildSettlementPreview - deduction on the merged average weight", () =
     });
     expect(preview.lineItems[0].deductionPerPiece).toBe(0);
   });
+
+  it("groups returns by fabricId across different fabric variants in the same zig", () => {
+    const preview = buildSettlementPreview({
+      returns: [
+        {
+          returnId: 1,
+          zigId: "zig-1",
+          fabricId: 5,
+          fabricVariantId: 101, // blue border
+          quantityReturned: 10,
+          totalWeight: 600, // avg 60
+          unitPrice: 1000,
+          standardWeightG: 64,
+        },
+        {
+          returnId: 2,
+          zigId: "zig-1",
+          fabricId: 5,
+          fabricVariantId: 102, // red border
+          quantityReturned: 10,
+          totalWeight: 680, // avg 68
+          unitPrice: 1000,
+          standardWeightG: 64,
+        },
+      ],
+      yarnGiven: [],
+    });
+
+    // Merged avg weight: (600 + 680) / 20 = 1280 / 20 = 64
+    // Standard is 64 -> deductionPerPiece = 0 for BOTH variants!
+    expect(preview.lineItems[0].deductionBasisAvgWeight).toBe(64);
+    expect(preview.lineItems[0].deductionPerPiece).toBe(0);
+    expect(preview.lineItems[1].deductionBasisAvgWeight).toBe(64);
+    expect(preview.lineItems[1].deductionPerPiece).toBe(0);
+    expect(preview.groupedLines.length).toBe(1);
+    expect(preview.groupedLines[0].fabricId).toBe(5);
+    expect(preview.groupedLines[0].totalQuantity).toBe(20);
+  });
 });
 
 describe("buildSettlementPreview - overrides", () => {

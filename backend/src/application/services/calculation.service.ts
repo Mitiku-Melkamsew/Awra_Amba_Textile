@@ -129,6 +129,8 @@ export interface SettlementLinePreview {
   zigId: string;
   fabricId?: number;
   fabricVariantId: number;
+  quantityReturned?: number;
+  excludedQuantity?: number;
   quantity: number;
   totalWeight: number;
   avgWeight: number;
@@ -346,6 +348,8 @@ export function buildSettlementPreview(params: {
       zigId: row.zigId,
       fabricId: row.fabricId,
       fabricVariantId: row.fabricVariantId,
+      quantityReturned: row.quantityReturned,
+      excludedQuantity: row.excludedQuantity ?? 0,
       quantity,
       totalWeight,
       avgWeight,

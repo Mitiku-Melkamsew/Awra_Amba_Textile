@@ -3,6 +3,7 @@ import { z } from "zod";
 export const SettlementPreviewQuerySchema = z.object({
   cutoffDate: z.string().datetime().optional().or(z.string().optional()),
   periodEnd: z.string().datetime().optional().or(z.string().optional()),
+  includeZigIds: z.array(z.string()).optional(),
   overrides: z.array(
     z.object({
       returnId: z.number().int().positive(),
@@ -13,9 +14,19 @@ export const SettlementPreviewQuerySchema = z.object({
 });
 
 export const CommitBatchSettlementSchema = z.object({
-  batchId: z.number().int().positive(),
+  batchId: z.number().int().positive().optional(),
+  cutoffDate: z.string().datetime().optional().or(z.string().optional()),
+  includeZigIds: z.array(z.string()).optional(),
+  overrides: z.array(
+    z.object({
+      returnId: z.number().int().positive(),
+      calculatedDeduction: z.number().nonnegative(),
+      remark: z.string().optional(),
+    }),
+  ).optional(),
   paymentMethod: z.string().max(30).optional(),
   notes: z.string().optional().nullable(),
+  autoPay: z.boolean().optional(),
 });
 
 export const CommitSingleSettlementSchema = z.object({
@@ -30,6 +41,10 @@ export const PaySettlementSchema = z.object({
   amount: z.number().positive().optional(),
   paymentMethod: z.string().max(30).optional(),
   notes: z.string().optional(),
+});
+
+export const CancelSettlementSchema = z.object({
+  reason: z.string().min(1, "Cancellation reason is required"),
 });
 
 export const OverrideSettlementLineSchema = z.object({

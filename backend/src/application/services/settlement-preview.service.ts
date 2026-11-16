@@ -7,6 +7,7 @@ import type { LineOverride } from "./calculation.service.js";
 import {
   batchCommitSettlements,
   discoverReturnedSettlementBundles,
+  discoverOutOfCutoffZigs,
 } from "./batch-settlement.service.js";
 
 function fabricTypeLabel(fabricVariant: {
@@ -43,8 +44,28 @@ export function summarizeYarnLines(
 export async function buildDetailedBatchSnapshot(
   cutoffDate?: Date | null,
   overrides: LineOverride[] = [],
+  includeZigIds?: string[],
 ) {
-  const bundles = await discoverReturnedSettlementBundles(cutoffDate, overrides);
+  const [bundles, allReturnedOrders, allUnsettledReturns] = await Promise.all([
+    discoverReturnedSettlementBundles(cutoffDate, overrides, includeZigIds),
+    prisma.workOrder.findMany({
+      where: { status: "returned" },
+      include: { weaver: true },
+      orderBy: [{ weaverUserId: "asc" }, { zigId: "asc" }],
+    }),
+    prisma.fabricReturn.findMany({
+      where: { settlementLineReturns: { none: {} } },
+      select: { zigId: true, dateReturned: true },
+    }),
+  ]);
+
+  const outOfCutoffZigs = discoverOutOfCutoffZigs(
+    allReturnedOrders,
+    allUnsettledReturns,
+    cutoffDate,
+    includeZigIds,
+  );
+
   const returnIds = bundles.flatMap((b) => b.returnIds);
   const yarnIds = bundles.flatMap((b) => b.yarnGivenIds);
 
@@ -150,6 +171,7 @@ export async function buildDetailedBatchSnapshot(
     amharicAmountInWords: numberToAmharicWords(grandTotal),
     generatedAt: new Date().toISOString(),
     cutoffDate: cutoffDate ? cutoffDate.toISOString() : null,
+    outOfCutoffZigs,
   };
 }
 
@@ -169,25 +191,18 @@ export function withGroupedReturns(snapshot: BatchSnapshot) {
 }
 
 export async function createSettlementPreview(
-  createdByUserId: number,
+  _createdByUserId: number,
   cutoffDate?: Date | null,
   overrides: LineOverride[] = [],
+  includeZigIds?: string[],
 ) {
-  const snapshot = await buildDetailedBatchSnapshot(cutoffDate, overrides);
-  const persistedSnapshot = withGroupedReturns(snapshot);
-  const batch = await prisma.settlementBatch.create({
-    data: {
-      snapshot: persistedSnapshot as unknown as Prisma.InputJsonValue,
-      totalAmount: snapshot.grandTotal,
-      createdByUserId,
-    },
-  });
+  const snapshot = await buildDetailedBatchSnapshot(cutoffDate, overrides, includeZigIds);
+  const previewSnapshot = withGroupedReturns(snapshot);
   return {
-    batchId: batch.batchId,
-    previewId: String(batch.batchId),
-    status: batch.status,
-    ...persistedSnapshot,
-    generatedAt: batch.createdAt,
+    previewId: "preview",
+    status: "preview",
+    ...previewSnapshot,
+    generatedAt: new Date().toISOString(),
   };
 }
 

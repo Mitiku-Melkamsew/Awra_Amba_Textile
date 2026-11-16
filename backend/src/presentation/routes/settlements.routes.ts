@@ -9,6 +9,7 @@ import {
   CommitBatchSettlementSchema,
   CommitSingleSettlementSchema,
   PaySettlementSchema,
+  CancelSettlementSchema,
   OverrideSettlementLineSchema,
   SettlementPreviewQuerySchema,
 } from "../dtos/settlement.dto.js";
@@ -16,6 +17,18 @@ import {
 export const settlementsRouter = Router();
 
 settlementsRouter.use(authenticate);
+
+settlementsRouter.get(
+  "/pending-summary",
+  requireCapability(Capability.SETTLEMENTS_PREVIEW),
+  SettlementController.getPendingSummary,
+);
+
+settlementsRouter.get(
+  "/zigs-ledger",
+  requireCapability(Capability.SETTLEMENTS_PREVIEW),
+  SettlementController.getZigsLedger,
+);
 
 settlementsRouter.get(
   "/unsettled",
@@ -77,6 +90,12 @@ settlementsRouter.post(
   requireCapability(Capability.SETTLEMENTS_PAY),
   validateBody(PaySettlementSchema),
   SettlementController.pay,
+);
+settlementsRouter.post(
+  "/:id/cancel",
+  requireCapability(Capability.SETTLEMENTS_COMMIT),
+  validateBody(CancelSettlementSchema),
+  SettlementController.cancel,
 );
 settlementsRouter.post(
   "/batches/:id/pay",

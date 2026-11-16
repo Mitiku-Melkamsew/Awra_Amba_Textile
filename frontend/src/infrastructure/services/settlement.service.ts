@@ -4,6 +4,8 @@ import type {
   SettlementBatchPreview,
   Settlement,
   HisabReport,
+  PendingSettlementsSummary,
+  ZigLedgerItem,
 } from "../../domain/models";
 
 export const settlementService = {
@@ -18,6 +20,7 @@ export const settlementService = {
     periodStart?: string;
     periodEnd?: string;
     cutoffDate?: string;
+    includeZigIds?: string[];
     weaverIds?: number[];
   }): Promise<SettlementBatchPreview> {
     const cutoff = data.cutoffDate ?? data.periodEnd;
@@ -27,14 +30,18 @@ export const settlementService = {
         ...data,
         periodEnd: cutoff,
         cutoffDate: cutoff,
+        includeZigIds: data.includeZigIds,
       }),
     });
   },
 
   async commitBatch(data: {
-    batchId: number;
+    batchId?: number;
+    cutoffDate?: string;
+    includeZigIds?: string[];
     notes?: string;
     paymentMethod?: string;
+    autoPay?: boolean;
     overrides?: Array<{
       returnId: number;
       calculatedDeduction: number;
@@ -45,6 +52,22 @@ export const settlementService = {
       method: "POST",
       body: JSON.stringify(data),
     });
+  },
+
+  async cancelSettlement(id: string | number, reason: string): Promise<any> {
+    return request(`/settlements/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  async getPendingSummary(): Promise<PendingSettlementsSummary> {
+    return request<PendingSettlementsSummary>("/settlements/pending-summary");
+  },
+
+  async getZigsLedger(status?: string): Promise<ZigLedgerItem[]> {
+    const query = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+    return request<ZigLedgerItem[]>(`/settlements/zigs-ledger${query}`);
   },
 
   async getBatch(id: string | number): Promise<SettlementBatch> {

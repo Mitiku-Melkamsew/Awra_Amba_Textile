@@ -91,27 +91,103 @@ export interface SettlementBatch {
   };
 }
 
+export interface OutOfCutoffZig {
+  zigId: string;
+  weaverUserId: number;
+  weaverName: string;
+  firstReturnDate: string;
+}
+
+export interface PendingSettlementsSummary {
+  totalPendingAmount: number;
+  totalFabricValue: number;
+  totalDeductions: number;
+  totalYarnCost: number;
+  weaverCount: number;
+  zigCount: number;
+  totalPieceCount: number;
+  zigs: Array<{
+    zigId: string;
+    weaverUserId: number;
+    weaverName: string;
+    estimatedPayout: number;
+    pieceCount: number;
+    isBlocked: boolean;
+    blockReasons: string[];
+  }>;
+}
+
+export interface ZigLedgerItem {
+  zigId: string;
+  weaverUserId: number;
+  weaverName: string;
+  weaverPhone?: string | null;
+  status: string;
+  dateIssued: string;
+  fabricName: string;
+  standardWeightG: number;
+  warpColor?: string;
+  weftColor?: string;
+  design?: string;
+  yarn: {
+    issuedQuantity: number;
+    returnedQuantity: number;
+    netQuantity: number;
+    totalCost: number;
+  };
+  fabric: {
+    receivedQuantity: number;
+    defectiveQuantity: number;
+    billableQuantity: number;
+    totalWeight: number;
+    averageWeight: number;
+  };
+  settlement?: {
+    settlementId: number;
+    batchId: number;
+    status: string;
+    amount: number | null;
+  } | null;
+  isSettled: boolean;
+}
+
 export interface SettlementBatchPreview {
-  periodStart: string;
-  periodEnd: string;
-  totalWeavers: number;
-  totalZigsCount: number;
-  totalFabricPieces: number;
-  estimatedGrossFabricCredit: number;
-  estimatedYarnDebits: number;
-  estimatedQualityDeductions: number;
-  estimatedNetPayout: number;
+  periodStart?: string;
+  periodEnd?: string;
+  cutoffDate?: string | null;
+  previewId?: string;
+  totalWeavers?: number;
+  weaverCount?: number;
+  totalZigsCount?: number;
+  totalFabricPieces?: number;
+  grandTotal?: number;
+  estimatedGrossFabricCredit?: number;
+  estimatedYarnDebits?: number;
+  estimatedQualityDeductions?: number;
+  estimatedNetPayout?: number;
+  amharicAmountInWords?: string;
+  outOfCutoffZigs?: OutOfCutoffZig[];
   weavers: Array<{
     weaverId: number;
-    fullName: string;
-    phone: string | null;
-    workOrdersCount: number;
-    fabricPieces: number;
-    grossFabricCredit: number;
-    yarnDebits: number;
-    qualityDeductions: number;
-    netPayout: number;
-    workOrders: WorkOrder[];
+    weaverUserId?: number;
+    fullName?: string;
+    weaverName?: string;
+    phone?: string | null;
+    workOrdersCount?: number;
+    fabricPieces?: number;
+    grossFabricCredit?: number;
+    yarnDebits?: number;
+    qualityDeductions?: number;
+    netPayout?: number;
+    netSettlement?: number;
+    workOrders?: WorkOrder[];
+    zigIds?: string[];
+    returnCount?: number;
+    yarnCount?: number;
+    isBlocked?: boolean;
+    blockReasons?: string[];
+    lineItems?: any[];
+    zigDetails?: any[];
   }>;
 }
 

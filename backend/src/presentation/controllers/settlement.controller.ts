@@ -19,10 +19,12 @@ export class SettlementController {
       const rawCutoff =
         req.query.cutoffDate ?? req.query.periodEnd ?? req.body?.cutoffDate ?? req.body?.periodEnd;
       const cutoff = rawCutoff ? new Date(String(rawCutoff)) : null;
+      const includeZigIds = req.body?.includeZigIds ?? (req.query.includeZigIds ? String(req.query.includeZigIds).split(",").map((s: string) => s.trim()).filter(Boolean) : []);
       const preview = await SettlementService.generatePreview(
         cutoff,
         req.user!.userId,
         req.body?.overrides ?? [],
+        includeZigIds,
       );
       res.json(preview);
     } catch (error) {
@@ -34,14 +36,40 @@ export class SettlementController {
     try {
       const actorUserId = req.user!.userId;
       const result = await SettlementService.commitBatch(
-        {
-          batchId: req.body.batchId,
-          paymentMethod: req.body.paymentMethod,
-          notes: req.body.notes,
-        },
+        req.body,
         actorUserId,
       );
       res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async cancel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const actorUserId = req.user!.userId;
+      const result = await SettlementService.cancelSettlement(id, req.body, actorUserId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPendingSummary(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const summary = await SettlementService.getPendingSettlementsSummary();
+      res.json(summary);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getZigsLedger(req: Request, res: Response, next: NextFunction) {
+    try {
+      const statusFilter = req.query.status as string | undefined;
+      const ledger = await SettlementService.getZigsLedger(statusFilter);
+      res.json(ledger);
     } catch (error) {
       next(error);
     }

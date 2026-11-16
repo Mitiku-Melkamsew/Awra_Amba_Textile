@@ -16,10 +16,18 @@ export interface WeaverSettlementBundle {
   preview: SettlementPreview;
 }
 
+export interface OutOfCutoffZig {
+  zigId: string;
+  weaverUserId: number;
+  weaverName: string;
+  firstReturnDate: string;
+}
+
 export function eligibleReturnedZigIds(
   returnedOrders: Array<{ zigId: string }>,
   unsettledReturns: Array<{ zigId: string; dateReturned: Date | string }>,
   cutoffDate?: Date | null,
+  includeZigIds?: string[],
 ): Set<string> {
   const firstReturnDateByZig = new Map<string, Date>();
   for (const ret of unsettledReturns) {
@@ -31,9 +39,12 @@ export function eligibleReturnedZigIds(
   const cutoffEnd = cutoffDate ? new Date(cutoffDate) : null;
   cutoffEnd?.setHours(23, 59, 59, 999);
 
+  const exceptions = new Set(includeZigIds ?? []);
+
   return new Set(
     returnedOrders
       .filter((order) => {
+        if (exceptions.has(order.zigId)) return true;
         const firstReturn = firstReturnDateByZig.get(order.zigId);
         return Boolean(firstReturn) && (!cutoffEnd || firstReturn! <= cutoffEnd);
       })
@@ -41,9 +52,42 @@ export function eligibleReturnedZigIds(
   );
 }
 
+export function discoverOutOfCutoffZigs(
+  returnedOrders: Array<{ zigId: string; weaver: { fullName: string; userId: number } }>,
+  unsettledReturns: Array<{ zigId: string; dateReturned: Date | string }>,
+  cutoffDate?: Date | null,
+  includeZigIds?: string[],
+): OutOfCutoffZig[] {
+  if (!cutoffDate) return [];
+  const cutoffEnd = new Date(cutoffDate);
+  cutoffEnd.setHours(23, 59, 59, 999);
+  const exceptions = new Set(includeZigIds ?? []);
+
+  const firstReturnDateByZig = new Map<string, Date>();
+  for (const ret of unsettledReturns) {
+    const date = new Date(ret.dateReturned);
+    const first = firstReturnDateByZig.get(ret.zigId);
+    if (!first || date < first) firstReturnDateByZig.set(ret.zigId, date);
+  }
+
+  return returnedOrders
+    .filter((order) => {
+      if (exceptions.has(order.zigId)) return false;
+      const firstReturn = firstReturnDateByZig.get(order.zigId);
+      return Boolean(firstReturn) && firstReturn! > cutoffEnd;
+    })
+    .map((order) => ({
+      zigId: order.zigId,
+      weaverUserId: order.weaver.userId,
+      weaverName: order.weaver.fullName,
+      firstReturnDate: firstReturnDateByZig.get(order.zigId)!.toISOString(),
+    }));
+}
+
 export async function discoverReturnedSettlementBundles(
   cutoffDate?: Date | null,
   overrides: LineOverride[] = [],
+  includeZigIds?: string[],
 ) {
   // 1. Get all returned work orders
   const returnedOrders = await prisma.workOrder.findMany({
@@ -90,7 +134,7 @@ export async function discoverReturnedSettlementBundles(
   const weightRule = qualityRules.find((q) => q.factor === "weight");
 
   // Only include zigs with at least one unsettled return; older settled zigs must not re-charge yarn.
-  const eligibleZigIds = eligibleReturnedZigIds(returnedOrders, returns, cutoffDate);
+  const eligibleZigIds = eligibleReturnedZigIds(returnedOrders, returns, cutoffDate, includeZigIds);
 
   const eligibleOrders = returnedOrders.filter((o) => eligibleZigIds.has(o.zigId));
   const byWeaver = new Map<number, WeaverSettlementBundle>();

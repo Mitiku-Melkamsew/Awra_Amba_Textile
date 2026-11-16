@@ -922,9 +922,10 @@ export const stockApi = {
 };
 
 export const calculationsApi = {
-  batchPreview: async (params?: { cutoffDate?: string }) => {
+  batchPreview: async (params?: { cutoffDate?: string; includeZigIds?: string[] }) => {
     const preview: any = await settlementService.previewSettlements({
       cutoffDate: params?.cutoffDate,
+      includeZigIds: params?.includeZigIds,
     });
     const weavers = preview.weavers ?? (preview.bundles ?? []).map((b: any) => ({
       userId: b.weaverUserId,
@@ -940,6 +941,8 @@ export const calculationsApi = {
       yarnCount: b.yarnGivenIds?.length ?? 0,
       netSettlement: b.preview?.netSettlement ?? 0,
       lineItems: b.preview?.lineItems ?? [],
+      yarnDebits: b.preview?.yarnDebits ?? [],
+      zigDetails: b.zigDetails ?? [],
     }));
     const grandTotal = preview.grandTotal ?? preview.estimatedNetPayout ?? 0;
     const weaverCount = preview.weaverCount ?? preview.totalWeavers ?? weavers.length;
@@ -947,13 +950,14 @@ export const calculationsApi = {
     const cutoff = preview.cutoffDate ?? preview.periodEnd ?? params?.cutoffDate;
 
     return {
-      previewId: String(preview.previewId ?? preview.batchId),
+      previewId: String(preview.previewId ?? preview.batchId ?? "preview"),
       status: preview.status ?? "draft",
       generatedAt: preview.generatedAt,
       weaverCount,
       grandTotal,
       amharicAmountInWords,
       cutoffDate: cutoff,
+      outOfCutoffZigs: preview.outOfCutoffZigs ?? [],
       weavers: weavers.map((w: any) => {
         const uid = w.userId ?? w.weaverUserId ?? w.weaverId;
         return {
@@ -968,18 +972,35 @@ export const calculationsApi = {
           isBlocked: w.isBlocked ?? false,
           blockReasons: w.blockReasons ?? [],
           lineItems: w.lineItems ?? [],
+          yarnDebits: w.yarnDebits ?? [],
+          zigDetails: w.zigDetails ?? [],
         };
       }),
     };
   },
-  batchCommit: async (previewId: string, paymentMethod?: string) => {
-    const batchId = Number(previewId);
-    if (!Number.isInteger(batchId) || batchId < 1) {
-      throw new Error("This preview is missing a valid batch ID. Generate a new preview.");
+  batchCommit: async (
+    params: string | { previewId?: string; batchId?: number; cutoffDate?: string; includeZigIds?: string[]; paymentMethod?: string; notes?: string; autoPay?: boolean },
+    paymentMethod?: string,
+  ) => {
+    let payload: any = {};
+    if (typeof params === "string") {
+      const batchId = Number(params);
+      if (Number.isInteger(batchId) && batchId > 0) {
+        payload = { batchId, paymentMethod };
+      } else {
+        payload = { paymentMethod };
+      }
+    } else {
+      payload = { ...params };
+      if (paymentMethod && !payload.paymentMethod) {
+        payload.paymentMethod = paymentMethod;
+      }
     }
-    const batch: any = await settlementService.commitBatch({ batchId, paymentMethod });
+
+    const batch: any = await settlementService.commitBatch(payload);
     const grandTotal = Number(batch.grandTotal ?? batch.totalAmount ?? 0);
     const settlements = batch.settlements ?? [];
+    const batchId = batch.batchId ?? batch.settlementBatchId;
     return {
       previewId: String(batchId),
       batchId,
@@ -990,6 +1011,7 @@ export const calculationsApi = {
         const uid = s.weaverUserId ?? s.userId ?? s.weaverId;
         return {
           paymentId: s.paymentId ?? s.settlementId,
+          settlementId: s.settlementId ?? s.paymentId,
           userId: uid,
           weaverUserId: uid,
           weaverId: uid,
@@ -1003,6 +1025,15 @@ export const calculationsApi = {
       weaverCount: batch.weaverCount ?? settlements.length,
       amharicAmountInWords: batch.amharicAmountInWords ?? `${grandTotal} ብር`,
     };
+  },
+  cancelSettlement: async (settlementId: number | string, reason: string) => {
+    return settlementService.cancelSettlement(settlementId, reason);
+  },
+  pendingSummary: async () => {
+    return settlementService.getPendingSummary();
+  },
+  zigsLedger: async (status?: string) => {
+    return settlementService.getZigsLedger(status);
   },
   payBatch: async (
     previewId: string | number,
