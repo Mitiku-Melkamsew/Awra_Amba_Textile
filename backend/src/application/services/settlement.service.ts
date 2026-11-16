@@ -578,7 +578,6 @@ export class SettlementService {
       };
     });
   }
-  }
 
   /**
    * Record payment against a settlement and reconcile work orders
