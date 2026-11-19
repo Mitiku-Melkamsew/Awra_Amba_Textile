@@ -6,6 +6,98 @@ export function roundCurrency(val: number): number {
   return Math.round((val + Number.EPSILON) * 100) / 100;
 }
 
+export interface DeductionEntry {
+  factor: string;
+  perPiece: number;
+  remark?: string;
+}
+
+/** Compute total deduction = sum(perPiece) * quantity */
+export function computeDeductionAmount(
+  deductions: DeductionEntry[],
+  quantity: number,
+): number {
+  if (!deductions || deductions.length === 0 || quantity <= 0) return 0;
+  const totalPerPiece = deductions.reduce((sum, d) => sum + (Number(d.perPiece) || 0), 0);
+  return roundCurrency(totalPerPiece * quantity);
+}
+
+/** grossFabricValue = quantity * unitPrice */
+export function computeGrossFabricValue(
+  quantity: number,
+  unitPrice: number,
+): number {
+  return roundCurrency((Number(quantity) || 0) * (Number(unitPrice) || 0));
+}
+
+/** netFabricValue = grossFabricValue - deductionAmount */
+export function computeNetFabricValue(
+  grossFabricValue: number,
+  deductionAmount: number,
+): number {
+  return roundCurrency((Number(grossFabricValue) || 0) - (Number(deductionAmount) || 0));
+}
+
+/**
+ * Suggest a weight deduction entry if average weight is below standardWeightG.
+ * Checks against fabric type's standard weight (ignoring variant/color).
+ */
+export function suggestWeightDeduction(
+  totalWeight: number,
+  quantity: number,
+  standardWeightG: number,
+  deductionRatePerUnit: number = DEDUCTION_RATE_PER_UNIT,
+): DeductionEntry | null {
+  if (!quantity || quantity <= 0 || !standardWeightG || standardWeightG <= 0) {
+    return null;
+  }
+  const avgWeight = totalWeight / quantity;
+  const flooredWeight = Math.floor(avgWeight);
+  if (flooredWeight >= standardWeightG) {
+    return null;
+  }
+  const deficit = standardWeightG - flooredWeight;
+  const perPiece = deficit * deductionRatePerUnit;
+  return {
+    factor: "weight",
+    perPiece,
+    remark: `Average weight ${flooredWeight}g is ${deficit}g below standard ${standardWeightG}g (${perPiece} ETB/piece)`,
+  };
+}
+
+export interface FabricReturnFinancials {
+  grossFabricValue: number;
+  deductionAmount: number;
+}
+
+export interface YarnGivenFinancials {
+  quantity: number;
+  unitPrice: number;
+}
+
+/**
+ * Pure function: recalculate a Zig's net payable from its lines.
+ *
+ * netPayable = totalNetFabricValue - totalYarnCost
+ * Starts negative when yarn is issued, increases to positive as fabric returns arrive.
+ */
+export function computeNetPayable(
+  fabricReturns: FabricReturnFinancials[],
+  yarnGiven: YarnGivenFinancials[],
+): number {
+  const totalFabricNet = fabricReturns.reduce(
+    (sum, fr) => sum + computeNetFabricValue(Number(fr.grossFabricValue) || 0, Number(fr.deductionAmount) || 0),
+    0,
+  );
+
+  const totalYarnCost = yarnGiven.reduce(
+    (sum, yg) => sum + roundCurrency((Number(yg.quantity) || 0) * (Number(yg.unitPrice) || 0)),
+    0,
+  );
+
+  return roundCurrency(totalFabricNet - totalYarnCost);
+}
+
 export interface DeductionInput {
   avgWeight: number;
   unitPrice: number;

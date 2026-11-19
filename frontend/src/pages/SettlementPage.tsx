@@ -263,7 +263,10 @@ export function SettlementPage() {
       );
       setPayments((prev) =>
         prev.map((p) =>
-          p.paymentId === cancellingPayment.paymentId ? { ...p, status: "cancelled" } : p,
+          p.paymentId === cancellingPayment.paymentId ||
+          (p.settlementId && p.settlementId === cancellingPayment.settlementId)
+            ? { ...p, status: "cancelled" }
+            : p,
         ),
       );
       setCancellingPayment(null);
@@ -287,6 +290,9 @@ export function SettlementPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Link to="/admin/reports/production" className="btn-ghost">
+            <span>🏭</span> Production & WIP / የምርት ክትትል
+          </Link>
           <Link to="/admin/settlement/history" className="btn-ghost">
             <span>📜</span> Batch History / ታሪክ
           </Link>
@@ -314,19 +320,23 @@ export function SettlementPage() {
               ⚡ Real-Time Unsettled Weaver Liability (ያልተከፈለ ተከፋይ ድምር)
             </div>
             <div style={{ fontSize: "20px", fontWeight: 800, color: "#1E3A8A", marginTop: "0.15rem" }}>
-              {pendingSummary.totalPendingAmount.toLocaleString()} ETB
+              {(pendingSummary.pendingLiability ?? pendingSummary.totalPendingAmount ?? 0).toLocaleString()} ETB
             </div>
           </div>
           <div style={{ display: "flex", gap: "1.5rem", fontSize: "13px", color: "#1E3A8A" }}>
+            {pendingSummary.weaverCount !== undefined && (
+              <div>
+                Ready Artisans: <strong>{pendingSummary.weaverCount}</strong>
+              </div>
+            )}
             <div>
-              Ready Artisans: <strong>{pendingSummary.weaverCount}</strong>
+              Returned Zigs Awaiting Pay: <strong>{pendingSummary.unsettledZigCount ?? pendingSummary.zigCount ?? 0}</strong>
             </div>
-            <div>
-              Completed Zigs: <strong>{pendingSummary.zigCount}</strong>
-            </div>
-            <div>
-              Total Fabric Pieces: <strong>{pendingSummary.totalPieceCount} pcs</strong>
-            </div>
+            {pendingSummary.totalPieceCount !== undefined && (
+              <div>
+                Total Fabric Pieces: <strong>{pendingSummary.totalPieceCount} pcs</strong>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -722,16 +732,27 @@ export function SettlementPage() {
                   </p>
                 </div>
 
-                {!isBatchPaid && (
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    style={{ background: "#059669", borderColor: "#059669" }}
-                    onClick={() => setShowPayoutModal(true)}
-                  >
-                    💳 Disburse Batch Payment / ክፍያ ፈጽም
-                  </button>
-                )}
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  {committedPreviewId && (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => reportsApi.downloadBatchHisabCsv(committedPreviewId)}
+                    >
+                      ⬇ Batch CSV
+                    </button>
+                  )}
+                  {!isBatchPaid && (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      style={{ background: "#059669", borderColor: "#059669" }}
+                      onClick={() => setShowPayoutModal(true)}
+                    >
+                      💳 Disburse Batch Payment / ክፍያ ፈጽም
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="table-wrap">
@@ -746,66 +767,70 @@ export function SettlementPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {payments.map((p) => (
-                      <tr key={p.paymentId}>
-                        <td>
-                          <code style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--accent)" }}>
-                            #{p.paymentId}
-                          </code>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>{p.weaverName}</td>
-                        <td>
-                          {p.status === "cancelled" ? (
-                            <span className="badge badge-red">Cancelled (Disputed)</span>
-                          ) : isBatchPaid ? (
-                            <span className="badge badge-green">✓ Disbursed</span>
-                          ) : (
-                            <span className="badge badge-yellow">⏳ Pending Payout</span>
-                          )}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: "right",
-                            fontWeight: 700,
-                            color: p.status === "cancelled" ? "var(--text-muted)" : "var(--green)",
-                            textDecoration: p.status === "cancelled" ? "line-through" : "none",
-                          }}
-                        >
-                          {Math.round(p.amount).toLocaleString()} ETB
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          <div style={{ display: "inline-flex", gap: "0.35rem" }}>
-                            <button
-                              type="button"
-                              className="btn-sm"
-                              onClick={() => reportsApi.downloadHisabCsv(p.paymentId)}
-                            >
-                              CSV
-                            </button>
-                            <Link
-                              to={`/admin/reports/hisab/${p.paymentId}`}
-                              className="btn-sm primary"
-                              target="_blank"
-                            >
-                              Statement
-                            </Link>
-                            {!isBatchPaid && p.status !== "cancelled" && (
+                    {payments.map((p) => {
+                      const isPaid = isBatchPaid || p.status === "PAID" || p.status === "paid";
+                      const id = p.settlementId ?? p.paymentId;
+                      return (
+                        <tr key={p.paymentId}>
+                          <td>
+                            <code style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--accent)" }}>
+                              #{id}
+                            </code>
+                          </td>
+                          <td style={{ fontWeight: 600 }}>{p.weaverName}</td>
+                          <td>
+                            {p.status === "cancelled" ? (
+                              <span className="badge badge-red">Cancelled (Disputed)</span>
+                            ) : isPaid ? (
+                              <span className="badge badge-green">✓ Disbursed</span>
+                            ) : (
+                              <span className="badge badge-yellow">⏳ Pending Payout</span>
+                            )}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: "right",
+                              fontWeight: 700,
+                              color: p.status === "cancelled" ? "var(--text-muted)" : "var(--green)",
+                              textDecoration: p.status === "cancelled" ? "line-through" : "none",
+                            }}
+                          >
+                            {Math.round(p.amount).toLocaleString()} ETB
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <div style={{ display: "inline-flex", gap: "0.35rem" }}>
                               <button
                                 type="button"
                                 className="btn-sm"
-                                style={{ color: "#DC2626", borderColor: "#FCA5A5" }}
-                                onClick={() => {
-                                  setCancellingPayment(p);
-                                  setCancellationReason("");
-                                }}
+                                onClick={() => reportsApi.downloadHisabCsv(id, isPaid ? "payment" : "settlement")}
                               >
-                                ✕ Cancel (Dispute)
+                                CSV
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              <Link
+                                to={`/admin/reports/hisab/${id}${!isPaid ? "?type=settlement" : ""}`}
+                                className="btn-sm primary"
+                                target="_blank"
+                              >
+                                Statement
+                              </Link>
+                              {!isPaid && p.status !== "cancelled" && (
+                                <button
+                                  type="button"
+                                  className="btn-sm"
+                                  style={{ color: "#DC2626", borderColor: "#FCA5A5" }}
+                                  onClick={() => {
+                                    setCancellingPayment(p);
+                                    setCancellationReason("");
+                                  }}
+                                >
+                                  ✕ Cancel (Dispute)
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

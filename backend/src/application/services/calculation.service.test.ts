@@ -4,7 +4,12 @@ import {
   calculateBonus,
   calculateDeduction,
   calculateNetCredit,
+  computeDeductionAmount,
+  computeGrossFabricValue,
+  computeNetFabricValue,
+  computeNetPayable,
   DEDUCTION_RATE_PER_UNIT,
+  suggestWeightDeduction,
 } from "./calculation.service.js";
 
 describe("calculateDeduction", () => {
@@ -391,5 +396,63 @@ describe("buildSettlementPreview - planned update validations & yarn returns", (
 
     expect(preview.isBlocked).toBe(true);
     expect(preview.blockReasons[0]).toContain("exceeds issued quantity");
+  });
+});
+
+describe("Pure Calculation Functions for Zig & Return Level Math", () => {
+  it("computeGrossFabricValue calculates quantity * unitPrice", () => {
+    expect(computeGrossFabricValue(15, 1300)).toBe(19500);
+    expect(computeGrossFabricValue(0, 1300)).toBe(0);
+  });
+
+  it("computeDeductionAmount sums factors per piece and multiplies by quantity", () => {
+    const deductions = [
+      { factor: "weight", perPiece: 10 },
+      { factor: "low_quality", perPiece: 5 },
+    ];
+    // (10 + 5) * 20 = 300
+    expect(computeDeductionAmount(deductions, 20)).toBe(300);
+    expect(computeDeductionAmount([], 20)).toBe(0);
+  });
+
+  it("computeNetFabricValue subtracts deduction from gross", () => {
+    expect(computeNetFabricValue(19500, 300)).toBe(19200);
+  });
+
+  it("suggestWeightDeduction returns factor with deficit rate or null if standard met", () => {
+    // 800g / 10 pcs = 80g. Standard is 84g. Deficit = 4g -> 4 * 10 = 40 ETB/piece
+    const suggestion = suggestWeightDeduction(800, 10, 84, 10);
+    expect(suggestion).not.toBeNull();
+    expect(suggestion?.factor).toBe("weight");
+    expect(suggestion?.perPiece).toBe(40);
+
+    // Meets standard
+    const meetsStandard = suggestWeightDeduction(850, 10, 84, 10);
+    expect(meetsStandard).toBeNull();
+  });
+
+  it("computeNetPayable tracks negative balance when yarn issued and turns positive when fabric returned", () => {
+    // Initial state: 10kg yarn issued at 120 ETB -> netPayable is -1200
+    const initialPayable = computeNetPayable(
+      [],
+      [{ quantity: 10, unitPrice: 120 }]
+    );
+    expect(initialPayable).toBe(-1200);
+
+    // First fabric return: 5 pcs at 500 ETB, deduction 50 -> net fabric = 2450
+    // Net payable becomes 2450 - 1200 = 1250
+    const partialReturnPayable = computeNetPayable(
+      [{ grossFabricValue: 2500, deductionAmount: 50 }],
+      [{ quantity: 10, unitPrice: 120 }]
+    );
+    expect(partialReturnPayable).toBe(1250);
+
+    // Yarn adjustment: weaver returned 2kg unused yarn, so yarn given is updated to 8kg (8 * 120 = 960)
+    // Net payable becomes 2450 - 960 = 1490
+    const yarnAdjustedPayable = computeNetPayable(
+      [{ grossFabricValue: 2500, deductionAmount: 50 }],
+      [{ quantity: 8, unitPrice: 120 }]
+    );
+    expect(yarnAdjustedPayable).toBe(1490);
   });
 });

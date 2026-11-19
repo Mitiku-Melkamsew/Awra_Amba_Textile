@@ -1,7 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { prisma } from "../../lib/prisma.js";
 import { SettlementService } from "../../application/services/settlement.service.js";
-import { exportBatchSettlementCsv } from "../../application/services/settlement-preview.service.js";
 
 export class SettlementController {
   static async getUnsettled(req: Request, res: Response, next: NextFunction) {
@@ -110,7 +108,7 @@ export class SettlementController {
   static async getBatchCsv(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const csv = await exportBatchSettlementCsv(id);
+      const csv = await SettlementService.exportBatchCsv(id);
       if (csv === null) {
         res.status(404).json({ error: `Settlement batch ${id} not found` });
         return;

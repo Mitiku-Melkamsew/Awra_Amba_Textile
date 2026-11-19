@@ -4,6 +4,7 @@ import {
   catalogApi,
   fabricReturnsApi,
   type Color,
+  type DeductionEntry,
   type Design,
   type Fabric,
   type FabricVariant,
@@ -13,6 +14,14 @@ import { fabricVariantName } from "../utils/variantNames";
 import { findZigZagDesignId } from "../utils/defaultDesign";
 
 type FabricReturnRow = WorkOrderDetail["fabricReturns"][number];
+
+const DEDUCTION_FACTORS: Array<{ value: string; label: string }> = [
+  { value: "weight", label: "Weight Deficit" },
+  { value: "low_quality", label: "Low Quality / Coarse Weave" },
+  { value: "stain", label: "Stain / Discoloration" },
+  { value: "weaving_defect", label: "Weaving Defect / Broken Threads" },
+  { value: "custom", label: "Other / Custom Factor" },
+];
 
 interface FabricReturnFormProps {
   order: WorkOrderDetail;
@@ -75,6 +84,15 @@ export function FabricReturnForm({
   );
   const [remark, setRemark] = useState(editReturn?.remark ?? "");
 
+  // Quality Deductions state
+  const [deductions, setDeductions] = useState<DeductionEntry[]>(
+    editReturn?.deductions ? [...(editReturn.deductions as any)] : [],
+  );
+  const [addFactorOpen, setAddFactorOpen] = useState(false);
+  const [factorType, setFactorType] = useState("low_quality");
+  const [factorPerPiece, setFactorPerPiece] = useState("");
+  const [factorRemark, setFactorRemark] = useState("");
+
   // Accordion & status
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -124,6 +142,7 @@ export function FabricReturnForm({
       if (editReturn.lengthCm) setLengthCm(String(editReturn.lengthCm));
       if (editReturn.widthCm) setWidthCm(String(editReturn.widthCm));
       setRemark(editReturn.remark ?? "");
+      setDeductions(editReturn.deductions ? [...(editReturn.deductions as any)] : []);
       const varId = Number(editReturn.fabricVariant?.fabricVariantId ?? editReturn.fabricVariantId);
       if (varId) setSelectedVariantId(varId);
     }
@@ -150,7 +169,70 @@ export function FabricReturnForm({
   const numQty = parseFloat(quantity) || 0;
   const numWeight = parseFloat(totalWeight) || 0;
   const currentAvgWeight = numQty > 0 ? numWeight / numQty : 0;
-  const isCurrentUnderweight = currentAvgWeight > 0 && currentAvgWeight < standardWeight;
+  const flooredAvg = Math.floor(currentAvgWeight);
+  const isCurrentUnderweight = numQty > 0 && flooredAvg < standardWeight;
+  const weightDeficit = isCurrentUnderweight ? standardWeight - flooredAvg : 0;
+  const suggestedWeightPerPiece = weightDeficit * 10;
+  const hasWeightDeduction = deductions.some((d) => d.factor === "weight");
+
+  // Live financial preview
+  const totalDeductionPerPiece = useMemo(
+    () => deductions.reduce((sum, d) => sum + (Number(d.perPiece) || 0), 0),
+    [deductions],
+  );
+  const liveGross = useMemo(
+    () => numQty * (parseFloat(unitPrice) || 0),
+    [numQty, unitPrice],
+  );
+  const liveDeductionAmount = useMemo(
+    () => totalDeductionPerPiece * numQty,
+    [totalDeductionPerPiece, numQty],
+  );
+  const liveNetFabricValue = useMemo(
+    () => liveGross - liveDeductionAmount,
+    [liveGross, liveDeductionAmount],
+  );
+
+  function handleApplyWeightDeduction() {
+    if (suggestedWeightPerPiece <= 0) return;
+    setDeductions((prev) => {
+      const rest = prev.filter((d) => d.factor !== "weight");
+      return [
+        ...rest,
+        {
+          factor: "weight",
+          perPiece: suggestedWeightPerPiece,
+          remark: `Avg ${flooredAvg}g is ${weightDeficit}g below standard ${standardWeight}g (-${suggestedWeightPerPiece} ETB/piece)`,
+        },
+      ];
+    });
+  }
+
+  function handleAddCustomFactor() {
+    const p = parseFloat(factorPerPiece);
+    if (isNaN(p) || p <= 0) {
+      setError("Please specify a deduction amount per piece greater than 0");
+      return;
+    }
+    setDeductions((prev) => {
+      const rest = prev.filter((d) => d.factor !== factorType);
+      return [
+        ...rest,
+        {
+          factor: factorType,
+          perPiece: p,
+          remark: factorRemark.trim() || undefined,
+        },
+      ];
+    });
+    setFactorPerPiece("");
+    setFactorRemark("");
+    setAddFactorOpen(false);
+  }
+
+  function handleRemoveDeduction(factor: string) {
+    setDeductions((prev) => prev.filter((d) => d.factor !== factor));
+  }
 
   // Handle opening modal (Image 1)
   function handleOpenModal() {
@@ -273,7 +355,10 @@ export function FabricReturnForm({
           quantityReturned: qty,
           totalWeight: weight,
           unitPrice: price,
+          lengthCm: lengthCm ? Number(lengthCm) : undefined,
+          widthCm: widthCm ? Number(widthCm) : undefined,
           remark: remark || undefined,
+          deductions,
         });
         onSaved("Fabric return updated.");
         handleCancelEdit();
@@ -288,6 +373,7 @@ export function FabricReturnForm({
           lengthCm: lengthCm ? Number(lengthCm) : undefined,
           widthCm: widthCm ? Number(widthCm) : undefined,
           remark: remark || undefined,
+          deductions,
         });
         onSaved(`Fabric return recorded: ${selectedVariantDisplayName}`);
 
@@ -295,6 +381,8 @@ export function FabricReturnForm({
         setQuantity("");
         setTotalWeight("");
         setRemark("");
+        setDeductions([]);
+        setAddFactorOpen(false);
         setTimeout(() => {
           quantityInputRef.current?.focus();
         }, 50);
@@ -312,6 +400,8 @@ export function FabricReturnForm({
     setQuantity("");
     setTotalWeight("");
     setRemark("");
+    setDeductions([]);
+    setAddFactorOpen(false);
     setSelectedVariantId(Number(order.fabricVariantId ?? orderVariant.fabricVariantId ?? 0));
     if (onCancel) onCancel();
     quantityInputRef.current?.focus();
@@ -326,6 +416,7 @@ export function FabricReturnForm({
     if (ret.lengthCm) setLengthCm(String(ret.lengthCm));
     if (ret.widthCm) setWidthCm(String(ret.widthCm));
     setRemark(ret.remark ?? "");
+    setDeductions(ret.deductions ? [...(ret.deductions as any)] : []);
     const vId = Number(ret.fabricVariant?.fabricVariantId ?? ret.fabricVariantId);
     if (vId) setSelectedVariantId(vId);
     setError("");
@@ -369,9 +460,9 @@ export function FabricReturnForm({
         totalQty: number;
         totalWeight: number;
         avgG: number;
-        subtotal: number;
-        deductionPerPiece: number;
-        totalDeduction: number;
+        grossTotal: number;
+        deductionTotal: number;
+        netTotal: number;
         returns: FabricReturnRow[];
       }
     >();
@@ -382,6 +473,9 @@ export function FabricReturnForm({
       const retQty = Number(ret.quantityReturned || 0);
       const retWeight = Number(ret.totalWeight || 0);
       const retPrice = Number(ret.unitPrice || 0);
+      const gross = ret.grossFabricValue !== undefined ? Number(ret.grossFabricValue) : retQty * retPrice;
+      const deduction = ret.deductionAmount !== undefined ? Number(ret.deductionAmount) : 0;
+      const net = gross - deduction;
 
       if (!map.has(vId)) {
         const label = v ? fabricVariantName(v).split("-").join(" · ") : "medebegna · biret · geberdin";
@@ -394,9 +488,9 @@ export function FabricReturnForm({
           totalQty: 0,
           totalWeight: 0,
           avgG: 0,
-          subtotal: 0,
-          deductionPerPiece: 0,
-          totalDeduction: 0,
+          grossTotal: 0,
+          deductionTotal: 0,
+          netTotal: 0,
           returns: [],
         });
       }
@@ -404,24 +498,21 @@ export function FabricReturnForm({
       const group = map.get(vId)!;
       group.totalQty += retQty;
       group.totalWeight += retWeight;
-      group.subtotal += retQty * retPrice;
+      group.grossTotal += gross;
+      group.deductionTotal += deduction;
+      group.netTotal += net;
       group.returns.push(ret);
     });
 
-    // Compute merged averages and deductions for each group
     map.forEach((g) => {
       g.avgG = g.totalQty > 0 ? Math.round(g.totalWeight / g.totalQty) : 0;
-      const deficit = Math.max(0, g.standardWeightG - Math.floor(g.avgG));
-      const deductionRatePerUnit = 10; // 10 Birr per unit underweight
-      g.deductionPerPiece = deficit * deductionRatePerUnit;
-      g.totalDeduction = g.deductionPerPiece * g.totalQty;
     });
 
     return Array.from(map.values());
   }, [order.fabricReturns, orderVariant]);
 
   const grandTotal = useMemo(() => {
-    return groupedReturns.reduce((acc, g) => acc + g.subtotal, 0);
+    return groupedReturns.reduce((acc, g) => acc + g.netTotal, 0);
   }, [groupedReturns]);
 
   return (
@@ -810,19 +901,278 @@ export function FabricReturnForm({
                 )}
               </div>
 
-              {/* Settlement Deduction Callout Banner (Image 2) */}
+              {/* Quality Deductions Section */}
               <div
                 style={{
                   background: "#f8fafc",
-                  borderRadius: "8px",
-                  padding: "0.65rem 0.85rem",
-                  marginTop: "1rem",
-                  fontSize: "0.8rem",
-                  color: "#64748b",
-                  lineHeight: 1.4,
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "10px",
+                  padding: "1rem",
+                  marginTop: "1.25rem",
                 }}
               >
-                The final deduction is calculated on the merged average at settlement.
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>
+                      Quality Deductions
+                    </span>
+                    <span
+                      style={{
+                        background: deductions.length > 0 ? "#fee2e2" : "#f1f5f9",
+                        color: deductions.length > 0 ? "#991b1b" : "#64748b",
+                        fontSize: "0.75rem",
+                        fontWeight: 700,
+                        padding: "1px 7px",
+                        borderRadius: "9999px",
+                      }}
+                    >
+                      {deductions.length}
+                    </span>
+                  </div>
+
+                  {!addFactorOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setAddFactorOpen(true)}
+                      style={{
+                        background: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        padding: "0.3rem 0.65rem",
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                        color: "#334155",
+                        cursor: "pointer",
+                      }}
+                    >
+                      + Add factor
+                    </button>
+                  )}
+                </div>
+
+                {/* Underweight auto-suggestion banner */}
+                {isCurrentUnderweight && !hasWeightDeduction && (
+                  <div
+                    style={{
+                      background: "#fffbeb",
+                      border: "1px solid #fde68a",
+                      borderRadius: "8px",
+                      padding: "0.6rem 0.85rem",
+                      marginBottom: "0.75rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "0.5rem",
+                      fontSize: "0.82rem",
+                      color: "#92400e",
+                    }}
+                  >
+                    <span>
+                      ⚠️ Average weight ({flooredAvg}g) is {weightDeficit}g below standard ({standardWeight}g).
+                      Suggested deduction: <strong>{suggestedWeightPerPiece} ETB/piece</strong>.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleApplyWeightDeduction}
+                      style={{
+                        background: "#ea580c",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "0.3rem 0.65rem",
+                        fontSize: "0.78rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+
+                {/* Applied Deductions List */}
+                {deductions.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", fontStyle: "italic" }}>
+                    No quality deductions applied. Weaver will receive full piece rate.
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", marginBottom: "0.75rem" }}>
+                    {deductions.map((d) => {
+                      const factorMeta = DEDUCTION_FACTORS.find((f) => f.value === d.factor);
+                      const factorLabel = factorMeta ? factorMeta.label : d.factor;
+                      const factorSubtotal = (Number(d.perPiece) || 0) * numQty;
+
+                      return (
+                        <div
+                          key={d.factor}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            background: "#ffffff",
+                            border: "1px solid #fed7aa",
+                            borderRadius: "7px",
+                            padding: "0.45rem 0.75rem",
+                            fontSize: "0.82rem",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                            <span
+                              style={{
+                                background: "#ffedd5",
+                                color: "#9a3412",
+                                fontWeight: 700,
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                fontSize: "0.75rem",
+                              }}
+                            >
+                              {factorLabel}
+                            </span>
+                            <span style={{ fontWeight: 600, color: "#dc2626" }}>
+                              -{d.perPiece} ETB/pc
+                            </span>
+                            {numQty > 0 && (
+                              <span style={{ color: "#64748b", fontSize: "0.78rem" }}>
+                                (= -{factorSubtotal.toLocaleString()} ETB)
+                              </span>
+                            )}
+                            {d.remark && (
+                              <span style={{ color: "#64748b", fontSize: "0.78rem", fontStyle: "italic" }}>
+                                · {d.remark}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            title="Remove deduction"
+                            onClick={() => handleRemoveDeduction(d.factor)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "#ef4444",
+                              fontSize: "0.95rem",
+                              cursor: "pointer",
+                              padding: "0 0.25rem",
+                              fontWeight: 700,
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Inline Add Factor Form */}
+                {addFactorOpen && (
+                  <div
+                    style={{
+                      background: "#ffffff",
+                      border: "1px dashed #cbd5e1",
+                      borderRadius: "8px",
+                      padding: "0.75rem",
+                      marginTop: "0.5rem",
+                    }}
+                  >
+                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 3 }}>
+                          Factor / Reason
+                        </label>
+                        <select
+                          value={factorType}
+                          onChange={(e) => setFactorType(e.target.value)}
+                          style={{ width: "100%", padding: "0.4rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                        >
+                          {DEDUCTION_FACTORS.map((f) => (
+                            <option key={f.value} value={f.value}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 3 }}>
+                          Deduction / piece (ETB)
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min={0.01}
+                          placeholder="e.g. 10"
+                          value={factorPerPiece}
+                          onChange={(e) => setFactorPerPiece(e.target.value)}
+                          style={{ width: "100%", padding: "0.4rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: "0.5rem" }}>
+                      <input
+                        type="text"
+                        placeholder="Optional note / observation"
+                        value={factorRemark}
+                        onChange={(e) => setFactorRemark(e.target.value)}
+                        style={{ width: "100%", padding: "0.4rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddFactorOpen(false);
+                          setFactorPerPiece("");
+                          setFactorRemark("");
+                        }}
+                        style={{ padding: "0.3rem 0.65rem", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: "0.8rem", cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomFactor}
+                        style={{ padding: "0.3rem 0.85rem", borderRadius: 6, border: "none", background: "var(--brand, #c2410c)", color: "#fff", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Financial Calculation Breakdown */}
+                {numQty > 0 && (
+                  <div
+                    style={{
+                      borderTop: "1px solid #e2e8f0",
+                      marginTop: "0.75rem",
+                      paddingTop: "0.6rem",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: "0.5rem",
+                      fontSize: "0.82rem",
+                    }}
+                  >
+                    <div>
+                      <span style={{ color: "#64748b" }}>Gross: </span>
+                      <strong>{liveGross.toLocaleString()} ETB</strong>
+                      {liveDeductionAmount > 0 && (
+                        <span style={{ color: "#dc2626", marginLeft: "0.5rem" }}>
+                          Deduction: -{liveDeductionAmount.toLocaleString()} ETB
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontWeight: 800, color: "#0f172a" }}>
+                      Net Fabric Pay:{" "}
+                      <span style={{ color: liveNetFabricValue >= 0 ? "#15803d" : "#b91c1c" }}>
+                        {liveNetFabricValue.toLocaleString()} ETB
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Footer Actions (Image 2) */}
@@ -1006,28 +1356,26 @@ export function FabricReturnForm({
                     <span>{group.label}</span>
                   </div>
                   <span style={{ width: 44, textAlign: "center" }}>{group.totalQty}</span>
-                  <span style={{ width: 60, textAlign: "center" }}>{group.avgG}</span>
-                  <span style={{ width: 85, textAlign: "right" }}>
-                    {group.subtotal.toLocaleString()}
+                  <span style={{ width: 60, textAlign: "center" }}>{group.avgG} g</span>
+                  <span style={{ width: 85, textAlign: "right", color: "#15803d" }}>
+                    {group.netTotal.toLocaleString()}
                   </span>
                 </div>
 
-                {/* Deduction pill if underweight (Image 2) */}
-                {group.deductionPerPiece > 0 && (
-                  <div style={{ margin: "0.25rem 0 0.5rem 1.35rem" }}>
+                {group.deductionTotal > 0 && (
+                  <div style={{ margin: "0.15rem 0 0.4rem 1.35rem" }}>
                     <span
                       style={{
-                        background: "#fef08a",
-                        color: "#854d0e",
-                        padding: "0.25rem 0.75rem",
+                        background: "#fee2e2",
+                        color: "#991b1b",
+                        padding: "0.15rem 0.6rem",
                         borderRadius: "9999px",
-                        fontSize: "0.8rem",
+                        fontSize: "0.75rem",
                         fontWeight: 600,
                         display: "inline-block",
                       }}
                     >
-                      Deduction -{group.deductionPerPiece} / piece = -
-                      {group.totalDeduction.toLocaleString()}
+                      Total deductions: -{group.deductionTotal.toLocaleString()} ETB
                     </span>
                   </div>
                 )}
@@ -1042,76 +1390,106 @@ export function FabricReturnForm({
                     marginTop: "0.35rem",
                   }}
                 >
-                  {group.returns.map((ret, idx) => (
-                    <div
-                      key={ret.returnId}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "0.55rem 0.85rem",
-                        borderBottom:
-                          idx < group.returns.length - 1 ? "1px solid #fef3c7" : "none",
-                        fontSize: "0.85rem",
-                        color: "#334155",
-                      }}
-                    >
-                      <span style={{ flex: 1, fontWeight: 500 }}>
-                        Return {idx + 1} · {Number(ret.totalWeight).toLocaleString()} g
-                      </span>
-                      <span style={{ width: 55, textAlign: "center", color: "#64748b" }}>
-                        {ret.quantityReturned} pcs
-                      </span>
-                      <span style={{ width: 75, textAlign: "right", fontWeight: 600 }}>
-                        {Number(ret.unitPrice).toLocaleString()}
-                      </span>
-                      {canRecord && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.4rem",
-                            marginLeft: "0.75rem",
-                          }}
-                        >
-                          <button
-                            type="button"
-                            title="Edit this return"
-                            onClick={() => handleStartEdit(ret)}
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              cursor: "pointer",
-                              color: "#64748b",
-                              padding: "0.2rem",
-                              fontSize: "0.95rem",
-                              display: "flex",
-                              alignItems: "center",
-                            }}
-                          >
-                            ✎
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete this return"
-                            onClick={() => handleDeleteReturn(ret.returnId)}
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              cursor: "pointer",
-                              color: "#ef4444",
-                              padding: "0.2rem",
-                              fontSize: "0.85rem",
-                              display: "flex",
-                              alignItems: "center",
-                            }}
-                          >
-                            ✕
-                          </button>
+                  {group.returns.map((ret: any, idx) => {
+                    const rGross = ret.grossFabricValue !== undefined ? Number(ret.grossFabricValue) : (Number(ret.quantityReturned || 0) * Number(ret.unitPrice || 0));
+                    const rDeduction = ret.deductionAmount !== undefined ? Number(ret.deductionAmount) : 0;
+                    const rNet = rGross - rDeduction;
+                    const rDeductions: DeductionEntry[] = ret.deductions || [];
+
+                    return (
+                      <div
+                        key={ret.returnId}
+                        style={{
+                          padding: "0.6rem 0.85rem",
+                          borderBottom: idx < group.returns.length - 1 ? "1px solid #fef3c7" : "none",
+                          fontSize: "0.85rem",
+                          color: "#334155",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontWeight: 600, color: "#0f172a" }}>
+                            Return {idx + 1} · {Number(ret.totalWeight).toLocaleString()} g ({ret.quantityReturned} pcs)
+                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <span style={{ fontWeight: 700, color: rNet >= 0 ? "#15803d" : "#b91c1c" }}>
+                              {rNet.toLocaleString()} ETB
+                            </span>
+                            {canRecord && (
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                <button
+                                  type="button"
+                                  title="Edit this return"
+                                  onClick={() => handleStartEdit(ret)}
+                                  style={{
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "#64748b",
+                                    padding: "0.15rem",
+                                    fontSize: "0.95rem",
+                                  }}
+                                >
+                                  ✎
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Delete this return"
+                                  onClick={() => handleDeleteReturn(ret.returnId)}
+                                  style={{
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "#ef4444",
+                                    padding: "0.15rem",
+                                    fontSize: "0.85rem",
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {/* Deductions & details line */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginTop: "3px", fontSize: "0.76rem" }}>
+                          <span style={{ color: "#64748b" }}>
+                            Gross: {rGross.toLocaleString()} ETB
+                          </span>
+                          {rDeductions.length > 0 && (
+                            <>
+                              <span style={{ color: "#cbd5e1" }}>•</span>
+                              {rDeductions.map((d, dIdx) => (
+                                <span
+                                  key={dIdx}
+                                  style={{
+                                    background: "#fee2e2",
+                                    color: "#991b1b",
+                                    padding: "1px 5px",
+                                    borderRadius: "3px",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {d.factor}: -{d.perPiece}/pc
+                                </span>
+                              ))}
+                              <span style={{ color: "#dc2626", fontWeight: 600 }}>
+                                (-{rDeduction.toLocaleString()} ETB)
+                              </span>
+                            </>
+                          )}
+                          {ret.remark && (
+                            <>
+                              <span style={{ color: "#cbd5e1" }}>•</span>
+                              <span style={{ color: "#64748b", fontStyle: "italic" }}>
+                                {ret.remark}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))
@@ -1130,8 +1508,8 @@ export function FabricReturnForm({
               color: "#0f172a",
             }}
           >
-            <span style={{ fontSize: "1rem" }}>Fabric total</span>
-            <span style={{ fontSize: "1.05rem" }}>{grandTotal.toLocaleString()} ETB</span>
+            <span style={{ fontSize: "1rem" }}>Net fabric total</span>
+            <span style={{ fontSize: "1.05rem", color: "#15803d" }}>{grandTotal.toLocaleString()} ETB</span>
           </div>
         </div>
       </div>

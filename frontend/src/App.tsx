@@ -12,6 +12,7 @@ import { PublicHomePage } from "./pages/PublicHomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { ReportsPage } from "./pages/ReportsPage";
+import { ProductionReportPage } from "./pages/admin/ProductionReportPage";
 import { SettlementPage } from "./pages/SettlementPage";
 import { SettlementPreviewPage } from "./pages/admin/SettlementPreviewPage";
 import { SettlementHistoryPage } from "./pages/admin/SettlementHistoryPage";
@@ -79,6 +80,7 @@ function App() {
                 <Route path="settlement/preview/:previewId" element={<SettlementPreviewPage />} />
                 <Route path="reports/hisab/:paymentId" element={<HisabPrintPage />} />
                 <Route path="reports" element={<ReportsPage />} />
+                <Route path="reports/production" element={<ProductionReportPage />} />
                 <Route path="audit-logs" element={<AuditLogsPage />} />
                 <Route path="calculator" element={<Navigate to="/admin/weavers?tab=calculator" replace />} />
               </Route>

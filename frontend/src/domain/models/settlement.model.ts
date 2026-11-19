@@ -99,22 +99,57 @@ export interface OutOfCutoffZig {
 }
 
 export interface PendingSettlementsSummary {
-  totalPendingAmount: number;
-  totalFabricValue: number;
+  pendingLiability: number;
+  unsettledZigCount: number;
+  totalPendingAmount?: number;
+  totalFabricValue?: number;
+  totalDeductions?: number;
+  totalYarnCost?: number;
+  weaverCount?: number;
+  zigCount?: number;
+  totalPieceCount?: number;
+}
+
+export interface SettlementFabricLinePreview {
+  returnId: number;
+  zigId: string;
+  fabricVariantId: number;
+  fabricName: string;
+  quantityReturned: number;
+  totalWeight: number;
+  avgWeight: number;
+  unitPrice: number;
+  grossFabricValue: number;
+  deductions?: Array<{ factor: string; perPiece: number; remark?: string }>;
+  deductionAmount: number;
+  netFabricValue: number;
+  remark?: string | null;
+}
+
+export interface SettlementYarnLinePreview {
+  yarnGivenId: number;
+  zigId: string;
+  yarnVariantId: number;
+  yarnSku: string;
+  quantity: number;
+  unitPrice: number;
+  totalCost: number;
+  remark?: string | null;
+}
+
+export interface WeaverSettlementBundle {
+  weaverUserId: number;
+  weaverName: string;
+  weaverPhone?: string | null;
+  zigIds: string[];
+  fabricLines: SettlementFabricLinePreview[];
+  yarnLines: SettlementYarnLinePreview[];
+  grossFabricValue: number;
   totalDeductions: number;
   totalYarnCost: number;
-  weaverCount: number;
-  zigCount: number;
-  totalPieceCount: number;
-  zigs: Array<{
-    zigId: string;
-    weaverUserId: number;
-    weaverName: string;
-    estimatedPayout: number;
-    pieceCount: number;
-    isBlocked: boolean;
-    blockReasons: string[];
-  }>;
+  netSettlement: number;
+  isBlocked: boolean;
+  blockReasons: string[];
 }
 
 export interface ZigLedgerItem {
@@ -240,6 +275,8 @@ export interface HisabReport {
   paymentId: number;
   settlementId?: number;
   paymentDate: string;
+  isPaid?: boolean;
+  status?: string;
   weaver: Weaver;
   amount: number;
   amharicAmountInWords: string;

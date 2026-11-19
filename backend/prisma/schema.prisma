@@ -27,6 +27,7 @@ enum WorkOrderStatus {
 
 enum SettlementStatus {
   draft
+  committed
   paid
   cancelled
 }
@@ -47,6 +48,8 @@ enum DirectTxnStatus {
 enum SettlementBatchStatus {
   draft
   committed
+  paid
+  cancelled
 }
 
 // ==========================================
@@ -68,9 +71,7 @@ model User {
   workOrdersAssigned            WorkOrder[]                @relation("WeaverWorkOrders")
   workOrdersIssued              WorkOrder[]                @relation("WorkOrderIssuer")
   yarnGivenRecorded             YarnGiven[]                @relation("YarnGivenRecorder")
-  yarnReturnsRecorded           YarnReturn[]               @relation("YarnReturnRecorder")
   fabricReturnsRecorded         FabricReturn[]             @relation("FabricReturnRecorder")
-  fabricReturnsToWeaverRecorded FabricReturnToWeaver[]     @relation("FabricReturnToWeaverRecorder")
   yarnPurchasesCreated          YarnPurchase[]             @relation("YarnPurchaseCreator")
   settlementsAsWeaver           Settlement[]               @relation("WeaverSettlements")
   settlementsCreated            Settlement[]               @relation("SettlementCreator")
@@ -111,7 +112,6 @@ model Fabric {
 
   variants        FabricVariant[]
   prices          FabricPrice[]
-  settlementLines SettlementLine[]
 
   @@map("fabrics")
 }
@@ -174,7 +174,6 @@ model FabricVariant {
   weftColor              Color                  @relation("WeftColor", fields: [weftColorId], references: [colorId])
   workOrders             WorkOrder[]
   fabricReturns          FabricReturn[]
-  fabricReturnsToWeaver FabricReturnToWeaver[]
   directTxnLines         DirectTransactionLine[]
 
   @@map("fabric_variants")
@@ -194,8 +193,6 @@ model YarnVariant {
   supplier            Supplier              @relation(fields: [supplierId], references: [supplierId])
   purchaseLines       YarnPurchaseLine[]
   yarnGiven           YarnGiven[]
-  yarnReturns         YarnReturn[]
-  settlementYarnLines SettlementYarnLine[]
   directTxnLines      DirectTransactionLine[]
 
   @@map("yarn_variants")
@@ -253,17 +250,21 @@ model WorkOrder {
   fabricVariantId Int             @map("fabric_variant_id")
   status          WorkOrderStatus @default(assigned)
   dateIssued      DateTime        @default(now()) @map("date_issued") @db.Timestamptz
+  dateReturned    DateTime?       @map("date_returned") @db.Timestamptz
   issuedByUserId  Int             @map("issued_by_user_id")
 
-  weaver                User                   @relation("WeaverWorkOrders", fields: [weaverUserId], references: [userId])
-  fabricVariant         FabricVariant          @relation(fields: [fabricVariantId], references: [fabricVariantId])
-  issuedBy              User                   @relation("WorkOrderIssuer", fields: [issuedByUserId], references: [userId])
-  yarnGiven             YarnGiven[]
-  yarnReturns           YarnReturn[]
-  fabricReturns         FabricReturn[]
-  fabricReturnsToWeaver FabricReturnToWeaver[]
-  settlementLines       SettlementLine[]
-  settlementYarnLines   SettlementYarnLine[]
+  netPayable      Decimal         @default(0) @map("net_payable") @db.Decimal(12, 2)
+
+  settlementId      Int?             @map("settlement_id")
+  settlementBatchId Int?             @map("settlement_batch_id")
+  settlement        Settlement?      @relation(fields: [settlementId], references: [settlementId])
+  settlementBatch   SettlementBatch? @relation(fields: [settlementBatchId], references: [batchId])
+
+  weaver        User           @relation("WeaverWorkOrders", fields: [weaverUserId], references: [userId])
+  fabricVariant FabricVariant  @relation(fields: [fabricVariantId], references: [fabricVariantId])
+  issuedBy      User           @relation("WorkOrderIssuer", fields: [issuedByUserId], references: [userId])
+  yarnGiven     YarnGiven[]
+  fabricReturns FabricReturn[]
 
   @@map("work_orders")
 }
@@ -276,29 +277,13 @@ model YarnGiven {
   unitPrice        Decimal  @map("unit_price") @db.Decimal(12, 2)
   dateGiven        DateTime @default(now()) @map("date_given") @db.Timestamptz
   recordedByUserId Int      @map("recorded_by_user_id")
-
-  workOrder           WorkOrder            @relation(fields: [zigId], references: [zigId])
-  yarnVariant         YarnVariant          @relation(fields: [yarnVariantId], references: [yarnVariantId])
-  recordedBy          User                 @relation("YarnGivenRecorder", fields: [recordedByUserId], references: [userId])
-  settlementYarnLines SettlementYarnLine[]
-
-  @@map("yarn_given")
-}
-
-model YarnReturn {
-  yarnReturnId     Int      @id @default(autoincrement()) @map("yarn_return_id")
-  zigId            String   @map("zig_id") @db.VarChar(20)
-  yarnVariantId    Int      @map("yarn_variant_id")
-  quantity         Decimal  @db.Decimal(10, 2)
-  dateReturned     DateTime @default(now()) @map("date_returned") @db.Timestamptz
-  recordedByUserId Int      @map("recorded_by_user_id")
   remark           String?
 
   workOrder   WorkOrder   @relation(fields: [zigId], references: [zigId])
   yarnVariant YarnVariant @relation(fields: [yarnVariantId], references: [yarnVariantId])
-  recordedBy  User        @relation("YarnReturnRecorder", fields: [recordedByUserId], references: [userId])
+  recordedBy  User        @relation("YarnGivenRecorder", fields: [recordedByUserId], references: [userId])
 
-  @@map("yarn_returns")
+  @@map("yarn_given")
 }
 
 model FabricReturn {
@@ -310,32 +295,18 @@ model FabricReturn {
   lengthCm         Decimal? @map("length_cm") @db.Decimal(10, 2)
   widthCm          Decimal? @map("width_cm") @db.Decimal(10, 2)
   unitPrice        Decimal  @map("unit_price") @db.Decimal(12, 2)
+  grossFabricValue Decimal  @default(0) @map("gross_fabric_value") @db.Decimal(12, 2)
+  deductionAmount  Decimal  @default(0) @map("deduction_amount") @db.Decimal(12, 2)
+  deductions       Json     @default("[]")
   dateReturned     DateTime @default(now()) @map("date_returned") @db.Timestamptz
   recordedByUserId Int      @map("recorded_by_user_id")
   remark           String?
 
-  workOrder             WorkOrder              @relation(fields: [zigId], references: [zigId])
-  fabricVariant         FabricVariant          @relation(fields: [fabricVariantId], references: [fabricVariantId])
-  recordedBy            User                   @relation("FabricReturnRecorder", fields: [recordedByUserId], references: [userId])
-  settlementLineReturns SettlementLineReturn[]
-
-  @@map("fabric_returns")
-}
-
-model FabricReturnToWeaver {
-  fabricReturnToWeaverId Int      @id @default(autoincrement()) @map("fabric_return_to_weaver_id")
-  zigId                  String   @map("zig_id") @db.VarChar(20)
-  fabricVariantId        Int      @map("fabric_variant_id")
-  quantity               Int
-  dateReturned           DateTime @default(now()) @map("date_returned") @db.Timestamptz
-  recordedByUserId       Int      @map("recorded_by_user_id")
-  remark                 String?
-
   workOrder     WorkOrder     @relation(fields: [zigId], references: [zigId])
   fabricVariant FabricVariant @relation(fields: [fabricVariantId], references: [fabricVariantId])
-  recordedBy    User          @relation("FabricReturnToWeaverRecorder", fields: [recordedByUserId], references: [userId])
+  recordedBy    User          @relation("FabricReturnRecorder", fields: [recordedByUserId], references: [userId])
 
-  @@map("fabric_returns_to_weavers")
+  @@map("fabric_returns")
 }
 
 // ==========================================
@@ -382,93 +353,40 @@ model Settlement {
   totalDeductions  Decimal          @map("total_deductions") @db.Decimal(12, 2)
   totalYarnCost    Decimal          @map("total_yarn_cost") @db.Decimal(12, 2)
   netAmount        Decimal          @map("net_amount") @db.Decimal(12, 2)
+  cancelReason     String?          @map("cancel_reason")
+  notes            String?
   createdByUserId  Int              @map("created_by_user_id")
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
   paidAt           DateTime?        @map("paid_at") @db.Timestamptz
-  notes            String?
 
-  batch     SettlementBatch      @relation(fields: [batchId], references: [batchId])
-  weaver    User                 @relation("WeaverSettlements", fields: [weaverUserId], references: [userId])
-  createdBy User                 @relation("SettlementCreator", fields: [createdByUserId], references: [userId])
-  lines     SettlementLine[]
-  yarnLines SettlementYarnLine[]
-  payments  SettlementPayment[]
+  batch      SettlementBatch     @relation(fields: [batchId], references: [batchId])
+  weaver     User                @relation("WeaverSettlements", fields: [weaverUserId], references: [userId])
+  createdBy  User                @relation("SettlementCreator", fields: [createdByUserId], references: [userId])
+  workOrders WorkOrder[]
+  payments   SettlementPayment[]
 
   @@map("settlements")
 }
 
 model SettlementBatch {
-  batchId         Int                  @id @default(autoincrement()) @map("batch_id")
-  status          SettlementBatchStatus @default(draft)
-  snapshot        Json
-  totalAmount     Decimal              @default(0) @map("total_amount") @db.Decimal(14, 2)
-  amountPaid      Decimal              @default(0) @map("amount_paid") @db.Decimal(14, 2)
-  createdByUserId Int                  @map("created_by_user_id")
-  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
-  committedAt     DateTime?            @map("committed_at") @db.Timestamptz
+  batchId         Int                   @id @default(autoincrement()) @map("batch_id")
+  status          SettlementBatchStatus @default(committed)
+  cutoffDate      DateTime?             @map("cutoff_date") @db.Timestamptz
+  exceptionZigIds Json                  @default("[]") @map("exception_zig_ids")
+  totalAmount     Decimal               @default(0) @map("total_amount") @db.Decimal(14, 2)
+  amountPaid      Decimal               @default(0) @map("amount_paid") @db.Decimal(14, 2)
+  paymentMethod   String?               @map("payment_method") @db.VarChar(50)
+  notes           String?
+  createdByUserId Int                   @map("created_by_user_id")
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  committedAt     DateTime?             @map("committed_at") @db.Timestamptz
+  paidAt          DateTime?             @map("paid_at") @db.Timestamptz
 
   createdBy   User         @relation("SettlementBatchCreator", fields: [createdByUserId], references: [userId])
   settlements Settlement[]
+  workOrders  WorkOrder[]
 
   @@map("settlement_batches")
-}
-
-model SettlementLine {
-  settlementLineId  Int      @id @default(autoincrement()) @map("settlement_line_id")
-  settlementId      Int      @map("settlement_id")
-  zigId             String   @map("zig_id") @db.VarChar(20)
-  fabricId          Int      @map("fabric_id")
-  totalQuantity     Int      @map("total_quantity")
-  totalWeight       Decimal  @map("total_weight") @db.Decimal(10, 2)
-  averageWeight     Decimal  @map("average_weight") @db.Decimal(10, 2)
-  standardWeightG   Decimal  @map("standard_weight_g") @db.Decimal(10, 2)
-  standardLengthCm  Decimal? @map("standard_length_cm") @db.Decimal(10, 2)
-  standardWidthCm   Decimal? @map("standard_width_cm") @db.Decimal(10, 2)
-  unitPrice         Decimal  @map("unit_price") @db.Decimal(12, 2)
-  deductionFactor   String   @map("deduction_factor") @db.VarChar(30)
-  deductionUnit     String   @map("deduction_unit") @db.VarChar(20)
-  deductionPerPiece Decimal  @map("deduction_per_piece") @db.Decimal(12, 2)
-  deductionAmount   Decimal  @map("deduction_amount") @db.Decimal(12, 2)
-  grossFabricValue  Decimal  @map("gross_fabric_value") @db.Decimal(12, 2)
-  netFabricValue    Decimal  @map("net_fabric_value") @db.Decimal(12, 2)
-
-  settlement Settlement             @relation(fields: [settlementId], references: [settlementId])
-  workOrder  WorkOrder              @relation(fields: [zigId], references: [zigId])
-  fabric     Fabric                 @relation(fields: [fabricId], references: [fabricId])
-  returns    SettlementLineReturn[]
-
-  @@map("settlement_lines")
-}
-
-model SettlementLineReturn {
-  settlementLineId Int @map("settlement_line_id")
-  returnId         Int @unique @map("return_id")
-
-  settlementLine SettlementLine @relation(fields: [settlementLineId], references: [settlementLineId], onDelete: Cascade)
-  fabricReturn   FabricReturn   @relation(fields: [returnId], references: [returnId])
-
-  @@id([settlementLineId, returnId])
-  @@map("settlement_line_returns")
-}
-
-model SettlementYarnLine {
-  settlementYarnLineId Int     @id @default(autoincrement()) @map("settlement_yarn_line_id")
-  settlementId         Int     @map("settlement_id")
-  zigId                String  @map("zig_id") @db.VarChar(20)
-  yarnGivenId          Int     @map("yarn_given_id")
-  yarnVariantId        Int     @map("yarn_variant_id")
-  issuedQuantity       Decimal @map("issued_quantity") @db.Decimal(10, 2)
-  returnedQuantity     Decimal @default(0) @map("returned_quantity") @db.Decimal(10, 2)
-  netQuantity          Decimal @map("net_quantity") @db.Decimal(10, 2)
-  unitPrice            Decimal @map("unit_price") @db.Decimal(12, 2)
-  totalCost            Decimal @map("total_cost") @db.Decimal(12, 2)
-
-  settlement  Settlement  @relation(fields: [settlementId], references: [settlementId])
-  workOrder   WorkOrder   @relation(fields: [zigId], references: [zigId])
-  yarnGiven   YarnGiven   @relation(fields: [yarnGivenId], references: [yarnGivenId])
-  yarnVariant YarnVariant @relation(fields: [yarnVariantId], references: [yarnVariantId])
-
-  @@map("settlement_yarn_lines")
 }
 
 model SettlementPayment {

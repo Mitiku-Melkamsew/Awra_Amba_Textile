@@ -54,7 +54,7 @@ export async function buildDetailedBatchSnapshot(
       orderBy: [{ weaverUserId: "asc" }, { zigId: "asc" }],
     }),
     prisma.fabricReturn.findMany({
-      where: { settlementLineReturns: { none: {} } },
+      where: { workOrder: { settlementId: null } },
       select: { zigId: true, dateReturned: true },
     }),
   ]);
@@ -351,12 +351,8 @@ export function snapshotToCsv(snapshot: BatchSnapshot): string {
 }
 
 export async function exportBatchSettlementCsv(batchId: number): Promise<string | null> {
-  const batch = await prisma.settlementBatch.findUnique({
-    where: { batchId },
-    select: { snapshot: true },
-  });
-  if (!batch) return null;
-  return snapshotToCsv(batch.snapshot as unknown as BatchSnapshot);
+  const { SettlementService } = await import("./settlement.service.js");
+  return SettlementService.exportBatchCsv(batchId);
 }
 
 export async function commitBatchSettlementPreview(params: {
@@ -384,7 +380,6 @@ export async function listCommittedSettlements() {
       weaver: { select: { fullName: true, username: true } },
       createdBy: { select: { username: true } },
       payments: true,
-      lines: true,
     },
   });
 

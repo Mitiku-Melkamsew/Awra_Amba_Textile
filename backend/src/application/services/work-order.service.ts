@@ -6,6 +6,14 @@ import {
   ConflictError,
   ValidationError,
 } from "../../domain/errors/domain-errors.js";
+import {
+  computeDeductionAmount,
+  computeGrossFabricValue,
+  computeNetFabricValue,
+  computeNetPayable,
+  suggestWeightDeduction,
+  DeductionEntry,
+} from "./calculation.service.js";
 
 const fabricVariantInclude = {
   fabric: true,
@@ -35,6 +43,37 @@ export class WorkOrderService {
     return `z-${max + 1}`;
   }
 
+  static async recalculateAndSaveNetPayable(zigId: string, tx: any): Promise<number> {
+    const [fabricReturns, yarnGiven] = await Promise.all([
+      tx.fabricReturn.findMany({
+        where: { zigId },
+        select: { grossFabricValue: true, deductionAmount: true },
+      }),
+      tx.yarnGiven.findMany({
+        where: { zigId },
+        select: { quantity: true, unitPrice: true },
+      }),
+    ]);
+
+    const netPayable = computeNetPayable(
+      fabricReturns.map((fr: any) => ({
+        grossFabricValue: Number(fr.grossFabricValue),
+        deductionAmount: Number(fr.deductionAmount),
+      })),
+      yarnGiven.map((yg: any) => ({
+        quantity: Number(yg.quantity),
+        unitPrice: Number(yg.unitPrice),
+      })),
+    );
+
+    await tx.workOrder.update({
+      where: { zigId },
+      data: { netPayable },
+    });
+
+    return netPayable;
+  }
+
   static async listWorkOrders(filter: {
     status?: WorkOrderStatus;
     weaverUserId?: number;
@@ -59,8 +98,6 @@ export class WorkOrderService {
             select: {
               yarnGiven: true,
               fabricReturns: true,
-              yarnReturns: true,
-              fabricReturnsToWeaver: true,
             },
           },
         },
@@ -81,19 +118,13 @@ export class WorkOrderService {
         weaver: { select: { userId: true, fullName: true, username: true, phone: true } },
         issuedBy: { select: { userId: true, fullName: true, username: true } },
         fabricVariant: { include: fabricVariantInclude },
+        settlement: true,
+        settlementBatch: true,
         yarnGiven: {
           include: { yarnVariant: { include: yarnVariantInclude } },
           orderBy: { dateGiven: "asc" },
         },
         fabricReturns: {
-          include: { fabricVariant: { include: fabricVariantInclude } },
-          orderBy: { dateReturned: "asc" },
-        },
-        yarnReturns: {
-          include: { yarnVariant: { include: yarnVariantInclude } },
-          orderBy: { dateReturned: "asc" },
-        },
-        fabricReturnsToWeaver: {
           include: { fabricVariant: { include: fabricVariantInclude } },
           orderBy: { dateReturned: "asc" },
         },
@@ -209,6 +240,8 @@ export class WorkOrderService {
         }
       }
 
+      const netPayable = await this.recalculateAndSaveNetPayable(zigId, tx);
+
       await AuditService.record(
         {
           actorUserId,
@@ -220,7 +253,7 @@ export class WorkOrderService {
         tx,
       );
 
-      return order;
+      return { ...order, netPayable };
     });
   }
 
@@ -231,9 +264,14 @@ export class WorkOrderService {
     }
 
     return prisma.$transaction(async (tx) => {
+      const updateData: any = { status };
+      if (status === WorkOrderStatus.returned && !order.dateReturned) {
+        updateData.dateReturned = new Date();
+      }
+
       const updated = await tx.workOrder.update({
         where: { zigId },
-        data: { status },
+        data: updateData,
       });
 
       await AuditService.record(
@@ -330,6 +368,8 @@ export class WorkOrderService {
         });
       }
 
+      await this.recalculateAndSaveNetPayable(zigId, tx);
+
       await AuditService.record(
         {
           actorUserId,
@@ -347,16 +387,16 @@ export class WorkOrderService {
 
   static async updateYarnGiven(
     yarnGivenId: number,
-    data: { quantity?: number; unitPrice?: number },
+    data: { quantity?: number; unitPrice?: number; remark?: string | null },
     actorUserId: number,
   ) {
     const existing = await prisma.yarnGiven.findUnique({
       where: { yarnGivenId },
-      include: { settlementYarnLines: true },
+      include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Yarn given record ${yarnGivenId} not found`);
-    if (existing.settlementYarnLines.length > 0) {
-      throw new ConflictError("Cannot modify settled yarn given record");
+    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
+      throw new ConflictError("Cannot modify yarn on a reconciled work order");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -370,6 +410,7 @@ export class WorkOrderService {
         data: {
           quantity: data.quantity !== undefined ? data.quantity : undefined,
           unitPrice: data.unitPrice !== undefined ? data.unitPrice : undefined,
+          remark: data.remark !== undefined ? data.remark : undefined,
         },
       });
 
@@ -390,6 +431,8 @@ export class WorkOrderService {
         });
       }
 
+      await this.recalculateAndSaveNetPayable(existing.zigId, tx);
+
       await AuditService.record(
         {
           actorUserId,
@@ -408,11 +451,11 @@ export class WorkOrderService {
   static async deleteYarnGiven(yarnGivenId: number, actorUserId: number) {
     const existing = await prisma.yarnGiven.findUnique({
       where: { yarnGivenId },
-      include: { settlementYarnLines: true },
+      include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Yarn given record ${yarnGivenId} not found`);
-    if (existing.settlementYarnLines.length > 0) {
-      throw new ConflictError("Cannot delete settled yarn given record");
+    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
+      throw new ConflictError("Cannot delete yarn on a reconciled work order");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -421,6 +464,8 @@ export class WorkOrderService {
         where: { yarnVariantId: existing.yarnVariantId },
         data: { stockSnapshot: { increment: existing.quantity } },
       });
+
+      await this.recalculateAndSaveNetPayable(existing.zigId, tx);
 
       await AuditService.record(
         {
@@ -448,6 +493,7 @@ export class WorkOrderService {
       lengthCm?: number | null;
       widthCm?: number | null;
       remark?: string | null;
+      deductions?: DeductionEntry[];
     },
     actorUserId: number,
   ) {
@@ -457,15 +503,39 @@ export class WorkOrderService {
     }
 
     const fabricVariantId = input.fabricVariantId;
-    const fv = await prisma.fabricVariant.findUnique({ where: { fabricVariantId } });
+    const fv = await prisma.fabricVariant.findUnique({
+      where: { fabricVariantId },
+      include: { fabric: true },
+    });
     if (!fv) throw new NotFoundError(`Fabric variant ${fabricVariantId} not found`);
 
     const totalWeight = input.totalWeight;
     if (totalWeight <= 0) throw new ValidationError("totalWeight must be greater than 0");
     const remark = input.remark ?? undefined;
     const unitPrice = input.unitPrice ?? 0;
+    const grossFabricValue = computeGrossFabricValue(input.quantityReturned, unitPrice);
 
     return prisma.$transaction(async (tx) => {
+      let deductions: DeductionEntry[] = input.deductions ?? [];
+      // Auto-suggest weight deduction if none supplied and fabric has standard weight
+      if (deductions.length === 0 && fv.fabric?.standardWeightG) {
+        const weightRule = await tx.qualityRule.findFirst({
+          where: { factor: "weight", isActive: true },
+        });
+        const deductionRate = weightRule ? Number(weightRule.deductionPerUnit) : 10;
+        const suggestion = suggestWeightDeduction(
+          totalWeight,
+          input.quantityReturned,
+          Number(fv.fabric.standardWeightG),
+          deductionRate,
+        );
+        if (suggestion) {
+          deductions = [suggestion];
+        }
+      }
+
+      const deductionAmount = computeDeductionAmount(deductions, input.quantityReturned);
+
       const created = await tx.fabricReturn.create({
         data: {
           zigId: input.zigId,
@@ -473,6 +543,9 @@ export class WorkOrderService {
           quantityReturned: input.quantityReturned,
           totalWeight,
           unitPrice,
+          grossFabricValue,
+          deductionAmount,
+          deductions: deductions as any,
           lengthCm: input.lengthCm,
           widthCm: input.widthCm,
           remark,
@@ -494,13 +567,15 @@ export class WorkOrderService {
         });
       }
 
+      await this.recalculateAndSaveNetPayable(input.zigId, tx);
+
       await AuditService.record(
         {
           actorUserId,
           action: "fabric_return.create",
           entityType: "work_order",
           entityId: input.zigId,
-          details: { quantityReturned: input.quantityReturned, totalWeight },
+          details: { quantityReturned: input.quantityReturned, totalWeight, grossFabricValue, deductionAmount },
         },
         tx,
       );
@@ -518,20 +593,27 @@ export class WorkOrderService {
       lengthCm?: number | null;
       widthCm?: number | null;
       remark?: string | null;
+      deductions?: DeductionEntry[];
     },
     actorUserId: number,
   ) {
     const existing = await prisma.fabricReturn.findUnique({
       where: { returnId },
-      include: { settlementLineReturns: true },
+      include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Fabric return record ${returnId} not found`);
-    if (existing.settlementLineReturns.length > 0) {
+    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
       throw new ConflictError("Cannot modify settled fabric return record");
     }
 
-    const totalWeight = data.totalWeight;
-    const remark = data.remark;
+    const totalWeight = data.totalWeight ?? Number(existing.totalWeight);
+    const quantityReturned = data.quantityReturned ?? existing.quantityReturned;
+    const unitPrice = data.unitPrice ?? Number(existing.unitPrice);
+    const remark = data.remark !== undefined ? data.remark : existing.remark;
+
+    const grossFabricValue = computeGrossFabricValue(quantityReturned, unitPrice);
+    const deductions = data.deductions ?? (existing.deductions as unknown as DeductionEntry[] ?? []);
+    const deductionAmount = computeDeductionAmount(deductions, quantityReturned);
 
     return prisma.$transaction(async (tx) => {
       const deltaQty = data.quantityReturned !== undefined ? data.quantityReturned - Number(existing.quantityReturned) : 0;
@@ -540,8 +622,11 @@ export class WorkOrderService {
         where: { returnId },
         data: {
           quantityReturned: data.quantityReturned,
-          totalWeight,
+          totalWeight: data.totalWeight,
           unitPrice: data.unitPrice,
+          grossFabricValue,
+          deductionAmount,
+          deductions: deductions as any,
           lengthCm: data.lengthCm,
           widthCm: data.widthCm,
           remark,
@@ -555,13 +640,15 @@ export class WorkOrderService {
         });
       }
 
+      await this.recalculateAndSaveNetPayable(existing.zigId, tx);
+
       await AuditService.record(
         {
           actorUserId,
           action: "fabric_return.update",
           entityType: "fabric_return",
           entityId: returnId,
-          details: data,
+          details: data as any,
         },
         tx,
       );
@@ -573,10 +660,10 @@ export class WorkOrderService {
   static async deleteFabricReturn(returnId: number, actorUserId: number) {
     const existing = await prisma.fabricReturn.findUnique({
       where: { returnId },
-      include: { settlementLineReturns: true },
+      include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Fabric return record ${returnId} not found`);
-    if (existing.settlementLineReturns.length > 0) {
+    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
       throw new ConflictError("Cannot delete settled fabric return record");
     }
 
@@ -595,6 +682,8 @@ export class WorkOrderService {
         data: { stockSnapshot: { decrement: existing.quantityReturned } },
       });
 
+      await this.recalculateAndSaveNetPayable(existing.zigId, tx);
+
       await AuditService.record(
         {
           actorUserId,
@@ -606,120 +695,6 @@ export class WorkOrderService {
       );
 
       return { success: true };
-    });
-  }
-
-  // --- Yarn Returns (Unused yarn returned by weaver) ---
-
-  static async addYarnReturn(
-    input: {
-      zigId: string;
-      yarnVariantId: number;
-      quantity: number;
-      remark?: string | null;
-    },
-    actorUserId: number,
-  ) {
-    const order = await this.getWorkOrder(input.zigId);
-    if (order.status === WorkOrderStatus.reconciled || order.status === WorkOrderStatus.cancelled) {
-      throw new ConflictError(`Cannot return yarn for ${order.status} work order`);
-    }
-
-    const yarnVariantId = input.yarnVariantId;
-    const exists = await prisma.yarnVariant.findUnique({ where: { yarnVariantId } });
-    if (!exists) throw new NotFoundError(`Yarn variant ${yarnVariantId} not found`);
-
-    const quantity = input.quantity;
-    if (quantity <= 0) throw new ValidationError("Returned yarn quantity must be greater than 0");
-
-    return prisma.$transaction(async (tx) => {
-      const created = await tx.yarnReturn.create({
-        data: {
-          zigId: input.zigId,
-          yarnVariantId,
-          quantity,
-          recordedByUserId: actorUserId,
-          remark: input.remark,
-        },
-      });
-
-      await tx.yarnVariant.update({
-        where: { yarnVariantId },
-        data: { stockSnapshot: { increment: quantity } },
-      });
-
-      await AuditService.record(
-        {
-          actorUserId,
-          action: "yarn_return.create",
-          entityType: "work_order",
-          entityId: input.zigId,
-          details: { yarnVariantId, quantity, remark: input.remark },
-        },
-        tx,
-      );
-
-      return created;
-    });
-  }
-
-  // --- Fabric Returns to Weaver (Defective fabric) ---
-
-  static async addFabricReturnToWeaver(
-    input: {
-      zigId: string;
-      fabricVariantId?: number;
-      quantity: number;
-      remark?: string | null;
-      reason?: string | null;
-    },
-    actorUserId: number,
-  ) {
-    const order = await this.getWorkOrder(input.zigId);
-    if (order.status === WorkOrderStatus.reconciled || order.status === WorkOrderStatus.cancelled) {
-      throw new ConflictError(`Cannot return fabric to weaver for ${order.status} work order`);
-    }
-
-    const fabricVariantId = input.fabricVariantId ?? order.fabricVariantId;
-    const remark = input.remark ?? input.reason ?? undefined;
-
-    return prisma.$transaction(async (tx) => {
-      const fv = await tx.fabricVariant.findUniqueOrThrow({
-        where: { fabricVariantId },
-      });
-      if (Number(fv.stockSnapshot) < input.quantity) {
-        throw new ConflictError(
-          `Cannot return fabric to weaver: insufficient stock for "${fv.sku}". Available: ${fv.stockSnapshot}, requested: ${input.quantity}`,
-        );
-      }
-
-      const created = await tx.fabricReturnToWeaver.create({
-        data: {
-          zigId: input.zigId,
-          fabricVariantId,
-          quantity: input.quantity,
-          recordedByUserId: actorUserId,
-          remark,
-        },
-      });
-
-      await tx.fabricVariant.update({
-        where: { fabricVariantId },
-        data: { stockSnapshot: { decrement: input.quantity } },
-      });
-
-      await AuditService.record(
-        {
-          actorUserId,
-          action: "fabric_return_to_weaver.create",
-          entityType: "work_order",
-          entityId: input.zigId,
-          details: { fabricVariantId, quantity: input.quantity, remark },
-        },
-        tx,
-      );
-
-      return created;
     });
   }
 }

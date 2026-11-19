@@ -51,14 +51,14 @@ export class ReportService {
     return hisabToCsv(report);
   }
 
-  static async getPaymentHisabStatement(paymentId: number) {
-    const report = await buildHisabReportByPaymentId(paymentId);
-    if (!report) throw new NotFoundError(`Payment report for ID ${paymentId} not found`);
+  static async getPaymentHisabStatement(paymentId: number, preferSettlement = false) {
+    const report = await buildHisabReportByPaymentId(paymentId, preferSettlement);
+    if (!report) throw new NotFoundError(`Payment or settlement report for ID ${paymentId} not found`);
     return report;
   }
 
-  static async exportPaymentHisabCsv(paymentId: number): Promise<string> {
-    const report = await this.getPaymentHisabStatement(paymentId);
+  static async exportPaymentHisabCsv(paymentId: number, preferSettlement = false): Promise<string> {
+    const report = await this.getPaymentHisabStatement(paymentId, preferSettlement);
     return hisabToCsv(report);
   }
 

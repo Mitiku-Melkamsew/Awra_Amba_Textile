@@ -64,9 +64,14 @@ export class WeaverPortalController {
       const settlements = await prisma.settlement.findMany({
         where: { weaverUserId: userId },
         include: {
-          lines: true,
-          yarnLines: true,
           payments: true,
+          workOrders: {
+            include: {
+              fabricVariant: { include: { fabric: true } },
+              fabricReturns: true,
+              yarnGiven: true,
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
       });

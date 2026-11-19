@@ -45,21 +45,11 @@ export function ZigDetailView({
   const [giveYarnOpen, setGiveYarnOpen] = useState(false);
   const [editingYarnId, setEditingYarnId] = useState<number | null>(null);
   const [editingYarnLines, setEditingYarnLines] = useState<YarnLineDraft[]>([]);
+  const [editingYarnRemark, setEditingYarnRemark] = useState("");
 
   // Fabric return record / edit section state
   const [recordReturnOpen, setRecordReturnOpen] = useState(false);
   const [editingFabricReturn, setEditingFabricReturn] = useState<any | null>(null);
-
-  // Unused Yarn Return state
-  const [yarnReturnOpen, setYarnReturnOpen] = useState(false);
-  const [yarnReturnVariantId, setYarnReturnVariantId] = useState<number | "">("");
-  const [yarnReturnQty, setYarnReturnQty] = useState("");
-  const [yarnReturnRemark, setYarnReturnRemark] = useState("");
-
-  // Fabric Return to Weaver (Rejected) state
-  const [weaverReturnOpen, setWeaverReturnOpen] = useState(false);
-  const [weaverReturnQty, setWeaverReturnQty] = useState("");
-  const [weaverReturnRemark, setWeaverReturnRemark] = useState("");
 
   // Cancel Confirmation Modal state (Making Cancel Standout with Error Prevention)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -105,6 +95,7 @@ export function ZigDetailView({
     if (!row) return;
     setEditingYarnId(yarnGivenId);
     setEditingYarnLines([yarnRowToLineDraft(row as any)]);
+    setEditingYarnRemark((row as any).remark || "");
     setGiveYarnOpen(false);
     setError("");
   }
@@ -112,6 +103,7 @@ export function ZigDetailView({
   function cancelEditYarn() {
     setEditingYarnId(null);
     setEditingYarnLines([]);
+    setEditingYarnRemark("");
   }
 
   async function handleYarnEditSubmit(e: FormEvent) {
@@ -139,6 +131,7 @@ export function ZigDetailView({
       await yarnGivenApi.update(editingYarnId, {
         quantity: qty,
         unitPrice: line.unitPrice ? parseFloat(line.unitPrice) : row.unitPrice ? Number(row.unitPrice) : 0,
+        remark: editingYarnRemark.trim() || undefined,
       });
       setMessage("Yarn delivery updated.");
       cancelEditYarn();
@@ -212,74 +205,34 @@ export function ZigDetailView({
     }
   }
 
-  async function handleYarnReturnSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!yarnReturnVariantId || !yarnReturnQty || parseFloat(yarnReturnQty) <= 0) {
-      setError("Please select a yarn variant and specify a positive quantity.");
-      return;
-    }
-    setError("");
-    setMessage("");
-    try {
-      await workOrdersApi.recordYarnReturn({
-        zigId: order.zigId,
-        yarnVariantId: Number(yarnReturnVariantId),
-        quantity: parseFloat(yarnReturnQty),
-        remark: yarnReturnRemark.trim() || undefined,
-      });
-      setMessage("Unused yarn return recorded.");
-      setYarnReturnQty("");
-      setYarnReturnRemark("");
-      setYarnReturnOpen(false);
-      onRefresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to record yarn return",
-      );
-    }
-  }
-
-  async function handleWeaverReturnSubmit(e: FormEvent) {
-    e.preventDefault();
-    const qty = parseInt(weaverReturnQty, 10);
-    if (!qty || qty <= 0) {
-      setError("Please specify a positive integer quantity for rejected fabric.");
-      return;
-    }
-    setError("");
-    setMessage("");
-    try {
-      await workOrdersApi.recordFabricReturnToWeaver({
-        zigId: order.zigId,
-        fabricVariantId: order.fabricVariantId ?? 0,
-        quantity: qty,
-        remark: weaverReturnRemark.trim() || undefined,
-      });
-      setMessage("Fabric returned to weaver (rejected) recorded.");
-      setWeaverReturnQty("");
-      setWeaverReturnRemark("");
-      setWeaverReturnOpen(false);
-      onRefresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to record fabric return to weaver",
-      );
-    }
-  }
-
   // Metadata calculations
   const totalYarnGiven = useMemo(
     () => order.yarnGiven.reduce((acc, yg) => acc + Number(yg.quantity || 0), 0),
     [order.yarnGiven],
   );
-  const totalYarnReturned = useMemo(
-    () => (order.yarnReturns ?? []).reduce((acc, yr) => acc + Number(yr.quantity || 0), 0),
-    [order.yarnReturns],
+  const totalYarnCost = useMemo(
+    () => order.yarnGiven.reduce((acc, yg) => acc + (Number(yg.quantity || 0) * Number(yg.unitPrice || 0)), 0),
+    [order.yarnGiven],
   );
   const totalFabricReturned = useMemo(
     () => order.fabricReturns.reduce((acc, fr) => acc + Number(fr.quantityReturned || 0), 0),
     [order.fabricReturns],
   );
+  const totalGrossFabric = useMemo(
+    () => order.fabricReturns.reduce((acc, fr: any) => {
+      const g = fr.grossFabricValue !== undefined
+        ? Number(fr.grossFabricValue)
+        : (Number(fr.quantityReturned || 0) * Number(fr.unitPrice || 0));
+      return acc + g;
+    }, 0),
+    [order.fabricReturns],
+  );
+  const totalDeductions = useMemo(
+    () => order.fabricReturns.reduce((acc, fr: any) => acc + Number(fr.deductionAmount || 0), 0),
+    [order.fabricReturns],
+  );
+  const totalNetFabric = totalGrossFabric - totalDeductions;
+  const netPayable = order.netPayable !== undefined ? Number(order.netPayable) : (totalNetFabric - totalYarnCost);
 
   const fabricDisplayName = useMemo(() => {
     if (order.fabricVariant) {
@@ -664,11 +617,11 @@ export function ZigDetailView({
               </div>
             )}
 
-            {/* Table of Fabric Returns (Image 1) */}
+            {/* Table of Fabric Returns */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "minmax(140px, 2fr) minmax(60px, 1fr) minmax(80px, 1fr) minmax(80px, 1fr) 30px",
+                gridTemplateColumns: "minmax(120px, 1.8fr) minmax(50px, 0.7fr) minmax(70px, 0.9fr) minmax(70px, 1fr) minmax(90px, 1.2fr) minmax(80px, 1.1fr) 30px",
                 padding: "0.5rem 0",
                 borderBottom: "1px solid #f1f5f9",
                 fontSize: "0.78rem",
@@ -676,10 +629,12 @@ export function ZigDetailView({
                 color: "#64748b",
               }}
             >
-              <span>Fabric</span>
+              <span>Fabric / Return</span>
               <span>Pieces</span>
               <span>Weight</span>
-              <span>Price</span>
+              <span>Gross</span>
+              <span>Deductions</span>
+              <span style={{ textAlign: "right" }}>Net Pay</span>
               <span></span>
             </div>
 
@@ -693,12 +648,13 @@ export function ZigDetailView({
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "minmax(140px, 2fr) minmax(60px, 1fr) minmax(80px, 1fr) minmax(80px, 1fr) 30px",
+                    gridTemplateColumns: "minmax(120px, 1.8fr) minmax(50px, 0.7fr) minmax(70px, 0.9fr) minmax(70px, 1fr) minmax(90px, 1.2fr) minmax(80px, 1.1fr) 30px",
                     padding: "0.65rem 0",
                     fontWeight: 700,
                     fontSize: "0.9rem",
                     color: "#0f172a",
                     borderBottom: "1px solid #f8fafc",
+                    alignItems: "center",
                   }}
                 >
                   <span>{fabricDisplayName}</span>
@@ -709,51 +665,111 @@ export function ZigDetailView({
                       .toLocaleString()}{" "}
                     g
                   </span>
-                  <span style={{ color: "#64748b", fontStyle: "italic", fontWeight: 500 }}>merged</span>
+                  <span>{totalGrossFabric.toLocaleString()}</span>
+                  <span style={{ color: totalDeductions > 0 ? "#dc2626" : "#64748b" }}>
+                    {totalDeductions > 0 ? `-${totalDeductions.toLocaleString()}` : "—"}
+                  </span>
+                  <span style={{ textAlign: "right", color: "#15803d", fontWeight: 800 }}>
+                    {totalNetFabric.toLocaleString()}
+                  </span>
                   <span></span>
                 </div>
 
                 {/* Sub-rows */}
-                {order.fabricReturns.map((ret, idx) => (
-                  <div
-                    key={ret.returnId}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "minmax(140px, 2fr) minmax(60px, 1fr) minmax(80px, 1fr) minmax(80px, 1fr) 30px",
-                      padding: "0.55rem 0",
-                      fontSize: "0.85rem",
-                      color: "#334155",
-                      borderBottom: idx < order.fabricReturns.length - 1 ? "1px solid #f8fafc" : "none",
-                    }}
-                  >
-                    <span style={{ color: "#475569" }}>Return {idx + 1}</span>
-                    <span>{ret.quantityReturned}</span>
-                    <span>{Number(ret.totalWeight).toLocaleString()} g</span>
-                    <span>{Number(ret.unitPrice).toLocaleString()}</span>
-                    <span>
-                      {canRecordFabric && (
-                        <button
-                          type="button"
-                          title="Edit return"
-                          onClick={() => {
-                            setEditingFabricReturn(ret);
-                            setRecordReturnOpen(true);
-                          }}
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            color: "#64748b",
-                            padding: 0,
-                            fontSize: "0.95rem",
-                          }}
-                        >
-                          ✎
-                        </button>
+                {order.fabricReturns.map((ret: any, idx) => {
+                  const retGross = ret.grossFabricValue !== undefined
+                    ? Number(ret.grossFabricValue)
+                    : (Number(ret.quantityReturned || 0) * Number(ret.unitPrice || 0));
+                  const retDeduction = ret.deductionAmount !== undefined
+                    ? Number(ret.deductionAmount)
+                    : 0;
+                  const retNet = retGross - retDeduction;
+                  const retDeductions: any[] = ret.deductions || [];
+
+                  return (
+                    <div
+                      key={ret.returnId}
+                      style={{
+                        padding: "0.55rem 0",
+                        borderBottom: idx < order.fabricReturns.length - 1 ? "1px solid #f8fafc" : "none",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "minmax(120px, 1.8fr) minmax(50px, 0.7fr) minmax(70px, 0.9fr) minmax(70px, 1fr) minmax(90px, 1.2fr) minmax(80px, 1.1fr) 30px",
+                          fontSize: "0.85rem",
+                          color: "#334155",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: "#475569" }}>Return {idx + 1}</span>
+                        <span>{ret.quantityReturned}</span>
+                        <span>{Number(ret.totalWeight).toLocaleString()} g</span>
+                        <span>{retGross.toLocaleString()}</span>
+                        <span>
+                          {retDeduction > 0 ? (
+                            <span style={{ color: "#dc2626", fontWeight: 600 }}>
+                              -{retDeduction.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span style={{ color: "#94a3b8" }}>—</span>
+                          )}
+                        </span>
+                        <span style={{ textAlign: "right", fontWeight: 700, color: retNet >= 0 ? "#15803d" : "#b91c1c" }}>
+                          {retNet.toLocaleString()}
+                        </span>
+                        <span>
+                          {canRecordFabric && (
+                            <button
+                              type="button"
+                              title="Edit return"
+                              onClick={() => {
+                                setEditingFabricReturn(ret);
+                                setRecordReturnOpen(true);
+                              }}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "#64748b",
+                                padding: 0,
+                                fontSize: "0.95rem",
+                              }}
+                            >
+                              ✎
+                            </button>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Deduction pills & remark details */}
+                      {(retDeductions.length > 0 || ret.remark) && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginTop: "3px", fontSize: "0.75rem" }}>
+                          {retDeductions.map((d, dIdx) => (
+                            <span
+                              key={dIdx}
+                              style={{
+                                background: "#fee2e2",
+                                color: "#991b1b",
+                                padding: "1px 5px",
+                                borderRadius: "3px",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {d.factor}: -{d.perPiece}/pc
+                            </span>
+                          ))}
+                          {ret.remark && (
+                            <span style={{ color: "#64748b", fontStyle: "italic" }}>
+                              Note: {ret.remark}
+                            </span>
+                          )}
+                        </div>
                       )}
-                    </span>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -883,14 +899,36 @@ export function ZigDetailView({
                 }}
               >
                 <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#92400e" }}>
-                  ✏️ Edit Yarn Delivery
+                  ✏️ Edit / Adjust Yarn Delivery
                 </h4>
+                <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.78rem", color: "#92400e" }}>
+                  To record unused yarn returned by weaver, lower the quantity here and add an explanatory note.
+                </p>
                 <YarnLinesEditor
                   lines={editingYarnLines}
                   onChange={setEditingYarnLines}
                   yarnVariants={yarnVariants}
                   singleLine
                 />
+                <div style={{ marginTop: "0.75rem" }}>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#92400e", marginBottom: 3 }}>
+                    Adjustment note / remark (e.g. Unused yarn returned or correction)
+                  </label>
+                  <input
+                    type="text"
+                    value={editingYarnRemark}
+                    onChange={(e) => setEditingYarnRemark(e.target.value)}
+                    placeholder="e.g. Weaver returned 3 kg unused yarn"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "0.45rem 0.65rem",
+                      borderRadius: "6px",
+                      border: "1px solid #fde68a",
+                      fontSize: "0.85rem",
+                    }}
+                  />
+                </div>
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.75rem" }}>
                   <button
                     type="button"
@@ -923,7 +961,7 @@ export function ZigDetailView({
               </form>
             )}
 
-            {/* Table of Yarn Deliveries (Image 1) */}
+            {/* Table of Yarn Deliveries */}
             <div
               style={{
                 display: "grid",
@@ -957,308 +995,51 @@ export function ZigDetailView({
                   <div
                     key={yg.yarnGivenId}
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "minmax(140px, 2fr) minmax(60px, 1fr) minmax(80px, 1fr) minmax(80px, 1fr) 30px",
                       padding: "0.65rem 0",
                       fontSize: "0.85rem",
                       color: "#334155",
                       borderBottom: "1px solid #f8fafc",
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: "#0f172a" }}>{yarnLabel}</span>
-                    <span>{yg.quantity}</span>
-                    <span>{yg.unitPrice ? `${Number(yg.unitPrice).toLocaleString()}` : "—"}</span>
-                    <span style={{ color: "#64748b" }}>{formatDateDDMMYY(yg.dateGiven)}</span>
-                    <span>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          title="Edit yarn delivery"
-                          onClick={() => startEditYarn(yg.yarnGivenId)}
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            color: "#64748b",
-                            padding: 0,
-                            fontSize: "0.95rem",
-                          }}
-                        >
-                          ✎
-                        </button>
-                      )}
-                    </span>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "minmax(140px, 2fr) minmax(60px, 1fr) minmax(80px, 1fr) minmax(80px, 1fr) 30px",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, color: "#0f172a" }}>{yarnLabel}</span>
+                      <span>{yg.quantity} kg</span>
+                      <span>{yg.unitPrice ? `${Number(yg.unitPrice).toLocaleString()} ETB` : "—"}</span>
+                      <span style={{ color: "#64748b" }}>{formatDateDDMMYY(yg.dateGiven)}</span>
+                      <span>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            title="Edit yarn delivery"
+                            onClick={() => startEditYarn(yg.yarnGivenId)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#64748b",
+                              padding: 0,
+                              fontSize: "0.95rem",
+                            }}
+                          >
+                            ✎
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                    {yg.remark && (
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", fontStyle: "italic", marginTop: "2px" }}>
+                        Note: {yg.remark}
+                      </div>
+                    )}
                   </div>
                 );
               })
-            )}
-          </div>
-
-          {/* ── Section 3: Unused yarn returns (Image 1) ── */}
-          <div
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "14px",
-              padding: "1.25rem 1.5rem",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "0.75rem",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
-                  Unused yarn returns
-                </h3>
-                <span
-                  style={{
-                    background: "#f1f5f9",
-                    color: "#475569",
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    padding: "2px 7px",
-                    borderRadius: "9999px",
-                  }}
-                >
-                  {order.yarnReturns?.length ?? 0}
-                </span>
-              </div>
-
-              {canRecordFabric && (
-                <button
-                  type="button"
-                  onClick={() => setYarnReturnOpen(!yarnReturnOpen)}
-                  style={{
-                    background: "#ffffff",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    padding: "0.45rem 1rem",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    color: "#334155",
-                    cursor: "pointer",
-                  }}
-                >
-                  {yarnReturnOpen ? "✕ Cancel" : "Return unused yarn"}
-                </button>
-              )}
-            </div>
-
-            {/* Expandable Return Unused Yarn Form */}
-            {yarnReturnOpen && (
-              <form
-                onSubmit={handleYarnReturnSubmit}
-                style={{
-                  background: "#f8fafc",
-                  borderRadius: "10px",
-                  padding: "1rem",
-                  marginBottom: "1rem",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                      Yarn variant
-                    </label>
-                    <select
-                      value={yarnReturnVariantId}
-                      onChange={(e) => setYarnReturnVariantId(Number(e.target.value))}
-                      required
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1" }}
-                    >
-                      <option value="">Select yarn…</option>
-                      {order.yarnGiven.map((yg) => (
-                        <option key={yg.yarnGivenId} value={yg.yarnVariant.yarnVariantId}>
-                          {yg.yarnVariant.yarn?.name ?? yg.yarnVariant.sku} ({yg.quantity} given)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                      Qty returned
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min={0.01}
-                      required
-                      placeholder="0"
-                      value={yarnReturnQty}
-                      onChange={(e) => setYarnReturnQty(e.target.value)}
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1" }}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-                  <button
-                    type="button"
-                    onClick={() => setYarnReturnOpen(false)}
-                    style={{ padding: "0.4rem 0.85rem", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", cursor: "pointer" }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    style={{ padding: "0.4rem 1rem", borderRadius: 6, border: "none", background: "var(--brand, #c2410c)", color: "#fff", fontWeight: 700, cursor: "pointer" }}
-                  >
-                    Save return
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {!order.yarnReturns || order.yarnReturns.length === 0 ? (
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-                No unused yarn has been returned for this zig.
-              </p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {order.yarnReturns.map((yr) => (
-                  <div
-                    key={yr.yarnReturnId}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0.5rem 0",
-                      borderBottom: "1px solid #f8fafc",
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, color: "#0f172a" }}>
-                      {yr.yarnVariant.yarn?.name ?? yr.yarnVariant.sku}
-                    </span>
-                    <span style={{ color: "#334155" }}>{yr.quantity} returned</span>
-                    <span style={{ color: "#64748b" }}>{formatDateDDMMYY(yr.dateReturned)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Section 4: Fabric returned to weaver (rejected) (Image 1) ── */}
-          <div
-            style={{
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "14px",
-              padding: "1.25rem 1.5rem",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            }}
-          >
-            <div
-              onClick={() => setWeaverReturnOpen(!weaverReturnOpen)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                cursor: "pointer",
-                userSelect: "none",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
-                  Fabric returned to weaver (rejected)
-                </h3>
-                <span
-                  style={{
-                    background: "#f1f5f9",
-                    color: "#475569",
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    padding: "2px 7px",
-                    borderRadius: "9999px",
-                  }}
-                >
-                  {order.fabricReturnsToWeaver?.length ?? 0}
-                </span>
-              </div>
-              <span style={{ color: "#64748b", fontSize: "0.95rem" }}>
-                {weaverReturnOpen ? "⌃" : "⌵"}
-              </span>
-            </div>
-
-            {weaverReturnOpen && (
-              <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9" }}>
-                {canRecordFabric && (
-                  <form onSubmit={handleWeaverReturnSubmit} style={{ marginBottom: "1rem" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "0.75rem", marginBottom: "0.5rem" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Pieces rejected
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          required
-                          value={weaverReturnQty}
-                          onChange={(e) => setWeaverReturnQty(e.target.value)}
-                          placeholder="0"
-                          style={{ width: "100%", padding: "0.45rem", borderRadius: 6, border: "1px solid #cbd5e1" }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Reason / remark
-                        </label>
-                        <input
-                          type="text"
-                          value={weaverReturnRemark}
-                          onChange={(e) => setWeaverReturnRemark(e.target.value)}
-                          placeholder="e.g. stains or loose weave"
-                          style={{ width: "100%", padding: "0.45rem", borderRadius: 6, border: "1px solid #cbd5e1" }}
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      style={{
-                        padding: "0.45rem 1rem",
-                        borderRadius: 6,
-                        border: "none",
-                        background: "#dc2626",
-                        color: "#fff",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Record rejection
-                    </button>
-                  </form>
-                )}
-
-                {(!order.fabricReturnsToWeaver || order.fabricReturnsToWeaver.length === 0) ? (
-                  <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-                    No fabric has been rejected for this zig.
-                  </p>
-                ) : (
-                  order.fabricReturnsToWeaver.map((frw: any) => (
-                    <div
-                      key={frw.fabricReturnToWeaverId}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "0.5rem 0",
-                        fontSize: "0.85rem",
-                        borderBottom: "1px solid #f8fafc",
-                      }}
-                    >
-                      <span style={{ fontWeight: 600, color: "#dc2626" }}>{frw.quantity} pcs rejected</span>
-                      <span style={{ color: "#64748b" }}>{frw.remark || "Defect"}</span>
-                      <span style={{ color: "#64748b" }}>{formatDateDDMMYY(frw.dateReturned)}</span>
-                    </div>
-                  ))
-                )}
-              </div>
             )}
           </div>
         </div>
@@ -1273,6 +1054,53 @@ export function ZigDetailView({
             boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
           }}
         >
+          {/* Prominent Live Net Payable Banner Card */}
+          <div
+            style={{
+              background: netPayable >= 0 ? "#f0fdf4" : "#fffbeb",
+              border: `1.5px solid ${netPayable >= 0 ? "#86efac" : "#fde68a"}`,
+              borderRadius: "12px",
+              padding: "1rem 1.25rem",
+              marginBottom: "1.25rem",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: netPayable >= 0 ? "#15803d" : "#92400e",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              {netPayable >= 0 ? "Net Payable to Weaver" : "Net Debit Balance"}
+            </div>
+            <div
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 800,
+                color: netPayable >= 0 ? "#15803d" : "#b45309",
+                margin: "0.3rem 0",
+              }}
+            >
+              {netPayable >= 0 ? `+${netPayable.toLocaleString()} ETB` : `${netPayable.toLocaleString()} ETB`}
+            </div>
+            <div
+              style={{
+                fontSize: "0.76rem",
+                color: "#64748b",
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: "0.4rem",
+                borderTop: "1px dashed rgba(0,0,0,0.08)",
+                paddingTop: "0.4rem",
+              }}
+            >
+              <span>Fabric: {totalNetFabric.toLocaleString()} ETB</span>
+              <span>Yarn: -{totalYarnCost.toLocaleString()} ETB</span>
+            </div>
+          </div>
+
           <h3
             style={{
               margin: "0 0 1rem 0",
@@ -1400,21 +1228,30 @@ export function ZigDetailView({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ color: "#64748b" }}>Yarn given</span>
               <span style={{ fontWeight: 600, color: "#334155" }}>
-                {totalYarnGiven} kg
-              </span>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ color: "#64748b" }}>Yarn returned</span>
-              <span style={{ fontWeight: 600, color: "#334155" }}>
-                {totalYarnReturned} kg
+                {totalYarnGiven} kg ({totalYarnCost.toLocaleString()} ETB)
               </span>
             </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ color: "#64748b" }}>Fabric returned</span>
               <span style={{ fontWeight: 700, color: "#0f172a" }}>
-                {totalFabricReturned} pieces
+                {totalFabricReturned} pieces ({totalGrossFabric.toLocaleString()} ETB gross)
+              </span>
+            </div>
+
+            {totalDeductions > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b" }}>Quality deductions</span>
+                <span style={{ fontWeight: 700, color: "#dc2626" }}>
+                  -{totalDeductions.toLocaleString()} ETB
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "#64748b" }}>Net fabric value</span>
+              <span style={{ fontWeight: 700, color: "#15803d" }}>
+                {totalNetFabric.toLocaleString()} ETB
               </span>
             </div>
           </div>

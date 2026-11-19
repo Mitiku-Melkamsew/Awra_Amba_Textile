@@ -556,12 +556,17 @@ export const workOrdersApi = {
         basePrice: fv.currentPrice?.weaverRate ?? fv.basePrice ?? 0,
         product,
       },
+      netPayable: wo.netPayable !== undefined ? Number(wo.netPayable) : undefined,
+      dateReturned: wo.dateReturned ?? null,
+      settlementId: wo.settlementId ?? null,
+      settlementBatchId: wo.settlementBatchId ?? null,
       yarnGiven: (wo.yarnGiven ?? []).map((yg: any) => ({
         yarnGivenId: yg.yarnGivenId,
         quantity: yg.quantity,
         unitPrice: yg.unitPrice,
+        remark: yg.remark ?? null,
         dateGiven: yg.dateGiven ?? wo.dateIssued ?? wo.assignedDate,
-        paymentId: yg.settled ? 1 : null,
+        paymentId: yg.settled || wo.settlementId ? 1 : null,
         yarnVariant: yg.yarnVariant ?? {
           yarnVariantId: yg.yarnVariantId ?? yg.yarnId,
           sku: yg.yarnVariant?.sku ?? `YRN-${yg.yarnId}`,
@@ -576,9 +581,12 @@ export const workOrdersApi = {
         lengthCm: fr.lengthCm ?? null,
         widthCm: fr.widthCm ?? null,
         unitPrice: fr.unitPrice,
+        grossFabricValue: fr.grossFabricValue !== undefined ? Number(fr.grossFabricValue) : (Number(fr.quantityReturned || 0) * Number(fr.unitPrice || 0)),
+        deductionAmount: fr.deductionAmount !== undefined ? Number(fr.deductionAmount) : 0,
+        deductions: fr.deductions ?? [],
         remark: fr.remark ?? fr.notes ?? null,
         dateReturned: fr.dateReturned,
-        paymentId: fr.settlementLineReturns?.length || fr.settled ? 1 : null,
+        paymentId: fr.settlementLineReturns?.length || fr.settled || wo.settlementId ? 1 : null,
         fabricVariant: fr.fabricVariant ?? fv,
       })),
       yarnReturns: (wo.yarnReturns ?? []).map((yr: any) => ({
@@ -704,10 +712,11 @@ export const yarnGivenApi = {
     );
     return { rows: results, variantResolved: [] };
   },
-  update: async (yarnGivenId: number, data: { quantity: number; unitPrice: number }) => {
+  update: async (yarnGivenId: number, data: { quantity?: number; unitPrice?: number; remark?: string | null }) => {
     return workOrderService.updateYarnGiven(yarnGivenId, {
       quantity: data.quantity,
       unitPrice: data.unitPrice,
+      remark: data.remark,
     });
   },
   delete: (yarnGivenId: number) => workOrderService.deleteYarnGiven(yarnGivenId),
@@ -729,6 +738,7 @@ export const fabricReturnsApi = {
       lengthCm: data.lengthCm ? Number(data.lengthCm) : undefined,
       widthCm: data.widthCm ? Number(data.widthCm) : undefined,
       remark: data.remark,
+      deductions: data.deductions,
     });
   },
   update: async (returnId: number, data: any) => {
@@ -736,7 +746,10 @@ export const fabricReturnsApi = {
       quantityReturned: data.quantityReturned,
       totalWeight: data.totalWeight,
       unitPrice: data.unitPrice,
+      lengthCm: data.lengthCm,
+      widthCm: data.widthCm,
       remark: data.remark,
+      deductions: data.deductions,
     });
   },
   delete: (returnId: number) => workOrderService.deleteFabricReturn(returnId),
@@ -1122,13 +1135,19 @@ export const calculationsApi = {
       const settlement = (batch.settlements ?? []).find(
         (row: any) => Number(row.weaverUserId ?? row.weaver?.userId) === uid,
       );
-      const settlementLines = settlement?.lines ?? [];
-      const yarnLines = settlement?.yarnLines ?? [];
+      const workOrders = settlement?.workOrders ?? [];
+      const allFabricReturns = workOrders.flatMap((wo: any) =>
+        (wo.fabricReturns ?? []).map((fr: any) => ({ ...fr, zigId: wo.zigId })),
+      );
+      const allYarnGiven = workOrders.flatMap((wo: any) =>
+        (wo.yarnGiven ?? []).map((yg: any) => ({ ...yg, zigId: wo.zigId })),
+      );
+
       const zigIds = [...new Set([
         ...(weaver.zigIds ?? []).map(String),
-        ...settlementLines.map((line: any) => String(line.zigId)),
-        ...yarnLines.map((line: any) => String(line.zigId)),
+        ...workOrders.map((wo: any) => String(wo.zigId)),
       ])];
+
       const savedZigDetails = Array.isArray(weaver.zigDetails) ? weaver.zigDetails : [];
       const zigDetails = savedZigDetails.length > 0
         ? savedZigDetails.map((zig: any) => ({
@@ -1136,32 +1155,34 @@ export const calculationsApi = {
             groupedReturns: zig.groupedReturns ?? zig.returns ?? [],
           }))
         : zigIds.map((zigId) => {
-            const fabricLines = settlementLines.filter((line: any) => String(line.zigId) === zigId);
-            const zigYarnLines = yarnLines.filter((line: any) => String(line.zigId) === zigId);
-            const groupedReturns = fabricLines.map((line: any) => {
-              const unitPrice = Number(line.unitPrice ?? 0);
-              const deductionPerPiece = Number(line.deductionPerPiece ?? 0);
+            const fabricLines = allFabricReturns.filter((fr: any) => String(fr.zigId) === zigId);
+            const zigYarnLines = allYarnGiven.filter((yg: any) => String(yg.zigId) === zigId);
+            const groupedReturns = fabricLines.map((fr: any) => {
+              const unitPrice = Number(fr.unitPrice ?? 0);
+              const deductionPerPiece = fr.quantityReturned > 0 ? Number(fr.deductionAmount ?? 0) / fr.quantityReturned : 0;
+              const gross = Number(fr.grossFabricValue ?? (fr.quantityReturned * unitPrice));
+              const deductionAmt = Number(fr.deductionAmount ?? 0);
               return {
-                returnIds: (line.returns ?? []).map((item: any) => item.returnId),
-                fabricType: line.fabric?.name ?? `Fabric #${line.fabricId}`,
-                quantityReturned: Number(line.totalQuantity ?? 0),
-                avgWeight: Number(line.averageWeight ?? 0),
+                returnIds: [fr.returnId],
+                fabricType: fr.fabricVariant?.fabric?.name ?? `Fabric`,
+                quantityReturned: Number(fr.quantityReturned ?? 0),
+                avgWeight: fr.quantityReturned > 0 ? Math.floor(Number(fr.totalWeight ?? 0) / fr.quantityReturned) : 0,
                 unitPrice,
                 deductionPerPiece,
                 adjustedPrice: unitPrice - deductionPerPiece,
-                lineSubtotal: Number(line.netFabricValue ?? 0),
+                lineSubtotal: gross - deductionAmt,
               };
             });
             const yarnQty = zigYarnLines.reduce(
-              (sum: number, line: any) => sum + Number(line.netQuantity ?? 0),
+              (sum: number, line: any) => sum + Number(line.quantity ?? 0),
               0,
             );
             const yarnTotal = zigYarnLines.reduce(
-              (sum: number, line: any) => sum + Number(line.totalCost ?? 0),
+              (sum: number, line: any) => sum + Number(line.quantity ?? 0) * Number(line.unitPrice ?? 0),
               0,
             );
             const fabricTotal = fabricLines.reduce(
-              (sum: number, line: any) => sum + Number(line.netFabricValue ?? 0),
+              (sum: number, fr: any) => sum + (Number(fr.grossFabricValue ?? 0) - Number(fr.deductionAmount ?? 0)),
               0,
             );
             return {
@@ -1210,6 +1231,8 @@ export const calculationsApi = {
     remark: `Calculated for weight ${body.weight ?? 0}`,
   }),
 };
+
+export const settlementsApi = calculationsApi;
 
 export const paymentsApi = {
   list: async () => request<Array<{
@@ -1303,12 +1326,16 @@ export const merchantApi = {
 };
 
 export const reportsApi = {
-  getHisab: async (paymentId: number) => {
-    const stmt: any = await request<any>(`/reports/hisab/${paymentId}`);
+  getHisab: async (id: number, type?: "payment" | "settlement") => {
+    const url = type ? `/reports/hisab/${id}?type=${type}` : `/reports/hisab/${id}`;
+    const stmt: any = await request<any>(url);
     const fullName = stmt.weaver.fullName ?? "";
     return {
       paymentId: stmt.paymentId,
+      settlementId: stmt.settlementId,
       paymentDate: stmt.paymentDate,
+      isPaid: Boolean(stmt.isPaid),
+      status: stmt.status,
       weaver: {
         userId: stmt.weaver.userId,
         fullName,
@@ -1323,10 +1350,11 @@ export const reportsApi = {
       rows: stmt.rows,
     };
   },
-  async downloadHisabCsv(paymentId: number) {
+  async downloadHisabCsv(id: number, type?: "payment" | "settlement") {
     const token = getToken();
+    const typeParam = type ? `&type=${type}` : "";
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL ?? "http://localhost:3001/api/v1"}/reports/hisab/${paymentId}?format=csv`,
+      `${import.meta.env.VITE_API_URL ?? "http://localhost:3001/api/v1"}/reports/hisab/${id}?format=csv${typeParam}`,
       { headers: token ? { Authorization: `Bearer ${token}` } : {} }
     );
     if (!response.ok) throw new Error("Failed to download HISAB CSV");
@@ -1334,7 +1362,7 @@ export const reportsApi = {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `HISAB-${paymentId}.csv`;
+    anchor.download = `HISAB-${type === "settlement" ? "SETTLEMENT-" : ""}${id}.csv`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   },

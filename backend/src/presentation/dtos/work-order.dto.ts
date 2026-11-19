@@ -54,6 +54,13 @@ export const AddYarnGivenSchema = z
 export const UpdateYarnGivenSchema = z.object({
   quantity: z.coerce.number().positive().optional(),
   unitPrice: z.coerce.number().nonnegative().optional(),
+  remark: z.string().max(500).optional().nullable(),
+});
+
+export const DeductionEntrySchema = z.object({
+  factor: z.string().min(1).max(50),
+  perPiece: z.coerce.number().nonnegative(),
+  remark: z.string().optional(),
 });
 
 export const AddFabricReturnSchema = z.object({
@@ -64,6 +71,7 @@ export const AddFabricReturnSchema = z.object({
   lengthCm: z.coerce.number().positive().optional().nullable(),
   widthCm: z.coerce.number().positive().optional().nullable(),
   remark: z.string().max(500).optional().nullable(),
+  deductions: z.array(DeductionEntrySchema).optional(),
   dateReturned: z.string().optional(),
 });
 
@@ -74,6 +82,7 @@ export const UpdateFabricReturnSchema = z.object({
   lengthCm: z.coerce.number().positive().optional().nullable(),
   widthCm: z.coerce.number().positive().optional().nullable(),
   remark: z.string().max(500).optional().nullable(),
+  deductions: z.array(DeductionEntrySchema).optional(),
 });
 
 export const AddYarnReturnSchema = z.object({

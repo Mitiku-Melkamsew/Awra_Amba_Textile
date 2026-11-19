@@ -10,6 +10,7 @@ const links = [
   { to: "/admin/prices",       label: "Price Management", icon: "🏷️", amharic: "የዋጋ አስተዳደር" },
   { to: "/admin/quality-rules",label: "Quality Rules", icon: "⚖️", amharic: "የጥራት ህጎች" },
   { to: "/admin/settlement",   label: "Settlement & Payroll", icon: "💳", amharic: "ሂሳብ" },
+  { to: "/admin/reports/production", label: "Production & WIP", icon: "🏭", amharic: "የምርት ክትትል" },
   { to: "/admin/reports",      label: "Reports & HISAB", icon: "📊", amharic: "ሪፖርት" },
   { to: "/admin/audit-logs",   label: "Audit Logs", icon: "📜", amharic: "ኦዲት" },
 ];

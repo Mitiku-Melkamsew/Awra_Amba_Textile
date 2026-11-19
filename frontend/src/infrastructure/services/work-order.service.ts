@@ -91,6 +91,7 @@ export const workOrderService = {
     data: {
       quantity?: number;
       unitPrice?: number;
+      remark?: string | null;
     }
   ): Promise<YarnGiven> {
     return request<YarnGiven>(`/work-orders/yarn-given/${yarnGivenId}`, {
@@ -98,6 +99,7 @@ export const workOrderService = {
       body: JSON.stringify({
         quantity: data.quantity,
         unitPrice: data.unitPrice,
+        remark: data.remark,
       }),
     });
   },
@@ -120,6 +122,7 @@ export const workOrderService = {
       widthCm?: number | null;
       remark?: string | null;
       dateReturned?: string;
+      deductions?: Array<{ factor: string; perPiece: number; remark?: string }>;
     }
   ): Promise<FabricReturn> {
     return request<FabricReturn>(`/work-orders/${zigId}/fabric-returns`, {
@@ -133,6 +136,7 @@ export const workOrderService = {
         widthCm: data.widthCm,
         remark: data.remark,
         dateReturned: data.dateReturned,
+        deductions: data.deductions,
       }),
     });
   },
@@ -146,6 +150,7 @@ export const workOrderService = {
       lengthCm?: number | null;
       widthCm?: number | null;
       remark?: string | null;
+      deductions?: Array<{ factor: string; perPiece: number; remark?: string }>;
     }
   ): Promise<FabricReturn> {
     return request<FabricReturn>(`/work-orders/fabric-returns/${returnId}`, {

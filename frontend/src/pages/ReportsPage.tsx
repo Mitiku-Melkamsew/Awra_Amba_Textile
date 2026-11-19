@@ -47,6 +47,15 @@ export function ReportsPage() {
             Download official CSV export ledgers and generate printable HISAB receipts for committed artisan settlements.
           </p>
         </div>
+        <div>
+          <Link
+            to="/admin/reports/production"
+            className="btn-ghost"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+          >
+            <span>🏭</span> Production & WIP Report
+          </Link>
+        </div>
       </div>
 
       {/* Toolbar */}

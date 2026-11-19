@@ -12,8 +12,9 @@ export function HisabPrintPage() {
 
   useEffect(() => {
     if (!paymentId) return;
+    const typeParam = (searchParams.get("type") as "payment" | "settlement") || undefined;
     reportsApi
-      .getHisab(Number(paymentId))
+      .getHisab(Number(paymentId), typeParam)
       .then((data) => {
         setReport(data);
         if (searchParams.get("print") === "1") {
@@ -27,7 +28,7 @@ export function HisabPrintPage() {
     return (
       <div className="page">
         <div className="loading">
-          <span>⏳</span> Loading official HISAB receipt…
+          <span>⏳</span> Loading official HISAB statement…
         </div>
       </div>
     );
@@ -41,6 +42,7 @@ export function HisabPrintPage() {
     );
 
   const dataRows = report.rows.filter((r) => r.zigId || r.fabricType);
+  const isPaid = report.isPaid !== false && (report.status?.toLowerCase() === "paid" || (report.paymentId && report.paymentId !== report.settlementId));
 
   return (
     <div
@@ -70,7 +72,12 @@ export function HisabPrintPage() {
         <button
           type="button"
           className="btn-ghost"
-          onClick={() => reportsApi.downloadHisabCsv(report.paymentId)}
+          onClick={() =>
+            reportsApi.downloadHisabCsv(
+              report.settlementId ?? report.paymentId,
+              isPaid ? "payment" : "settlement",
+            )
+          }
         >
           ⬇ Download CSV Ledger
         </button>
@@ -100,11 +107,36 @@ export function HisabPrintPage() {
           አውራ አምባ ቴክስታይል ማህበር · AWRA AMBA TEXTILE COOPERATIVE
         </div>
         <h1 style={{ fontSize: "24px", fontWeight: 800, margin: "0.25rem 0" }}>
-          HISAB — የሸማኔ ሂሳብ ደረሰኝ
+          {isPaid ? "HISAB — የሸማኔ ሂሳብ ደረሰኝ" : "HISAB — የሸማኔ ሂሳብ ማጠቃለያ ሰነድ (Statement)"}
         </h1>
-        <p style={{ margin: "0.25rem 0", color: "#666", fontSize: "13px" }}>
-          Official Artisan Settlement Payment Receipt #{report.paymentId}
-        </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "0.5rem",
+            margin: "0.25rem 0",
+          }}
+        >
+          <p style={{ margin: 0, color: "#666", fontSize: "13px" }}>
+            {isPaid
+              ? `Official Artisan Settlement Payment Receipt #${report.paymentId}`
+              : `Artisan Settlement Statement #${report.settlementId ?? report.paymentId} (Pre-Payout)`}
+          </p>
+          <span
+            style={{
+              padding: "0.15rem 0.55rem",
+              borderRadius: "999px",
+              fontSize: "11px",
+              fontWeight: 700,
+              background: isPaid ? "#DCFCE7" : "#FEF3C7",
+              color: isPaid ? "#166534" : "#92400E",
+              border: `1px solid ${isPaid ? "#86EFAC" : "#FDE68A"}`,
+            }}
+          >
+            {isPaid ? "✓ PAID / ክፍያ የተፈጸመ" : "⏳ UNPAID / ክፍያ ያልተፈጸመ"}
+          </span>
+        </div>
 
         <div
           style={{
@@ -128,8 +160,8 @@ export function HisabPrintPage() {
             (ID: #{report.weaver.userId})
           </div>
           <div>
-            ጠቅላላ ክፍያ / Total Paid:{" "}
-            <strong style={{ fontSize: "15px", color: "#166534" }}>
+            {isPaid ? "ጠቅላላ ክፍያ / Total Paid: " : "ጠቅላላ ተከፋይ / Total Net Payable: "}
+            <strong style={{ fontSize: "15px", color: isPaid ? "#166534" : "#D97706" }}>
               {parseFloat(String(report.amount)).toLocaleString()} ETB
             </strong>
           </div>

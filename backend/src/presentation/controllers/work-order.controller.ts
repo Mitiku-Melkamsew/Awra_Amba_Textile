@@ -168,35 +168,19 @@ export class WorkOrderController {
     }
   }
 
-  // --- Yarn Returns ---
+  // --- Yarn Returns (Deprecated) ---
 
-  static async addYarnReturn(req: Request, res: Response, next: NextFunction) {
-    try {
-      const zigId = String(req.params.zigId);
-      const actorUserId = req.user!.userId;
-      const created = await WorkOrderService.addYarnReturn(
-        { ...req.body, zigId },
-        actorUserId,
-      );
-      res.status(201).json(created);
-    } catch (error) {
-      next(error);
-    }
+  static async addYarnReturn(_req: Request, res: Response) {
+    res.status(410).json({
+      error: "Yarn returns are deprecated. Update the yarn given record directly with an adjustment note.",
+    });
   }
 
-  // --- Fabric Returns to Weaver ---
+  // --- Fabric Returns to Weaver (Deprecated) ---
 
-  static async addFabricReturnToWeaver(req: Request, res: Response, next: NextFunction) {
-    try {
-      const zigId = String(req.params.zigId);
-      const actorUserId = req.user!.userId;
-      const created = await WorkOrderService.addFabricReturnToWeaver(
-        { ...req.body, zigId },
-        actorUserId,
-      );
-      res.status(201).json(created);
-    } catch (error) {
-      next(error);
-    }
+  static async addFabricReturnToWeaver(_req: Request, res: Response) {
+    res.status(410).json({
+      error: "Defective fabric returns are deprecated. Update the fabric return record directly with an adjustment note.",
+    });
   }
 }

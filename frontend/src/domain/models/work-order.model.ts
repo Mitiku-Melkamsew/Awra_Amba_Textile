@@ -14,11 +14,18 @@ export interface YarnGiven {
   yarnVariantId: number;
   quantity: number | string;
   unitPrice: number | string;
+  remark?: string | null;
   dateGiven?: string;
   recordedByUserId?: number;
   yarnVariant?: YarnVariant | any;
   yarn?: Yarn;
   settled?: boolean;
+}
+
+export interface DeductionEntry {
+  factor: string;
+  perPiece: number;
+  remark?: string;
 }
 
 export interface FabricReturn {
@@ -28,6 +35,9 @@ export interface FabricReturn {
   quantityReturned: number;
   totalWeight: number | string;
   unitPrice: number | string;
+  grossFabricValue?: number | string;
+  deductionAmount?: number | string;
+  deductions?: DeductionEntry[];
   lengthCm?: number | null;
   widthCm?: number | null;
   dateReturned?: string;
@@ -64,7 +74,11 @@ export interface WorkOrder {
   weaverUserId: number;
   fabricVariantId: number;
   status: WorkOrderStatus;
+  netPayable?: number | string;
   dateIssued?: string;
+  dateReturned?: string | null;
+  settlementId?: number | null;
+  settlementBatchId?: number | null;
   issuedByUserId?: number;
   weaver?: Weaver;
   fabricVariant?: FabricVariant;
