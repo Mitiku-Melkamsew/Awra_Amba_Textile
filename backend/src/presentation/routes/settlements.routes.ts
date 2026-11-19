@@ -116,3 +116,10 @@ settlementsRouter.patch(
   validateBody(OverrideSettlementLineSchema),
   SettlementController.overrideLine,
 );
+
+// Keep this last: it must not shadow the more specific routes above.
+settlementsRouter.get(
+  "/:id",
+  requireCapability(Capability.SETTLEMENTS_PREVIEW),
+  SettlementController.getSettlement,
+);

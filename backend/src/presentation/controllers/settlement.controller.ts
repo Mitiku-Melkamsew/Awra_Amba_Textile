@@ -105,6 +105,16 @@ export class SettlementController {
     }
   }
 
+  static async getSettlement(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const settlement = await SettlementService.getSettlement(id);
+      res.json(settlement);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getBatchCsv(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);

@@ -10,6 +10,60 @@ clearer application policy and database design.
 This is a design document only. It does not change the database or application
 code.
 
+### Implementation status (2026-11-19)
+
+The settlement overhaul described here has now been implemented. This document
+remains the historical design record; where the final schema or workflow differs,
+the implementation below is authoritative.
+
+- **Migration baseline.** The database now starts from a single baseline
+  migration, `backend/prisma/migrations/20261119000000_init`. See
+  `docs/DEPLOYMENT.md` for the release gate.
+- **Settlement membership.** A settlement includes work orders through
+  `work_orders.settlement_id` and `work_orders.settlement_batch_id`. The
+  separate `settlement_lines`, `settlement_line_returns`, and
+  `settlement_yarn_lines` tables from §4.21–§4.23 were not implemented. Their
+  calculation snapshots live on `fabric_returns` and `yarn_given` instead.
+- **Per-return calculation.** Weight deduction is stored per fabric return
+  (`fabric_returns.deduction_amount`, `gross_fabric_value`, `net_fabric_value`,
+  `deductions`). The merged-average calculation path was removed; a manual
+  override is applied per piece and revalidated against the unit price.
+- **Unimplemented tables.** `yarn_returns` (§4.17) and
+  `fabric_returns_to_weavers` (§4.19) were not built. Returned yarn is adjusted
+  in place on `yarn_given` with an explanatory remark, and rejected fabric is
+  corrected on the fabric return before settlement. The deprecated 410
+  endpoints for these operations were removed.
+- **Statuses and payouts.** Settlement and batch statuses are
+  `draft | committed | paid | cancelled` (§4.20). Commit creates unpaid
+  `committed` records unless `autoPay: true` is explicitly supplied. Money moves
+  only through the payout endpoints, partial payments are supported, and a
+  settlement becomes `paid` only when recorded payments cover `net_amount`.
+  Batch totals and statuses are recomputed from non-cancelled settlements.
+- **Cancel rules.** A settlement with any recorded payment cannot be cancelled;
+  cancelling an unpaid settlement releases its work orders back to the returned
+  pool.
+- **HISAB reports.** Settlement statements and payment receipts use separate ID
+  spaces: `/reports/hisab/settlement/:id` and `/reports/hisab/payment/:id`.
+  The legacy `/reports/hisab/:id` route remains as a compatibility path.
+- **Settled edits.** A work order is locked as soon as `settlement_id` is set,
+  not only when it reaches `reconciled`.
+
+Reinterpretation of the §7 invariants:
+
+- #7 no duplicate settlement is enforced by `settlement_id` on work orders and
+  by only settling work orders whose `settlement_id` is still null.
+- #8 selected yarn-given records are settled because the fabric/yarn lines are
+  read from the linked work orders; there is no separate settlement yarn table.
+- #9 a settlement payment still belongs to exactly one weaver through its
+  settlement.
+- #12 settled production facts are locked from `settlement_id` onward.
+- #15 yarn returned quantities are adjusted on `yarn_given`; the adjusted total
+  cannot exceed the original issue.
+- #16 rejected fabric is corrected on the return before settlement; no separate
+  weaver-return table exists.
+- #19 the calculation snapshot is the stored per-return/per-yarn-given data, not
+  a `settlement_lines` row.
+
 ## 2. Source workflow review
 
 The legacy materials show the following established process:

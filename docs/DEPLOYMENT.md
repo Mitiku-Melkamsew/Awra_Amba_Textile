@@ -82,6 +82,30 @@ docker compose up -d postgres
    npx prisma migrate deploy
    ```
 
+   > **Migration policy.** `prisma/migrations/` is the source of truth for the
+   > database schema. `20261119000000_init` is the baseline that creates the
+   > full current schema.
+   >
+   > - **Fresh database:** `npx prisma migrate deploy` is enough.
+   > - **Existing database created before the baseline** (e.g. via `db push`):
+   >   run `npx prisma migrate resolve --applied 20261119000000_init` **once**,
+   >   then `npx prisma migrate deploy`. This records the baseline without
+   >   re-creating existing tables.
+   > - **Never use `prisma db push` against a deployed database.** It bypasses
+   >   migration history and causes the schema to drift from
+   >   `prisma/migrations/`.
+   > - Every schema change must ship as a new, reviewed migration
+   >   (`npx prisma migrate dev --name <change>`). Do not edit the baseline after
+   >   it has been applied anywhere.
+   > - **Release gate (CI, against a throwaway empty database):**
+   >   ```bash
+   >   npx prisma migrate deploy
+   >   npx prisma migrate diff --from-url "$DATABASE_URL" \
+   >     --to-schema-datamodel prisma/schema.prisma --exit-code
+   >   ```
+   >   The diff must exit clean; otherwise a schema change is missing its
+   >   migration.
+
 4. Create the initial administrative account safely:
    ```bash
    npm run admin:create

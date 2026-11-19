@@ -16,17 +16,38 @@ export interface CommitSettlementInput {
   markAsPaid?: boolean;
 }
 
+/**
+ * Commit exactly the selected returns/yarn lines for one weaver.
+ *
+ * The settlement is committed unpaid unless `markAsPaid` is explicitly true,
+ * so money movement always goes through the payout endpoints.
+ */
 export async function commitSettlement(
   input: CommitSettlementInput,
   _transaction?: Prisma.TransactionClient,
 ) {
   const { SettlementService } = await import("./settlement.service.js");
-  const result = await SettlementService.commitSingleSettlement(input);
-  return {
-    settlementId: result.settlements[0]?.settlementId ?? 0,
-    amount: result.grandTotal,
-    netAmount: result.grandTotal,
+  const result = await SettlementService.commitSingleSettlement({
     weaverUserId: input.weaverUserId,
-    status: "paid",
+    returnIds: input.returnIds,
+    yarnGivenIds: input.yarnGivenIds,
+    paymentMethod: input.paymentMethod,
+    notes: input.notes,
+    recordedByUserId: input.recordedByUserId,
+    overrides: input.overrides,
+    autoPay: input.markAsPaid === true,
+    expectedNetSettlement: input.expectedNetSettlement,
+  });
+
+  const settlement = result.settlements[0];
+  const netAmount = Number(settlement?.netAmount ?? 0);
+
+  return {
+    settlementId: settlement?.settlementId ?? 0,
+    batchId: result.batchId,
+    amount: netAmount,
+    netAmount,
+    weaverUserId: input.weaverUserId,
+    status: settlement?.status ?? "committed",
   };
 }

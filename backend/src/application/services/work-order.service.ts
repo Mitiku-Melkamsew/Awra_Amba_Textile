@@ -28,6 +28,11 @@ const yarnVariantInclude = {
   supplier: true,
 };
 
+/** A work order is locked as soon as it belongs to a settlement (paid or not). */
+function isSettled(order: { status: string; settlementId?: number | null }) {
+  return order.settlementId != null || order.status === WorkOrderStatus.reconciled;
+}
+
 export class WorkOrderService {
   static async generateNextZigId(): Promise<string> {
     const orders = await prisma.workOrder.findMany({
@@ -259,8 +264,8 @@ export class WorkOrderService {
 
   static async updateStatus(zigId: string, status: WorkOrderStatus, actorUserId: number) {
     const order = await this.getWorkOrder(zigId);
-    if (order.status === WorkOrderStatus.reconciled) {
-      throw new ConflictError("Cannot modify a reconciled work order");
+    if (isSettled(order)) {
+      throw new ConflictError("Cannot modify a settled work order");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -291,8 +296,8 @@ export class WorkOrderService {
 
   static async cancelWorkOrder(zigId: string, actorUserId: number) {
     const order = await this.getWorkOrder(zigId);
-    if (order.status === WorkOrderStatus.reconciled) {
-      throw new ConflictError("Cannot cancel a reconciled work order");
+    if (isSettled(order)) {
+      throw new ConflictError("Cannot cancel a settled work order");
     }
     if (order.yarnGiven.length > 0 || order.fabricReturns.length > 0) {
       throw new ConflictError("Cannot cancel a work order with issued yarn or returned fabric");
@@ -326,7 +331,10 @@ export class WorkOrderService {
     actorUserId: number,
   ) {
     const order = await this.getWorkOrder(zigId);
-    if (order.status === WorkOrderStatus.reconciled || order.status === WorkOrderStatus.cancelled) {
+    if (isSettled(order)) {
+      throw new ConflictError("Cannot issue yarn to a settled work order");
+    }
+    if (order.status === WorkOrderStatus.cancelled) {
       throw new ConflictError(`Cannot issue yarn to ${order.status} work order`);
     }
 
@@ -395,8 +403,8 @@ export class WorkOrderService {
       include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Yarn given record ${yarnGivenId} not found`);
-    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
-      throw new ConflictError("Cannot modify yarn on a reconciled work order");
+    if (isSettled(existing.workOrder)) {
+      throw new ConflictError("Cannot modify yarn on a settled work order");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -454,8 +462,8 @@ export class WorkOrderService {
       include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Yarn given record ${yarnGivenId} not found`);
-    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
-      throw new ConflictError("Cannot delete yarn on a reconciled work order");
+    if (isSettled(existing.workOrder)) {
+      throw new ConflictError("Cannot delete yarn on a settled work order");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -494,11 +502,15 @@ export class WorkOrderService {
       widthCm?: number | null;
       remark?: string | null;
       deductions?: DeductionEntry[];
+      dateReturned?: string;
     },
     actorUserId: number,
   ) {
     const order = await this.getWorkOrder(input.zigId);
-    if (order.status === WorkOrderStatus.reconciled || order.status === WorkOrderStatus.cancelled) {
+    if (isSettled(order)) {
+      throw new ConflictError("Cannot add a fabric return to a settled work order");
+    }
+    if (order.status === WorkOrderStatus.cancelled) {
       throw new ConflictError(`Cannot add fabric return to ${order.status} work order`);
     }
 
@@ -549,6 +561,7 @@ export class WorkOrderService {
           lengthCm: input.lengthCm,
           widthCm: input.widthCm,
           remark,
+          dateReturned: input.dateReturned ? new Date(input.dateReturned) : undefined,
           recordedByUserId: actorUserId,
         },
         include: { fabricVariant: { include: fabricVariantInclude } },
@@ -594,6 +607,7 @@ export class WorkOrderService {
       widthCm?: number | null;
       remark?: string | null;
       deductions?: DeductionEntry[];
+      dateReturned?: string;
     },
     actorUserId: number,
   ) {
@@ -602,7 +616,7 @@ export class WorkOrderService {
       include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Fabric return record ${returnId} not found`);
-    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
+    if (isSettled(existing.workOrder)) {
       throw new ConflictError("Cannot modify settled fabric return record");
     }
 
@@ -630,6 +644,7 @@ export class WorkOrderService {
           lengthCm: data.lengthCm,
           widthCm: data.widthCm,
           remark,
+          dateReturned: data.dateReturned ? new Date(data.dateReturned) : undefined,
         },
       });
 
@@ -663,7 +678,7 @@ export class WorkOrderService {
       include: { workOrder: true },
     });
     if (!existing) throw new NotFoundError(`Fabric return record ${returnId} not found`);
-    if (existing.workOrder.status === WorkOrderStatus.reconciled) {
+    if (isSettled(existing.workOrder)) {
       throw new ConflictError("Cannot delete settled fabric return record");
     }
 

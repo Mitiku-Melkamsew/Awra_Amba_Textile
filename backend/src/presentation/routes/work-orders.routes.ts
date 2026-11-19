@@ -11,8 +11,6 @@ import {
   UpdateYarnGivenSchema,
   AddFabricReturnSchema,
   UpdateFabricReturnSchema,
-  AddYarnReturnSchema,
-  AddFabricReturnToWeaverSchema,
 } from "../dtos/work-order.dto.js";
 
 export const workOrdersRouter = Router();
@@ -109,26 +107,4 @@ workOrdersRouter.delete(
   "/fabric-returns/:id",
   requireCapability(Capability.FABRIC_RETURNS_MANAGE),
   WorkOrderController.deleteFabricReturn,
-);
-
-// Yarn Returns
-workOrdersRouter.post(
-  "/:zigId/yarn-returns",
-  requireCapability(Capability.YARN_GIVEN_MANAGE),
-  validateBody(AddYarnReturnSchema),
-  WorkOrderController.addYarnReturn,
-);
-
-// Fabric Returns to Weaver
-workOrdersRouter.post(
-  "/:zigId/returns-to-weaver",
-  requireCapability(Capability.FABRIC_RETURNS_MANAGE),
-  validateBody(AddFabricReturnToWeaverSchema),
-  WorkOrderController.addFabricReturnToWeaver,
-);
-workOrdersRouter.post(
-  "/:zigId/fabric-returns-to-weaver",
-  requireCapability(Capability.FABRIC_RETURNS_MANAGE),
-  validateBody(AddFabricReturnToWeaverSchema),
-  WorkOrderController.addFabricReturnToWeaver,
 );

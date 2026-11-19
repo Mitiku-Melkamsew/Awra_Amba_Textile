@@ -8,7 +8,7 @@ CREATE TYPE "UserRole" AS ENUM ('admin', 'weaver', 'merchant');
 CREATE TYPE "WorkOrderStatus" AS ENUM ('assigned', 'in_progress', 'returned', 'reconciled', 'cancelled');
 
 -- CreateEnum
-CREATE TYPE "SettlementStatus" AS ENUM ('draft', 'paid', 'cancelled');
+CREATE TYPE "SettlementStatus" AS ENUM ('draft', 'committed', 'paid', 'cancelled');
 
 -- CreateEnum
 CREATE TYPE "DirectTxnType" AS ENUM ('fabric_purchase_from_weaver', 'yarn_sale_to_weaver', 'fabric_sale_to_merchant');
@@ -17,7 +17,7 @@ CREATE TYPE "DirectTxnType" AS ENUM ('fabric_purchase_from_weaver', 'yarn_sale_t
 CREATE TYPE "DirectTxnStatus" AS ENUM ('unpaid', 'partially_paid', 'paid', 'cancelled');
 
 -- CreateEnum
-CREATE TYPE "SettlementBatchStatus" AS ENUM ('draft', 'committed');
+CREATE TYPE "SettlementBatchStatus" AS ENUM ('draft', 'committed', 'paid', 'cancelled');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -165,7 +165,11 @@ CREATE TABLE "work_orders" (
     "fabric_variant_id" INTEGER NOT NULL,
     "status" "WorkOrderStatus" NOT NULL DEFAULT 'assigned',
     "date_issued" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "date_returned" TIMESTAMPTZ,
     "issued_by_user_id" INTEGER NOT NULL,
+    "net_payable" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "settlement_id" INTEGER,
+    "settlement_batch_id" INTEGER,
 
     CONSTRAINT "work_orders_pkey" PRIMARY KEY ("zig_id")
 );
@@ -179,21 +183,9 @@ CREATE TABLE "yarn_given" (
     "unit_price" DECIMAL(12,2) NOT NULL,
     "date_given" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "recorded_by_user_id" INTEGER NOT NULL,
-
-    CONSTRAINT "yarn_given_pkey" PRIMARY KEY ("yarn_given_id")
-);
-
--- CreateTable
-CREATE TABLE "yarn_returns" (
-    "yarn_return_id" SERIAL NOT NULL,
-    "zig_id" VARCHAR(20) NOT NULL,
-    "yarn_variant_id" INTEGER NOT NULL,
-    "quantity" DECIMAL(10,2) NOT NULL,
-    "date_returned" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "recorded_by_user_id" INTEGER NOT NULL,
     "remark" TEXT,
 
-    CONSTRAINT "yarn_returns_pkey" PRIMARY KEY ("yarn_return_id")
+    CONSTRAINT "yarn_given_pkey" PRIMARY KEY ("yarn_given_id")
 );
 
 -- CreateTable
@@ -206,24 +198,14 @@ CREATE TABLE "fabric_returns" (
     "length_cm" DECIMAL(10,2),
     "width_cm" DECIMAL(10,2),
     "unit_price" DECIMAL(12,2) NOT NULL,
+    "gross_fabric_value" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "deduction_amount" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "deductions" JSONB NOT NULL DEFAULT '[]',
     "date_returned" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "recorded_by_user_id" INTEGER NOT NULL,
     "remark" TEXT,
 
     CONSTRAINT "fabric_returns_pkey" PRIMARY KEY ("return_id")
-);
-
--- CreateTable
-CREATE TABLE "fabric_returns_to_weavers" (
-    "fabric_return_to_weaver_id" SERIAL NOT NULL,
-    "zig_id" VARCHAR(20) NOT NULL,
-    "fabric_variant_id" INTEGER NOT NULL,
-    "quantity" INTEGER NOT NULL,
-    "date_returned" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "recorded_by_user_id" INTEGER NOT NULL,
-    "remark" TEXT,
-
-    CONSTRAINT "fabric_returns_to_weavers_pkey" PRIMARY KEY ("fabric_return_to_weaver_id")
 );
 
 -- CreateTable
@@ -258,10 +240,11 @@ CREATE TABLE "settlements" (
     "total_deductions" DECIMAL(12,2) NOT NULL,
     "total_yarn_cost" DECIMAL(12,2) NOT NULL,
     "net_amount" DECIMAL(12,2) NOT NULL,
+    "cancel_reason" TEXT,
+    "notes" TEXT,
     "created_by_user_id" INTEGER NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "paid_at" TIMESTAMPTZ,
-    "notes" TEXT,
 
     CONSTRAINT "settlements_pkey" PRIMARY KEY ("settlement_id")
 );
@@ -269,62 +252,19 @@ CREATE TABLE "settlements" (
 -- CreateTable
 CREATE TABLE "settlement_batches" (
     "batch_id" SERIAL NOT NULL,
-    "status" "SettlementBatchStatus" NOT NULL DEFAULT 'draft',
-    "snapshot" JSONB NOT NULL,
+    "status" "SettlementBatchStatus" NOT NULL DEFAULT 'committed',
+    "cutoff_date" TIMESTAMPTZ,
+    "exception_zig_ids" JSONB NOT NULL DEFAULT '[]',
     "total_amount" DECIMAL(14,2) NOT NULL DEFAULT 0,
     "amount_paid" DECIMAL(14,2) NOT NULL DEFAULT 0,
+    "payment_method" VARCHAR(50),
+    "notes" TEXT,
     "created_by_user_id" INTEGER NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "committed_at" TIMESTAMPTZ,
+    "paid_at" TIMESTAMPTZ,
 
     CONSTRAINT "settlement_batches_pkey" PRIMARY KEY ("batch_id")
-);
-
--- CreateTable
-CREATE TABLE "settlement_lines" (
-    "settlement_line_id" SERIAL NOT NULL,
-    "settlement_id" INTEGER NOT NULL,
-    "zig_id" VARCHAR(20) NOT NULL,
-    "fabric_id" INTEGER NOT NULL,
-    "total_quantity" INTEGER NOT NULL,
-    "total_weight" DECIMAL(10,2) NOT NULL,
-    "average_weight" DECIMAL(10,2) NOT NULL,
-    "standard_weight_g" DECIMAL(10,2) NOT NULL,
-    "standard_length_cm" DECIMAL(10,2),
-    "standard_width_cm" DECIMAL(10,2),
-    "unit_price" DECIMAL(12,2) NOT NULL,
-    "deduction_factor" VARCHAR(30) NOT NULL,
-    "deduction_unit" VARCHAR(20) NOT NULL,
-    "deduction_per_piece" DECIMAL(12,2) NOT NULL,
-    "deduction_amount" DECIMAL(12,2) NOT NULL,
-    "gross_fabric_value" DECIMAL(12,2) NOT NULL,
-    "net_fabric_value" DECIMAL(12,2) NOT NULL,
-
-    CONSTRAINT "settlement_lines_pkey" PRIMARY KEY ("settlement_line_id")
-);
-
--- CreateTable
-CREATE TABLE "settlement_line_returns" (
-    "settlement_line_id" INTEGER NOT NULL,
-    "return_id" INTEGER NOT NULL,
-
-    CONSTRAINT "settlement_line_returns_pkey" PRIMARY KEY ("settlement_line_id","return_id")
-);
-
--- CreateTable
-CREATE TABLE "settlement_yarn_lines" (
-    "settlement_yarn_line_id" SERIAL NOT NULL,
-    "settlement_id" INTEGER NOT NULL,
-    "zig_id" VARCHAR(20) NOT NULL,
-    "yarn_given_id" INTEGER NOT NULL,
-    "yarn_variant_id" INTEGER NOT NULL,
-    "issued_quantity" DECIMAL(10,2) NOT NULL,
-    "returned_quantity" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "net_quantity" DECIMAL(10,2) NOT NULL,
-    "unit_price" DECIMAL(12,2) NOT NULL,
-    "total_cost" DECIMAL(12,2) NOT NULL,
-
-    CONSTRAINT "settlement_yarn_lines_pkey" PRIMARY KEY ("settlement_yarn_line_id")
 );
 
 -- CreateTable
@@ -421,9 +361,6 @@ CREATE UNIQUE INDEX "fabric_variants_sku_key" ON "fabric_variants"("sku");
 CREATE UNIQUE INDEX "yarn_variants_sku_key" ON "yarn_variants"("sku");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "settlement_line_returns_return_id_key" ON "settlement_line_returns"("return_id");
-
--- CreateIndex
 CREATE INDEX "audit_logs_entity_type_entity_id_idx" ON "audit_logs"("entity_type", "entity_id");
 
 -- CreateIndex
@@ -463,6 +400,12 @@ ALTER TABLE "yarn_prices" ADD CONSTRAINT "yarn_prices_yarn_id_fkey" FOREIGN KEY 
 ALTER TABLE "yarn_prices" ADD CONSTRAINT "yarn_prices_supplier_id_fkey" FOREIGN KEY ("supplier_id") REFERENCES "suppliers"("supplier_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_settlement_id_fkey" FOREIGN KEY ("settlement_id") REFERENCES "settlements"("settlement_id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_settlement_batch_id_fkey" FOREIGN KEY ("settlement_batch_id") REFERENCES "settlement_batches"("batch_id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_weaver_user_id_fkey" FOREIGN KEY ("weaver_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -481,15 +424,6 @@ ALTER TABLE "yarn_given" ADD CONSTRAINT "yarn_given_yarn_variant_id_fkey" FOREIG
 ALTER TABLE "yarn_given" ADD CONSTRAINT "yarn_given_recorded_by_user_id_fkey" FOREIGN KEY ("recorded_by_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "yarn_returns" ADD CONSTRAINT "yarn_returns_zig_id_fkey" FOREIGN KEY ("zig_id") REFERENCES "work_orders"("zig_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "yarn_returns" ADD CONSTRAINT "yarn_returns_yarn_variant_id_fkey" FOREIGN KEY ("yarn_variant_id") REFERENCES "yarn_variants"("yarn_variant_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "yarn_returns" ADD CONSTRAINT "yarn_returns_recorded_by_user_id_fkey" FOREIGN KEY ("recorded_by_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "fabric_returns" ADD CONSTRAINT "fabric_returns_zig_id_fkey" FOREIGN KEY ("zig_id") REFERENCES "work_orders"("zig_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -497,15 +431,6 @@ ALTER TABLE "fabric_returns" ADD CONSTRAINT "fabric_returns_fabric_variant_id_fk
 
 -- AddForeignKey
 ALTER TABLE "fabric_returns" ADD CONSTRAINT "fabric_returns_recorded_by_user_id_fkey" FOREIGN KEY ("recorded_by_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "fabric_returns_to_weavers" ADD CONSTRAINT "fabric_returns_to_weavers_zig_id_fkey" FOREIGN KEY ("zig_id") REFERENCES "work_orders"("zig_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "fabric_returns_to_weavers" ADD CONSTRAINT "fabric_returns_to_weavers_fabric_variant_id_fkey" FOREIGN KEY ("fabric_variant_id") REFERENCES "fabric_variants"("fabric_variant_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "fabric_returns_to_weavers" ADD CONSTRAINT "fabric_returns_to_weavers_recorded_by_user_id_fkey" FOREIGN KEY ("recorded_by_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "yarn_purchases" ADD CONSTRAINT "yarn_purchases_supplier_id_fkey" FOREIGN KEY ("supplier_id") REFERENCES "suppliers"("supplier_id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -530,33 +455,6 @@ ALTER TABLE "settlements" ADD CONSTRAINT "settlements_created_by_user_id_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "settlement_batches" ADD CONSTRAINT "settlement_batches_created_by_user_id_fkey" FOREIGN KEY ("created_by_user_id") REFERENCES "users"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_lines" ADD CONSTRAINT "settlement_lines_settlement_id_fkey" FOREIGN KEY ("settlement_id") REFERENCES "settlements"("settlement_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_lines" ADD CONSTRAINT "settlement_lines_zig_id_fkey" FOREIGN KEY ("zig_id") REFERENCES "work_orders"("zig_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_lines" ADD CONSTRAINT "settlement_lines_fabric_id_fkey" FOREIGN KEY ("fabric_id") REFERENCES "fabrics"("fabric_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_line_returns" ADD CONSTRAINT "settlement_line_returns_settlement_line_id_fkey" FOREIGN KEY ("settlement_line_id") REFERENCES "settlement_lines"("settlement_line_id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_line_returns" ADD CONSTRAINT "settlement_line_returns_return_id_fkey" FOREIGN KEY ("return_id") REFERENCES "fabric_returns"("return_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_yarn_lines" ADD CONSTRAINT "settlement_yarn_lines_settlement_id_fkey" FOREIGN KEY ("settlement_id") REFERENCES "settlements"("settlement_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_yarn_lines" ADD CONSTRAINT "settlement_yarn_lines_zig_id_fkey" FOREIGN KEY ("zig_id") REFERENCES "work_orders"("zig_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_yarn_lines" ADD CONSTRAINT "settlement_yarn_lines_yarn_given_id_fkey" FOREIGN KEY ("yarn_given_id") REFERENCES "yarn_given"("yarn_given_id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "settlement_yarn_lines" ADD CONSTRAINT "settlement_yarn_lines_yarn_variant_id_fkey" FOREIGN KEY ("yarn_variant_id") REFERENCES "yarn_variants"("yarn_variant_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "settlement_payments" ADD CONSTRAINT "settlement_payments_settlement_id_fkey" FOREIGN KEY ("settlement_id") REFERENCES "settlements"("settlement_id") ON DELETE RESTRICT ON UPDATE CASCADE;

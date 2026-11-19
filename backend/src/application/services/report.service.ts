@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import {
   buildHisabReport,
   buildHisabReportByPaymentId,
+  buildHisabReportBySettlementId,
   hisabToCsv,
 } from "./hisab-report.service.js";
 import { NotFoundError } from "../../domain/errors/domain-errors.js";
@@ -51,14 +52,34 @@ export class ReportService {
     return hisabToCsv(report);
   }
 
-  static async getPaymentHisabStatement(paymentId: number, preferSettlement = false) {
-    const report = await buildHisabReportByPaymentId(paymentId, preferSettlement);
-    if (!report) throw new NotFoundError(`Payment or settlement report for ID ${paymentId} not found`);
-    return report;
+  /**
+   * Resolve a HISAB statement for an explicit ID space.
+   *
+   * `auto` keeps the legacy `/reports/hisab/:id` behaviour (payment first,
+   * then settlement) but the UI always uses an explicit type.
+   */
+  static async getPaymentHisabStatement(
+    id: number,
+    type: "payment" | "settlement" | "auto" = "auto",
+  ) {
+    if (type === "payment") return buildHisabReportByPaymentId(id);
+    if (type === "settlement") return buildHisabReportBySettlementId(id);
+
+    try {
+      return await buildHisabReportByPaymentId(id);
+    } catch (error) {
+      if (error instanceof Error && error.message === "CONFLICT:Payment not found.") {
+        return buildHisabReportBySettlementId(id);
+      }
+      throw error;
+    }
   }
 
-  static async exportPaymentHisabCsv(paymentId: number, preferSettlement = false): Promise<string> {
-    const report = await this.getPaymentHisabStatement(paymentId, preferSettlement);
+  static async exportPaymentHisabCsv(
+    id: number,
+    type: "payment" | "settlement" | "auto" = "auto",
+  ): Promise<string> {
+    const report = await this.getPaymentHisabStatement(id, type);
     return hisabToCsv(report);
   }
 

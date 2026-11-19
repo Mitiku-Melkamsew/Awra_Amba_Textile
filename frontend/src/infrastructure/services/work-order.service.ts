@@ -4,8 +4,6 @@ import type {
   WorkOrderStatus,
   YarnGiven,
   FabricReturn,
-  YarnReturn,
-  FabricReturnToWeaver,
 } from "../../domain/models";
 
 /** Payload matching backend CreateWorkOrderSchema (schema fields only). */
@@ -161,63 +159,6 @@ export const workOrderService = {
 
   async deleteFabricReturn(returnId: number): Promise<void> {
     return request<void>(`/work-orders/fabric-returns/${returnId}`, {
-      method: "DELETE",
-    });
-  },
-
-  // --- Yarn Returns ---
-  async addYarnReturn(
-    zigId: string,
-    data: {
-      yarnVariantId: number;
-      quantity: number;
-      remark?: string | null;
-      dateReturned?: string;
-    }
-  ): Promise<YarnReturn> {
-    return request<YarnReturn>(`/work-orders/${zigId}/yarn-returns`, {
-      method: "POST",
-      body: JSON.stringify({
-        yarnVariantId: data.yarnVariantId,
-        quantity: data.quantity,
-        remark: data.remark,
-        dateReturned: data.dateReturned,
-      }),
-    });
-  },
-
-  async deleteYarnReturn(yarnReturnId: number): Promise<void> {
-    return request<void>(`/work-orders/yarn-returns/${yarnReturnId}`, {
-      method: "DELETE",
-    });
-  },
-
-  // --- Fabric Returns To Weaver ---
-  async addFabricReturnToWeaver(
-    zigId: string,
-    data: {
-      fabricVariantId: number;
-      quantity: number;
-      remark?: string | null;
-      dateReturned?: string;
-    }
-  ): Promise<FabricReturnToWeaver> {
-    return request<FabricReturnToWeaver>(
-      `/work-orders/${zigId}/returns-to-weaver`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          fabricVariantId: data.fabricVariantId,
-          quantity: data.quantity,
-          remark: data.remark,
-          dateReturned: data.dateReturned,
-        }),
-      }
-    );
-  },
-
-  async deleteFabricReturnToWeaver(id: number): Promise<void> {
-    return request<void>(`/work-orders/fabric-returns-to-weaver/${id}`, {
       method: "DELETE",
     });
   },

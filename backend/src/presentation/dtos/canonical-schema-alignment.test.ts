@@ -7,7 +7,6 @@ import {
 import {
   CreateWorkOrderSchema,
   AddFabricReturnSchema,
-  AddYarnReturnSchema,
 } from "./work-order.dto.js";
 import { CreateProcurementSchema } from "./procurement.dto.js";
 import {
@@ -117,22 +116,6 @@ describe("Canonical Schema Alignment Tests", () => {
         fabricVariantId: 12,
         quantityReturned: 10,
         actualWeightG: 640,
-      });
-      expect(res.success).toBe(false);
-    });
-
-    it("accepts AddYarnReturnSchema with yarnVariantId and quantity", () => {
-      const res = AddYarnReturnSchema.safeParse({
-        yarnVariantId: 4,
-        quantity: 2.5,
-      });
-      expect(res.success).toBe(true);
-    });
-
-    it("rejects AddYarnReturnSchema with quantityKg or yarnId", () => {
-      const res = AddYarnReturnSchema.safeParse({
-        yarnId: 4,
-        quantityKg: 2.5,
       });
       expect(res.success).toBe(false);
     });

@@ -27,6 +27,7 @@ export const CommitBatchSettlementSchema = z.object({
   paymentMethod: z.string().max(30).optional(),
   notes: z.string().optional().nullable(),
   autoPay: z.boolean().optional(),
+  expectedNetSettlement: z.number().nonnegative().optional(),
 });
 
 export const CommitSingleSettlementSchema = z.object({
@@ -35,6 +36,8 @@ export const CommitSingleSettlementSchema = z.object({
   yarnGivenIds: z.array(z.number().int().positive()),
   paymentMethod: z.string().max(30).optional(),
   notes: z.string().optional(),
+  autoPay: z.boolean().optional(),
+  expectedNetSettlement: z.number().nonnegative().optional(),
 });
 
 export const PaySettlementSchema = z.object({
@@ -47,7 +50,14 @@ export const CancelSettlementSchema = z.object({
   reason: z.string().min(1, "Cancellation reason is required"),
 });
 
-export const OverrideSettlementLineSchema = z.object({
-  deductionAmount: z.number().nonnegative(),
-  reason: z.string().min(1, "Reason is required for quality override"),
-});
+export const OverrideSettlementLineSchema = z
+  .object({
+    deductionPerPiece: z.number().nonnegative().optional(),
+    /** Legacy alias for deductionPerPiece (not a line total). */
+    deductionAmount: z.number().nonnegative().optional(),
+    reason: z.string().min(1, "Reason is required for quality override"),
+  })
+  .refine(
+    (data) => data.deductionPerPiece !== undefined || data.deductionAmount !== undefined,
+    { message: "deductionPerPiece is required" },
+  );

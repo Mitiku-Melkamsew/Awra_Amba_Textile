@@ -1,51 +1,8 @@
-import type { Weaver, WorkOrder, Fabric, YarnVariant } from "./index";
+import type { Weaver, WorkOrder } from "./index";
 
 /** Mirrors Prisma `SettlementStatus` and `SettlementBatchStatus` enums. */
-export type SettlementStatus = "draft" | "paid" | "cancelled";
-export type SettlementBatchStatus = "draft" | "committed";
-
-export interface SettlementLineReturn {
-  settlementLineId: number;
-  returnId: number;
-}
-
-export interface SettlementLine {
-  settlementLineId: number;
-  settlementId: number;
-  zigId: string;
-  fabricId: number;
-  totalQuantity: number;
-  totalWeight: number | string;
-  averageWeight: number | string;
-  standardWeightG: number | string;
-  standardLengthCm?: number | string | null;
-  standardWidthCm?: number | string | null;
-  unitPrice: number | string;
-  deductionFactor: string;
-  deductionUnit: string;
-  deductionPerPiece: number | string;
-  deductionAmount: number | string;
-  grossFabricValue: number | string;
-  netFabricValue: number | string;
-  fabric?: Fabric;
-  workOrder?: WorkOrder;
-  returns?: SettlementLineReturn[];
-}
-
-export interface SettlementYarnLine {
-  settlementYarnLineId: number;
-  settlementId: number;
-  zigId: string;
-  yarnGivenId: number;
-  yarnVariantId: number;
-  issuedQuantity: number | string;
-  returnedQuantity: number | string;
-  netQuantity: number | string;
-  unitPrice: number | string;
-  totalCost: number | string;
-  workOrder?: WorkOrder;
-  yarnVariant?: YarnVariant;
-}
+export type SettlementStatus = "draft" | "committed" | "paid" | "cancelled";
+export type SettlementBatchStatus = "draft" | "committed" | "paid" | "cancelled";
 
 export interface SettlementPayment {
   settlementPaymentId: number;
@@ -69,22 +26,27 @@ export interface Settlement {
   createdByUserId: number;
   createdAt: string;
   paidAt?: string | null;
+  cancelReason?: string | null;
   notes?: string | null;
   weaver?: Weaver;
-  lines?: SettlementLine[];
-  yarnLines?: SettlementYarnLine[];
+  workOrders?: WorkOrder[];
   payments?: SettlementPayment[];
 }
 
 export interface SettlementBatch {
   batchId: number;
   status: SettlementBatchStatus;
-  snapshot: any;
+  cutoffDate?: string | null;
+  exceptionZigIds?: string[];
   totalAmount: number | string;
   amountPaid: number | string;
+  paymentMethod?: string | null;
+  notes?: string | null;
   createdByUserId: number;
   createdAt: string;
   committedAt?: string | null;
+  paidAt?: string | null;
+  createdBy?: { fullName: string };
   settlements?: Settlement[];
   _count?: {
     settlements?: number;
@@ -176,6 +138,9 @@ export interface ZigLedgerItem {
     billableQuantity: number;
     totalWeight: number;
     averageWeight: number;
+    grossFabricValue?: number;
+    deductionAmount?: number;
+    netFabricValue?: number;
   };
   settlement?: {
     settlementId: number;
@@ -272,7 +237,7 @@ export interface CommittedSettlementSummary {
 }
 
 export interface HisabReport {
-  paymentId: number;
+  paymentId: number | null;
   settlementId?: number;
   paymentDate: string;
   isPaid?: boolean;

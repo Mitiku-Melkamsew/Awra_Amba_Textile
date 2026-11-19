@@ -42,6 +42,7 @@ export const settlementService = {
     notes?: string;
     paymentMethod?: string;
     autoPay?: boolean;
+    expectedNetSettlement?: number;
     overrides?: Array<{
       returnId: number;
       calculatedDeduction: number;

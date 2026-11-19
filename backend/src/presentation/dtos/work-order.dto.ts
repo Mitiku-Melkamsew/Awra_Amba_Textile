@@ -84,17 +84,3 @@ export const UpdateFabricReturnSchema = z.object({
   remark: z.string().max(500).optional().nullable(),
   deductions: z.array(DeductionEntrySchema).optional(),
 });
-
-export const AddYarnReturnSchema = z.object({
-  yarnVariantId: z.coerce.number().int().positive(),
-  quantity: z.coerce.number().positive(),
-  remark: z.string().optional().nullable(),
-  dateReturned: z.string().optional(),
-});
-
-export const AddFabricReturnToWeaverSchema = z.object({
-  fabricVariantId: z.coerce.number().int().positive(),
-  quantity: z.coerce.number().int().positive(),
-  remark: z.string().optional().nullable(),
-  dateReturned: z.string().optional(),
-});

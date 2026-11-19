@@ -127,12 +127,12 @@ export function ReportsPage() {
                       <button
                         type="button"
                         className="btn-sm"
-                        onClick={() => reportsApi.downloadHisabCsv(payment.paymentId)}
+                        onClick={() => reportsApi.downloadHisabCsv(payment.paymentId, "payment")}
                       >
                         ⬇ HISAB CSV
                       </button>
                       <Link
-                        to={`/admin/reports/hisab/${payment.paymentId}?print=1`}
+                        to={`/admin/reports/hisab/${payment.paymentId}?type=payment&print=1`}
                         className="btn-sm primary"
                         target="_blank"
                       >

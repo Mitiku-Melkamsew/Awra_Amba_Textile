@@ -74,8 +74,8 @@ export function HisabPrintPage() {
           className="btn-ghost"
           onClick={() =>
             reportsApi.downloadHisabCsv(
-              report.settlementId ?? report.paymentId,
-              isPaid ? "payment" : "settlement",
+              report.settlementId ?? report.paymentId ?? 0,
+              "settlement",
             )
           }
         >

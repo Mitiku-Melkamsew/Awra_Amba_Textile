@@ -15,18 +15,25 @@ export class ReportController {
     try {
       const paymentId = Number(req.params.id);
       const format = req.query.format as string;
-      const type = req.query.type as string;
-      const preferSettlement = type === "settlement";
+      const queryType = req.query.type as string | undefined;
+
+      const type: "payment" | "settlement" | "auto" = req.path.includes("/payment/")
+        ? "payment"
+        : req.path.includes("/settlement/")
+          ? "settlement"
+          : queryType === "payment" || queryType === "settlement"
+            ? queryType
+            : "auto";
 
       if (format === "csv") {
-        const csv = await ReportService.exportPaymentHisabCsv(paymentId, preferSettlement);
+        const csv = await ReportService.exportPaymentHisabCsv(paymentId, type);
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
         res.setHeader("Content-Disposition", `attachment; filename="HISAB-${paymentId}.csv"`);
         res.send(csv);
         return;
       }
 
-      const report = await ReportService.getPaymentHisabStatement(paymentId, preferSettlement);
+      const report = await ReportService.getPaymentHisabStatement(paymentId, type);
       res.json(report);
     } catch (error) {
       next(error);

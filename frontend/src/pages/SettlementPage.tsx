@@ -190,6 +190,7 @@ export function SettlementPage() {
       const result = await calculationsApi.batchCommit({
         cutoffDate: cutoffDate || undefined,
         includeZigIds: exceptionZigIds.length > 0 ? exceptionZigIds : undefined,
+        expectedNetSettlement: preview.grandTotal,
       });
       setPayments(result.payments);
       setCommittedPreviewId(result.previewId);
@@ -219,24 +220,38 @@ export function SettlementPage() {
     setPayoutError("");
     try {
       const payoutRes = await calculationsApi.payBatch(committedPreviewId, {
-        amount: committedTotal,
         paymentMethod: payoutMethod,
         notes: payoutNotes || undefined,
       });
 
-      setIsBatchPaid(true);
+      const totalAmount = Number(payoutRes?.totalAmount ?? committedTotal);
+      const amountPaid = Number(payoutRes?.amountPaid ?? 0);
+      const fullyPaid =
+        payoutRes?.status === "paid" || amountPaid >= totalAmount - 0.01;
+
+      setIsBatchPaid(fullyPaid);
       setShowPayoutModal(false);
       setMessage(
-        `✓ Payout of ${Math.round(committedTotal).toLocaleString()} ETB disbursed successfully for Batch #${committedPreviewId}! All work orders are reconciled.`,
+        `✓ Payout of ${Math.round(amountPaid || committedTotal).toLocaleString()} ETB disbursed successfully for Batch #${committedPreviewId}!`,
       );
 
-      if (payoutRes.payments) {
+      if (payoutRes?.payments) {
+        const bySettlement = new Map<number, any>(
+          (payoutRes.payments as any[]).map((payment) => [
+            Number(payment.settlementId),
+            payment,
+          ]),
+        );
         setPayments((prev) =>
-          prev.map((p, idx) => ({
-            ...p,
-            paymentId: payoutRes.payments[idx]?.settlementPaymentId ?? p.paymentId,
-            status: "paid",
-          })),
+          prev.map((p) => {
+            const settlementId = Number(p.settlementId ?? p.paymentId);
+            const paid = bySettlement.get(settlementId);
+            return {
+              ...p,
+              paymentId: paid?.settlementPaymentId ?? p.paymentId,
+              status: paid || fullyPaid ? "paid" : p.status,
+            };
+          }),
         );
       }
       loadPendingSummary();
@@ -802,12 +817,12 @@ export function SettlementPage() {
                               <button
                                 type="button"
                                 className="btn-sm"
-                                onClick={() => reportsApi.downloadHisabCsv(id, isPaid ? "payment" : "settlement")}
+                                onClick={() => reportsApi.downloadHisabCsv(id, "settlement")}
                               >
                                 CSV
                               </button>
                               <Link
-                                to={`/admin/reports/hisab/${id}${!isPaid ? "?type=settlement" : ""}`}
+                                to={`/admin/reports/hisab/${id}?type=settlement`}
                                 className="btn-sm primary"
                                 target="_blank"
                               >

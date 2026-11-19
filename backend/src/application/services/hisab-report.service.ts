@@ -26,8 +26,7 @@ function zigSortKey(zigId: string): number {
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 }
 
-export async function buildHisabReport(settlementOrPaymentId: number) {
-  // Try by settlementId first, fallback to settlementPaymentId
+export async function buildHisabReport(settlementId: number) {
   const settlementInclude = {
     weaver: true,
     workOrders: {
@@ -47,27 +46,15 @@ export async function buildHisabReport(settlementOrPaymentId: number) {
     payments: true,
   };
 
-  let settlement = await prisma.settlement.findUnique({
-    where: { settlementId: settlementOrPaymentId },
+  // Strictly by settlement ID. Payment IDs are resolved by
+  // buildHisabReportByPaymentId so the two ID spaces can never collide.
+  const settlement = await prisma.settlement.findUnique({
+    where: { settlementId },
     include: settlementInclude,
   });
 
   if (!settlement) {
-    const payment = await prisma.settlementPayment.findUnique({
-      where: { settlementPaymentId: settlementOrPaymentId },
-      include: {
-        settlement: {
-          include: settlementInclude,
-        },
-      },
-    });
-    if (payment?.settlement) {
-      settlement = payment.settlement;
-    }
-  }
-
-  if (!settlement) {
-    throw new Error("CONFLICT:Settlement or payment not found.");
+    throw new Error("CONFLICT:Settlement not found.");
   }
 
   const rows: HisabRow[] = [];
@@ -283,83 +270,30 @@ export async function buildHisabReport(settlementOrPaymentId: number) {
   };
 }
 
-export async function buildHisabReportByPaymentId(
-  id: number,
-  preferSettlement = false,
-) {
-  if (!preferSettlement) {
-    const payment = await prisma.settlementPayment.findUnique({
-      where: { settlementPaymentId: id },
-      include: {
-        settlement: {
-          select: { status: true },
-        },
-      },
-    });
-    if (payment) {
-      const report = await buildHisabReport(payment.settlementId);
-      return {
-        ...report,
-        paymentId: payment.settlementPaymentId,
-        settlementId: payment.settlementId,
-        paymentDate: payment.paymentDate,
-        amount: Number(payment.amount),
-        isPaid: true,
-        status: payment.settlement?.status ?? "paid",
-      };
-    }
-  }
-
-  // Fallback or explicit check: find by settlementId (e.g. committed but unpaid settlement)
-  const settlement = await prisma.settlement.findUnique({
-    where: { settlementId: id },
-    include: {
-      payments: {
-        orderBy: { paymentDate: "desc" },
-      },
-    },
+export async function buildHisabReportByPaymentId(id: number) {
+  const payment = await prisma.settlementPayment.findUnique({
+    where: { settlementPaymentId: id },
+    include: { settlement: { select: { status: true } } },
   });
-
-  if (settlement) {
-    const report = await buildHisabReport(settlement.settlementId);
-    const existingPayment = settlement.payments[0];
-    const isPaid = settlement.status?.toLowerCase() === "paid" || Boolean(existingPayment);
-    return {
-      ...report,
-      paymentId: existingPayment ? existingPayment.settlementPaymentId : settlement.settlementId,
-      settlementId: settlement.settlementId,
-      paymentDate: existingPayment ? existingPayment.paymentDate : (settlement.paidAt ?? settlement.createdAt),
-      amount: existingPayment ? Number(existingPayment.amount) : Number(settlement.netAmount),
-      isPaid,
-      status: settlement.status,
-    };
+  if (!payment) {
+    throw new Error("CONFLICT:Payment not found.");
   }
 
-  // If preferSettlement was true, we also fall back to checking settlementPayment
-  if (preferSettlement) {
-    const payment = await prisma.settlementPayment.findUnique({
-      where: { settlementPaymentId: id },
-      include: {
-        settlement: {
-          select: { status: true },
-        },
-      },
-    });
-    if (payment) {
-      const report = await buildHisabReport(payment.settlementId);
-      return {
-        ...report,
-        paymentId: payment.settlementPaymentId,
-        settlementId: payment.settlementId,
-        paymentDate: payment.paymentDate,
-        amount: Number(payment.amount),
-        isPaid: true,
-        status: payment.settlement?.status ?? "paid",
-      };
-    }
-  }
+  const report = await buildHisabReport(payment.settlementId);
+  return {
+    ...report,
+    paymentId: payment.settlementPaymentId,
+    settlementId: payment.settlementId,
+    paymentDate: payment.paymentDate,
+    amount: Number(payment.amount),
+    isPaid: true,
+    status: payment.settlement?.status ?? "paid",
+  };
+}
 
-  throw new Error("CONFLICT:Payment or settlement not found.");
+/** Explicit settlement-ID lookup (no payment-ID fallback). */
+export async function buildHisabReportBySettlementId(id: number) {
+  return buildHisabReport(id);
 }
 
 export function hisabToCsv(report: Awaited<ReturnType<typeof buildHisabReport>>): string {

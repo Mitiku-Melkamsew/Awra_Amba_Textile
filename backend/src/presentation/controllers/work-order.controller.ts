@@ -168,19 +168,4 @@ export class WorkOrderController {
     }
   }
 
-  // --- Yarn Returns (Deprecated) ---
-
-  static async addYarnReturn(_req: Request, res: Response) {
-    res.status(410).json({
-      error: "Yarn returns are deprecated. Update the yarn given record directly with an adjustment note.",
-    });
-  }
-
-  // --- Fabric Returns to Weaver (Deprecated) ---
-
-  static async addFabricReturnToWeaver(_req: Request, res: Response) {
-    res.status(410).json({
-      error: "Defective fabric returns are deprecated. Update the fabric return record directly with an adjustment note.",
-    });
-  }
 }
