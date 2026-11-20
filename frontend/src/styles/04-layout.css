@@ -1,0 +1,227 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - LAYOUT & APP SHELL
+   Macro layout containers, sidebars, main content viewport, and page headers.
+   ───────────────────────────────────────────────────────────── */
+
+@layer layout {
+  .app-shell {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    background: var(--bg, #F8FAFC);
+  }
+
+  .sidebar {
+    width: var(--sidebar-w, 256px);
+    flex-shrink: 0;
+    background: var(--sidebar-bg, #0B132B);
+    color: var(--sidebar-fg, #F8FAFC);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-right: 1px solid var(--sidebar-border, rgba(255, 255, 255, 0.08));
+    position: relative;
+    z-index: 40;
+  }
+
+  .sidebar-brand {
+    padding: 1.35rem 1.25rem 1.15rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    border-bottom: 1px solid var(--sidebar-border, rgba(255, 255, 255, 0.08));
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  .sidebar-brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm, 6px);
+    background: var(--brand-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+    flex-shrink: 0;
+  }
+
+  .sidebar-brand-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .sidebar-brand-eyebrow {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sidebar-muted, #94A3B8);
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .sidebar-brand-name {
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin: 0;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  .sidebar-footer {
+    padding: 1rem 0.85rem;
+    border-top: 1px solid var(--sidebar-border, rgba(255, 255, 255, 0.08));
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-sm, 6px);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.25rem;
+  }
+
+  .sidebar-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm, 6px);
+    background: var(--brand-gradient);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .sidebar-user-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .sidebar-user-name {
+    font-size: 13px;
+    color: #FFFFFF;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-user-role {
+    font-size: 11px;
+    color: var(--sidebar-muted, #94A3B8);
+    text-transform: capitalize;
+  }
+
+  .sidebar-signout-btn {
+    background: transparent;
+    border: none;
+    color: var(--sidebar-muted, #94A3B8);
+    font-size: 11px;
+    text-align: left;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.15s ease;
+  }
+
+  .sidebar-signout-btn:hover {
+    color: #FFFFFF;
+  }
+
+  /* Weaver portal sidebar theme */
+  .sidebar.weaver-sidebar {
+    background: var(--wsidebar-bg, #062E22);
+    color: var(--wsidebar-fg, #ECFDF5);
+    border-right-color: var(--wsidebar-border, rgba(255, 255, 255, 0.08));
+  }
+
+  .sidebar.weaver-sidebar .sidebar-brand-name {
+    color: #FFFFFF;
+  }
+
+  .sidebar.weaver-sidebar .sidebar-brand-eyebrow,
+  .sidebar.weaver-sidebar .sidebar-nav-label {
+    color: var(--wsidebar-muted, #6EE7B7);
+  }
+
+  /* Main viewport */
+  .main-content {
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+    height: 100vh;
+    background: var(--bg, #F8FAFC);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .page-container {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-6, 1.5rem) var(--space-8, 2rem) var(--space-12, 3rem);
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-5, 1.25rem);
+    gap: var(--space-4, 1rem);
+    flex-wrap: wrap;
+  }
+
+  .page-header-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .page-header-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-subtle, #94A3B8);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .page-header-title {
+    margin: 0;
+    font-size: var(--text-3xl, 28px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
+    letter-spacing: -0.02em;
+    line-height: var(--leading-tight, 1.25);
+  }
+
+  .page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    flex-wrap: wrap;
+  }
+}

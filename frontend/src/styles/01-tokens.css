@@ -1,0 +1,154 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - DESIGN TOKENS
+   Single source of truth for colors, space, typography,
+   radii, elevation, and z-index.
+   ───────────────────────────────────────────────────────────── */
+
+@layer tokens {
+  :root {
+    /* ── 1. Brand Identity ───────────────────────────────────── */
+    --brand:                  #C2410C;
+    --brand-gradient:         linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
+    --brand-light:            #FFEDD5;
+    --brand-subtle:           rgba(234, 88, 12, 0.08);
+
+    /* ── 2. Primary Accent & Interactive States ─────────────── */
+    --accent:                 #EA580C;
+    --accent-hover:           #C2410C;
+    --accent-active:          #9A3412;
+    --accent-fg:              #FFFFFF;
+    --accent-glow:            rgba(234, 88, 12, 0.22);
+
+    /* ── 3. Canvas & Surface Layers ─────────────────────────── */
+    --bg:                     #F8FAFC;
+    --bg-subtle:              #F1F5F9;
+    --surface:                #FFFFFF;
+    --surface-hover:          #F8FAFC;
+    --surface-active:         #F1F5F9;
+    --surface-raised:         #FFFFFF;
+
+    /* Semantic aliases */
+    --color-canvas:           var(--bg);
+    --color-surface:          var(--surface);
+    --color-surface-subtle:   var(--bg-subtle);
+
+    /* ── 4. Borders & Dividers ──────────────────────────────── */
+    --border:                 #E2E8F0;
+    --border-subtle:          #F1F5F9;
+    --border-strong:          #CBD5E1;
+    --border-focus:           #EA580C;
+
+    /* ── 5. Typography Colors (WCAG AAA Compliant) ─────────── */
+    --text:                   #0F172A;
+    --text-muted:             #64748B;
+    --text-subtle:            #94A3B8;
+    --text-inverse:           #FFFFFF;
+
+    /* ── 6. Semantic Color Palettes ─────────────────────────── */
+    --green:                  #059669;
+    --green-bg:               #ECFDF5;
+    --green-border:           #A7F3D0;
+    --green-fg:               #065F46;
+
+    --blue:                   #2563EB;
+    --blue-bg:                #EFF6FF;
+    --blue-border:            #BFDBFE;
+    --blue-fg:                #1E40AF;
+
+    --amber:                  #D97706;
+    --amber-bg:               #FFFBEB;
+    --amber-border:           #FDE68A;
+    --amber-fg:               #92400E;
+
+    --red:                    #DC2626;
+    --red-bg:                 #FEF2F2;
+    --red-border:             #FECACA;
+    --red-fg:                 #991B1B;
+
+    --purple:                 #7C3AED;
+    --purple-bg:              #F5F3FF;
+    --purple-border:          #DDD6FE;
+    --purple-fg:              #5B21B6;
+
+    --orange-bg:              #FFF7ED;
+
+    /* ── 7. Sidebar Themes ──────────────────────────────────── */
+    /* Admin Sidebar - Deep Slate Obsidian */
+    --sidebar-bg:             #0B132B;
+    --sidebar-fg:             #F8FAFC;
+    --sidebar-muted:          #94A3B8;
+    --sidebar-border:         rgba(255, 255, 255, 0.08);
+    --sidebar-hover:          rgba(255, 255, 255, 0.06);
+    --sidebar-active-bg:      linear-gradient(90deg, rgba(234, 88, 12, 0.22) 0%, rgba(234, 88, 12, 0.08) 100%);
+    --sidebar-active-fg:      #FDBA74;
+    --sidebar-active-border:  #EA580C;
+    --sidebar-w:              256px;
+
+    /* Weaver Sidebar - Forest Botanical Emerald */
+    --wsidebar-bg:            #062E22;
+    --wsidebar-fg:            #ECFDF5;
+    --wsidebar-muted:         #6EE7B7;
+    --wsidebar-border:        rgba(255, 255, 255, 0.08);
+    --wsidebar-hover:         rgba(255, 255, 255, 0.06);
+    --wsidebar-active-bg:     linear-gradient(90deg, rgba(16, 185, 129, 0.24) 0%, rgba(16, 185, 129, 0.08) 100%);
+    --wsidebar-active-fg:     #6EE7B7;
+    --wsidebar-active-border: #10B981;
+
+    /* ── 8. Spacing Scale (4 / 8-pt Grid) ───────────────────── */
+    --space-1:                0.25rem;  /* 4px  - tags, compact pills, hairline gaps */
+    --space-2:                0.5rem;   /* 8px  - button padding-y, form item spacing */
+    --space-3:                0.75rem;  /* 12px - compact card padding, table cells */
+    --space-4:                1rem;     /* 16px - standard card padding, default gap */
+    --space-5:                1.25rem;  /* 20px - medium section padding */
+    --space-6:                1.5rem;   /* 24px - large card padding, grid gutters */
+    --space-8:                2rem;     /* 32px - page header margins, section blocks */
+    --space-10:               2.5rem;   /* 40px - major section spacing */
+    --space-12:               3rem;     /* 48px - layout breaks */
+
+    /* ── 9. Type Scale (Replacing Fractional Px) ────────────── */
+    --text-xs:                0.75rem;   /* 12px - replaces 10.5px, 11px, 11.5px */
+    --text-sm:                0.875rem;  /* 14px - replaces 12.5px, 13px, 13.5px */
+    --text-base:              1rem;      /* 16px - standard body, inputs, buttons */
+    --text-lg:                1.125rem;  /* 18px - card titles, emphasized labels */
+    --text-xl:                1.25rem;   /* 20px - section headings */
+    --text-2xl:               1.5rem;    /* 24px - page headers */
+    --text-3xl:               1.875rem;  /* 30px - hero numbers, major titles */
+
+    /* Line Heights */
+    --leading-none:           1;
+    --leading-tight:          1.25;
+    --leading-snug:           1.375;
+    --leading-normal:         1.5;
+    --leading-relaxed:        1.625;
+
+    /* Font Weights */
+    --font-normal:            400;
+    --font-medium:            500;
+    --font-semibold:          600;
+    --font-bold:              700;
+    --font-extrabold:         800;
+
+    /* ── 10. Radii ──────────────────────────────────────────── */
+    --radius-xs:              4px;
+    --radius-sm:              6px;
+    --radius-md:              10px;
+    --radius:                 12px;
+    --radius-lg:              14px;
+    --radius-xl:              20px;
+    --radius-full:            9999px;
+
+    /* ── 11. Layered Elevation Shadows ──────────────────────── */
+    --shadow-xs:              0 1px 2px 0 rgba(15, 23, 42, 0.04);
+    --shadow-sm:              0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+    --shadow:                 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+    --shadow-md:              0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+    --shadow-lg:              0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+    --shadow-xl:              0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+
+    /* ── 12. Z-Index Scale ──────────────────────────────────── */
+    --z-dropdown:             100;
+    --z-sticky:               150;
+    --z-modal:                200;
+    --z-toast:                300;
+  }
+}

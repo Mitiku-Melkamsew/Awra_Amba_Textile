@@ -1,0 +1,21 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - MASTER STYLES ENTRY
+   Explicit Cascade Layer Order:
+   reset -> tokens -> base -> layout -> components -> utilities -> pages
+   ───────────────────────────────────────────────────────────── */
+
+@layer reset, tokens, base, layout, components, utilities, pages;
+
+@import "./02-reset.css";
+@import "./01-tokens.css";
+@import "./03-base.css";
+@import "./04-layout.css";
+@import "./05-components/buttons.css";
+@import "./05-components/badges-status.css";
+@import "./05-components/tables.css";
+@import "./05-components/cards.css";
+@import "./05-components/forms.css";
+@import "./05-components/modals.css";
+@import "./05-components/navigation.css";
+@import "./05-components/feedback.css";
+@import "./06-utilities.css";

@@ -1,0 +1,139 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - BADGES & STATUS PILLS
+   Canonical badges, indicator dots, and legacy aliases.
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* ── Canonical Status Pill ────────────────────────────────── */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1, 4px);
+    padding: 3px var(--space-2, 8px);
+    border-radius: var(--radius-full, 9999px);
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-semibold, 600);
+    line-height: var(--leading-none, 1);
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .status-indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* ── Canonical Badge ──────────────────────────────────────── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px var(--space-2, 8px);
+    border-radius: var(--radius-sm, 6px);
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-semibold, 600);
+    line-height: var(--leading-tight, 1.25);
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+
+  .badge--success {
+    background: var(--green-bg, #ECFDF5);
+    color: var(--green-fg, #065F46);
+    border-color: var(--green-border, #A7F3D0);
+  }
+
+  .badge--warning {
+    background: var(--amber-bg, #FFFBEB);
+    color: var(--amber-fg, #92400E);
+    border-color: var(--amber-border, #FDE68A);
+  }
+
+  .badge--danger {
+    background: var(--red-bg, #FEF2F2);
+    color: var(--red-fg, #991B1B);
+    border-color: var(--red-border, #FECACA);
+  }
+
+  .badge--info {
+    background: var(--blue-bg, #EFF6FF);
+    color: var(--blue-fg, #1E40AF);
+    border-color: var(--blue-border, #BFDBFE);
+  }
+
+  .badge--neutral {
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text-muted, #64748B);
+    border-color: var(--border, #E2E8F0);
+  }
+
+  .badge--brand {
+    background: var(--brand-light, #FFEDD5);
+    color: var(--accent-active, #9A3412);
+    border-color: #FED7AA;
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     ALIASES — delete after Phase 4
+     ─────────────────────────────────────────────────────────── */
+  .badge-status-low {
+    background: #FEF3C7;
+    color: #B45309;
+    border: 1px solid #FDE68A;
+  }
+
+  .badge-status-out {
+    background: #FEE2E2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+  }
+
+  .badge-status-in,
+  .badge-action-confirmed,
+  .badge-action-created {
+    background: #DCFCE7;
+    color: #15803D;
+    border: 1px solid #BBF7D0;
+  }
+
+  .badge-action-changed {
+    background: #E0F2FE;
+    color: #0369A1;
+    border: 1px solid #BAE6FD;
+  }
+
+  .badge-action-deleted,
+  .badge-action-cancelled {
+    background: #FEE2E2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+  }
+
+  .badge-pill-closed {
+    background: #F1F5F9;
+    color: #64748B;
+    border: 1px solid #E2E8F0;
+    font-size: 11px;
+  }
+
+  .badge-pill-amber {
+    background: #FEF3C7;
+    color: #B45309;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 9999px;
+    padding: 2px 8px;
+  }
+
+  .status-pill-gray {
+    background: #F1F5F9;
+    color: #64748B;
+  }
+
+  .status-pill-green {
+    background: #ECFDF5;
+    color: #065F46;
+  }
+}

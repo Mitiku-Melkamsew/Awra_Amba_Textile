@@ -1,0 +1,103 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - MODALS & DIALOGS
+   Accessible dialog overlay, pop-in animation, and anatomy.
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  .modal-overlay,
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal, 200);
+    padding: var(--space-4, 1rem);
+    box-sizing: border-box;
+  }
+
+  .modal-dialog {
+    background: var(--surface, #FFFFFF);
+    border-radius: var(--radius-lg, 14px);
+    box-shadow: var(--shadow-xl, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
+    width: 100%;
+    max-width: 500px;
+    overflow: hidden;
+    border: 1px solid var(--border, #E2E8F0);
+    display: flex;
+    flex-direction: column;
+    animation: modalPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes modalPop {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .modal-header {
+    padding: var(--space-4, 1rem) var(--space-6, 1.5rem);
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-subtle, #F8FAFC);
+  }
+
+  .modal-title {
+    margin: 0;
+    font-size: var(--text-lg, 1.125rem);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .modal-subtitle {
+    margin: 0.2rem 0 0 0;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    font-weight: var(--font-normal, 400);
+  }
+
+  .modal-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-muted, #64748B);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm, 6px);
+    line-height: 1;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .modal-close-btn:hover {
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text, #0F172A);
+  }
+
+  .modal-body {
+    padding: var(--space-6, 1.5rem);
+    overflow-y: auto;
+    max-height: calc(85vh - 120px);
+  }
+
+  .modal-footer {
+    padding: var(--space-3, 0.75rem) var(--space-6, 1.5rem);
+    border-top: 1px solid var(--border-subtle, #F1F5F9);
+    background: var(--bg-subtle, #F8FAFC);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2, 0.5rem);
+  }
+}

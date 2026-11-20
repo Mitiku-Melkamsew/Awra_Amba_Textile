@@ -1,0 +1,111 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - FORMS & INPUTS
+   Form groups, controls, labels, layout rows, and validation states.
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  .form {
+    display: grid;
+    gap: var(--space-4, 1rem);
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1, 4px);
+  }
+
+  .form-label,
+  label.form-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text, #0F172A);
+  }
+
+  .form-label .required {
+    color: var(--red, #DC2626);
+  }
+
+  .form-hint {
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+  }
+
+  .form-error {
+    font-size: var(--text-xs, 12px);
+    color: var(--red, #DC2626);
+    font-weight: var(--font-medium, 500);
+  }
+
+  .input,
+  .select,
+  .textarea {
+    border: 1.5px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-sm, 6px);
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    font: inherit;
+    font-size: var(--text-sm, 14px);
+    color: var(--text, #0F172A);
+    background: var(--surface, #FFFFFF);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: 40px;
+    box-shadow: var(--shadow-xs);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    border-color: var(--accent, #EA580C);
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14);
+  }
+
+  .input:disabled,
+  .select:disabled,
+  .textarea:disabled {
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text-muted, #64748B);
+    cursor: not-allowed;
+  }
+
+  .input::placeholder,
+  .textarea::placeholder {
+    color: var(--text-subtle, #94A3B8);
+  }
+
+  .input.error,
+  .select.error,
+  .textarea.error {
+    border-color: var(--red, #DC2626);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4, 1rem);
+  }
+
+  .form-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-4, 1rem);
+  }
+
+  .form-actions {
+    display: flex;
+    gap: var(--space-3, 0.75rem);
+    align-items: center;
+    padding-top: var(--space-2, 0.5rem);
+  }
+}

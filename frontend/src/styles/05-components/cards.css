@@ -1,0 +1,122 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - CARDS & STAT CARDS
+   Reusable card containers, headers, and dashboard metric cards.
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* ── Standard Card ────────────────────────────────────────── */
+  .card {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 14px);
+    box-shadow: var(--shadow-sm);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: var(--space-4, 1rem) var(--space-6, 1.5rem);
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3, 0.75rem);
+  }
+
+  .card-title {
+    margin: 0;
+    font-size: var(--text-lg, 1.125rem);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+  }
+
+  .card-description {
+    margin: 0.25rem 0 0 0;
+    font-size: var(--text-sm, 0.875rem);
+    color: var(--text-muted, #64748B);
+  }
+
+  .card-body {
+    padding: var(--space-6, 1.5rem);
+  }
+
+  .card-footer {
+    padding: var(--space-3, 0.75rem) var(--space-6, 1.5rem);
+    border-top: 1px solid var(--border-subtle, #F1F5F9);
+    background: var(--bg-subtle, #F8FAFC);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2, 0.5rem);
+  }
+
+  /* ── Stat Card (KPI Cards) ────────────────────────────────── */
+  .stat-card {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 14px);
+    padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: rgba(234, 88, 12, 0.3);
+  }
+
+  .stat-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--brand-gradient);
+    opacity: 0.7;
+  }
+
+  .stat-card .label,
+  .stat-card span.stat-card-label,
+  .stat-card-label {
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-bold, 700);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, #64748B);
+    margin-bottom: var(--space-2, 0.5rem);
+  }
+
+  .stat-card .value,
+  .stat-card strong,
+  .stat-card-value {
+    font-size: var(--text-2xl, 24px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
+    line-height: var(--leading-none, 1);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-card-value.ok,
+  .stat-card strong.ok {
+    color: var(--green, #059669);
+  }
+
+  .stat-card-value.down,
+  .stat-card strong.down {
+    color: var(--red, #DC2626);
+  }
+
+  .stat-card-sub {
+    margin-top: var(--space-2, 0.5rem);
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+  }
+}

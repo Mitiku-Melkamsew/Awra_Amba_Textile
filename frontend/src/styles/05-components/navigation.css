@@ -1,0 +1,127 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - NAVIGATION & TABS
+   Sidebar links, icon styling, horizontal tabs, and tab pills.
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  .sidebar-nav {
+    flex: 1;
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .sidebar-nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--sidebar-muted, #94A3B8);
+    padding: 0.75rem 0.75rem 0.35rem;
+    margin: 0;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.85rem;
+    border-radius: var(--radius-sm, 8px);
+    color: var(--sidebar-fg, #F8FAFC);
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    opacity: 0.8;
+    position: relative;
+    border-left: 3px solid transparent;
+  }
+
+  .nav-item:hover {
+    background: var(--sidebar-hover, rgba(255, 255, 255, 0.06));
+    opacity: 1;
+    transform: translateX(2px);
+    color: #FFFFFF;
+  }
+
+  .nav-item.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-active-fg, #FDBA74);
+    opacity: 1;
+    font-weight: 700;
+    border-left-color: var(--sidebar-active-border, #EA580C);
+    box-shadow: inset 0 0 16px rgba(234, 88, 12, 0.05);
+  }
+
+  .nav-item.active .nav-icon {
+    transform: scale(1.1);
+  }
+
+  .nav-icon {
+    font-size: 17px;
+    width: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+  }
+
+  /* Weaver sidebar link overrides */
+  .sidebar.weaver-sidebar .nav-item {
+    color: var(--wsidebar-fg, #ECFDF5);
+  }
+
+  .sidebar.weaver-sidebar .nav-item:hover {
+    background: var(--wsidebar-hover, rgba(255, 255, 255, 0.06));
+    color: #FFFFFF;
+  }
+
+  .sidebar.weaver-sidebar .nav-item.active {
+    background: var(--wsidebar-active-bg);
+    border-left-color: var(--wsidebar-active-border, #10B981);
+    color: var(--wsidebar-active-fg, #6EE7B7);
+  }
+
+  /* ── Horizontal Navigation Tabs & Pills ───────────────────── */
+  .tab-bar,
+  .tabs-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    border-bottom: 1px solid var(--border, #E2E8F0);
+    padding-bottom: 0;
+    margin-bottom: var(--space-5, 1.25rem);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-pill {
+    padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+    border-radius: var(--radius-sm, 6px);
+    font-size: var(--text-sm, 13.5px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-muted, #64748B);
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tab-pill:hover {
+    color: var(--text, #0F172A);
+    background: var(--surface-hover, #F8FAFC);
+  }
+
+  .tab-pill.active {
+    color: var(--brand, #C2410C);
+    background: var(--brand-light, #FFEDD5);
+    border-color: #FED7AA;
+  }
+}
