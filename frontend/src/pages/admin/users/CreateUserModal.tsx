@@ -1,0 +1,198 @@
+import React, { useState } from "react";
+import type { UserRole } from "../../../domain/models";
+import { userService } from "../../../infrastructure/services";
+import { Button, FormField, Modal } from "../../../components/common";
+import { deriveUsername, derivePassword } from "./useUsersManager";
+
+export interface CreateUserModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onUserCreated: (credentials: {
+    fullName: string;
+    username: string;
+    initialPassword?: string;
+    roles: UserRole[];
+  }) => void;
+  onRefreshList: () => Promise<void>;
+}
+
+export function CreateUserModal({
+  isOpen,
+  onClose,
+  onUserCreated,
+  onRefreshList,
+}: CreateUserModalProps) {
+  const [newFullName, setNewFullName] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [newRoles, setNewRoles] = useState<UserRole[]>(["weaver"]);
+  const [isCustomUsername, setIsCustomUsername] = useState(false);
+  const [isCustomPassword, setIsCustomPassword] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createBusy, setCreateBusy] = useState(false);
+
+  const resetForm = () => {
+    setNewFullName("");
+    setNewUsername("");
+    setNewPhone("");
+    setNewPassword("");
+    setNewCompanyName("");
+    setNewRoles(["weaver"]);
+    setIsCustomUsername(false);
+    setIsCustomPassword(false);
+    setCreateError(null);
+  };
+
+  const handleFullNameChange = (val: string) => {
+    setNewFullName(val);
+    if (!isCustomUsername) {
+      setNewUsername(deriveUsername(val));
+    }
+    if (!isCustomPassword) {
+      setNewPassword(derivePassword(val));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError(null);
+    setCreateBusy(true);
+
+    try {
+      const created = await userService.createUser({
+        username: newUsername.trim() || undefined,
+        fullName: newFullName.trim(),
+        phone: newPhone.trim() || undefined,
+        password: newPassword.trim() || undefined,
+        roles: newRoles,
+        companyName: newRoles.includes("merchant") ? newCompanyName.trim() || undefined : undefined,
+      });
+
+      resetForm();
+      onClose();
+      onUserCreated({
+        fullName: created.fullName,
+        username: created.username,
+        initialPassword: created.initialPassword,
+        roles: created.roles,
+      });
+      await onRefreshList();
+    } catch (err: any) {
+      setCreateError(err.message || "Failed to create user");
+    } finally {
+      setCreateBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Add New User"
+      subtitle="Username and password will be generated automatically, or you can customize them."
+      maxWidth={480}
+    >
+      {createError && (
+        <div className="alert-banner alert-banner--error" style={{ marginBottom: "var(--space-4)" }}>
+          ⚠️ {createError}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="stack">
+        <FormField label="Full Name (የተጠቃሚ ሙሉ ስም)" required>
+          <input
+            type="text"
+            className="input"
+            required
+            placeholder="e.g. Almaz Kebede"
+            value={newFullName}
+            onChange={(e) => handleFullNameChange(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Username (መለያ ስም)">
+          <input
+            type="text"
+            className="input"
+            placeholder="almaz.kebede"
+            value={newUsername}
+            onChange={(e) => {
+              setIsCustomUsername(true);
+              setNewUsername(e.target.value);
+            }}
+          />
+        </FormField>
+
+        <FormField label="Phone Number (ስልክ)">
+          <input
+            type="tel"
+            className="input"
+            placeholder="0911234567"
+            value={newPhone}
+            onChange={(e) => setNewPhone(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Temporary Password (የይለፍ ቃል)">
+          <input
+            type="text"
+            className="input"
+            placeholder="Awra@123"
+            value={newPassword}
+            onChange={(e) => {
+              setIsCustomPassword(true);
+              setNewPassword(e.target.value);
+            }}
+          />
+        </FormField>
+
+        <FormField label="Assigned Roles" required>
+          <div className="cluster" style={{ gap: "var(--space-4)" }}>
+            {(["weaver", "merchant", "admin"] as UserRole[]).map((r) => (
+              <label key={r} className="cluster" style={{ cursor: "pointer", textTransform: "capitalize" }}>
+                <input
+                  type="checkbox"
+                  checked={newRoles.includes(r)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setNewRoles([...newRoles, r]);
+                    } else if (newRoles.length > 1) {
+                      setNewRoles(newRoles.filter((x) => x !== r));
+                    }
+                  }}
+                  style={{ accentColor: "var(--brand)" }}
+                />
+                <span className="text-sm font-medium">{r}</span>
+              </label>
+            ))}
+          </div>
+        </FormField>
+
+        {newRoles.includes("merchant") && (
+          <FormField label="Company / Business Name">
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g. Merkato Textile Shop"
+              value={newCompanyName}
+              onChange={(e) => setNewCompanyName(e.target.value)}
+            />
+          </FormField>
+        )}
+
+        <div className="cluster" style={{ justifyContent: "flex-end", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" isLoading={createBusy}>
+            Create User
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+export default CreateUserModal;
