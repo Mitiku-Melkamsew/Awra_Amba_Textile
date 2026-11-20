@@ -14,7 +14,7 @@ export function Modal({
   onClose,
   title,
   subtitle,
-  maxWidth = 460,
+  maxWidth = 480,
   children,
 }: ModalProps) {
   useEffect(() => {
@@ -35,109 +35,41 @@ export function Modal({
 
   if (!isOpen) return null;
 
+  const maxWidthStyle = typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth;
+
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(15, 23, 42, 0.45)",
-        backdropFilter: "blur(2px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "1rem",
-        boxSizing: "border-box",
-      }}
+      className="modal-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        style={{
-          background: "#ffffff",
-          borderRadius: "16px",
-          padding: "1.75rem",
-          width: "100%",
-          maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth,
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          boxSizing: "border-box",
-          position: "relative",
-        }}
+        className="modal-dialog"
+        style={{ maxWidth: maxWidthStyle }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: "1.25rem",
-          }}
-        >
+        <div className="modal-header">
           <div>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: "18px",
-                fontWeight: 800,
-                color: "#0f172a",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {title}
-            </h3>
-            {subtitle && (
-              <p
-                style={{
-                  margin: "0.25rem 0 0",
-                  fontSize: "13px",
-                  color: "#64748b",
-                  lineHeight: 1.4,
-                }}
-              >
-                {subtitle}
-              </p>
-            )}
+            <h3 className="modal-title">{title}</h3>
+            {subtitle && <p className="modal-subtitle">{subtitle}</p>}
           </div>
 
           <button
             type="button"
+            className="modal-close-btn"
             onClick={onClose}
-            aria-label="Close modal"
-            style={{
-              background: "none",
-              border: "none",
-              color: "#94a3b8",
-              fontSize: "16px",
-              cursor: "pointer",
-              padding: "4px",
-              lineHeight: 1,
-              borderRadius: "6px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "color 0.15s ease, background 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#0f172a";
-              e.currentTarget.style.background = "#f1f5f9";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#94a3b8";
-              e.currentTarget.style.background = "none";
-            }}
+            aria-label="Close dialog"
           >
             ✕
           </button>
         </div>
 
-        {/* Content */}
-        <div>{children}</div>
+        <div className="modal-body">{children}</div>
       </div>
     </div>
   );
