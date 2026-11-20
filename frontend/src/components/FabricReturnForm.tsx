@@ -1,28 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, KeyboardEvent } from "react";
-import {
-  catalogApi,
-  fabricReturnsApi,
-  type Color,
-  type DeductionEntry,
-  type Design,
-  type Fabric,
-  type FabricVariant,
-  type WorkOrderDetail,
-} from "../api";
-import { fabricVariantName } from "../utils/variantNames";
-import { findZigZagDesignId } from "../utils/defaultDesign";
-import { Modal, SearchableSelect } from "./common";
-
-type FabricReturnRow = WorkOrderDetail["fabricReturns"][number];
-
-const DEDUCTION_FACTORS: Array<{ value: string; label: string }> = [
-  { value: "weight", label: "Weight Deficit" },
-  { value: "low_quality", label: "Low Quality / Coarse Weave" },
-  { value: "stain", label: "Stain / Discoloration" },
-  { value: "weaving_defect", label: "Weaving Defect / Broken Threads" },
-  { value: "custom", label: "Other / Custom Factor" },
-];
+import type { KeyboardEvent } from "react";
+import type { WorkOrderDetail } from "../api";
+import { useFabricReturnForm, type FabricReturnRow } from "./fabric-returns/useFabricReturnForm";
+import { FabricVariantPickerModal } from "./fabric-returns/FabricVariantPickerModal";
+import { DeductionsSection } from "./fabric-returns/DeductionsSection";
+import { GroupedReturnsCard } from "./fabric-returns/GroupedReturnsCard";
 
 interface FabricReturnFormProps {
   order: WorkOrderDetail;
@@ -39,510 +20,26 @@ export function FabricReturnForm({
   onCancel,
   canRecord = true,
 }: FabricReturnFormProps) {
-  // References
-  const quantityInputRef = useRef<HTMLInputElement | null>(null);
+  const form = useFabricReturnForm({
+    order,
+    onSaved,
+    editReturn,
+    onCancel,
+    canRecord,
+  });
 
-  // Catalog lookups & variants
-  const [fabrics, setFabrics] = useState<Fabric[]>([]);
-  const [colors, setColors] = useState<Color[]>([]);
-  const [designs, setDesigns] = useState<Design[]>([]);
-  const [fabricVariants, setFabricVariants] = useState<FabricVariant[]>([]);
-
-  // Selected Fabric for the active return
-  const orderVariant = order.fabricVariant ?? ({} as FabricVariant);
-  const [selectedVariantId, setSelectedVariantId] = useState<number>(
-    Number(editReturn?.fabricVariant?.fabricVariantId ?? order.fabricVariantId ?? orderVariant.fabricVariantId ?? 0),
-  );
-
-  // Active return form inputs
-  const [editingReturnId, setEditingReturnId] = useState<number | null>(
-    editReturn ? editReturn.returnId : null,
-  );
-  const [quantity, setQuantity] = useState(
-    editReturn ? String(editReturn.quantityReturned) : "",
-  );
-  const [totalWeight, setTotalWeight] = useState(
-    editReturn ? String(editReturn.totalWeight) : "",
-  );
-  const [unitPrice, setUnitPrice] = useState(
-    editReturn
-      ? String(editReturn.unitPrice)
-      : String((orderVariant as any).basePrice ?? (orderVariant as any).currentPrice?.weaverRate ?? 1380),
-  );
-  const [lengthCm, setLengthCm] = useState(
-    editReturn && editReturn.lengthCm
-      ? String(editReturn.lengthCm)
-      : orderVariant.fabric?.standardLengthCm
-      ? String(orderVariant.fabric.standardLengthCm)
-      : "64",
-  );
-  const [widthCm, setWidthCm] = useState(
-    editReturn && editReturn.widthCm
-      ? String(editReturn.widthCm)
-      : orderVariant.fabric?.standardWidthCm
-      ? String(orderVariant.fabric.standardWidthCm)
-      : "120",
-  );
-  const [remark, setRemark] = useState(editReturn?.remark ?? "");
-
-  // Quality Deductions state
-  const [deductions, setDeductions] = useState<DeductionEntry[]>(
-    editReturn?.deductions ? [...(editReturn.deductions as any)] : [],
-  );
-  const [addFactorOpen, setAddFactorOpen] = useState(false);
-  const [factorType, setFactorType] = useState("low_quality");
-  const [factorPerPiece, setFactorPerPiece] = useState("");
-  const [factorRemark, setFactorRemark] = useState("");
-
-  // Accordion & status
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  // Modal State (Image 1: Changing fabric)
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalSearch, setModalSearch] = useState("");
-  const [modalFabricId, setModalFabricId] = useState("");
-  const [modalWarpColorId, setModalWarpColorId] = useState("");
-  const [modalWeftColorId, setModalWeftColorId] = useState("");
-  const [modalDesignId, setModalDesignId] = useState("");
-
-  // Load catalog lookup & variants
-  useEffect(() => {
-    Promise.all([
-      catalogApi.lookup(),
-      catalogApi.fabricVariants(),
-    ])
-      .then(([lookup, variants]) => {
-        setFabrics(lookup.fabrics);
-        setColors(lookup.colors);
-        setDesigns(lookup.designs);
-        setFabricVariants(variants);
-
-        // Pre-select modal dropdown fallbacks
-        if (lookup.fabrics[0]) setModalFabricId(String(lookup.fabrics[0].fabricId));
-        if (lookup.colors[0]) {
-          setModalWarpColorId(String(lookup.colors[0].colorId));
-          setModalWeftColorId(String(lookup.colors[0].colorId));
-        }
-        const defaultDesign = findZigZagDesignId(lookup.designs as any) ?? lookup.designs[0]?.designId;
-        if (defaultDesign) setModalDesignId(String(defaultDesign));
-      })
-      .catch((err) => {
-        console.error("Failed to load catalog lookup for fabric return:", err);
-      });
-  }, []);
-
-  // Update form if external editReturn prop changes
-  useEffect(() => {
-    if (editReturn) {
-      setEditingReturnId(editReturn.returnId);
-      setQuantity(String(editReturn.quantityReturned));
-      setTotalWeight(String(editReturn.totalWeight));
-      setUnitPrice(String(editReturn.unitPrice));
-      if (editReturn.lengthCm) setLengthCm(String(editReturn.lengthCm));
-      if (editReturn.widthCm) setWidthCm(String(editReturn.widthCm));
-      setRemark(editReturn.remark ?? "");
-      setDeductions(editReturn.deductions ? [...(editReturn.deductions as any)] : []);
-      const varId = Number(editReturn.fabricVariant?.fabricVariantId ?? editReturn.fabricVariantId);
-      if (varId) setSelectedVariantId(varId);
-    }
-  }, [editReturn]);
-
-  // The resolved selected FabricVariant
-  const selectedVariant: FabricVariant | undefined = useMemo(() => {
-    const match = fabricVariants.find((v) => v.fabricVariantId === selectedVariantId);
-    if (match) return match;
-    if (orderVariant.fabricVariantId) return orderVariant as FabricVariant;
-    return undefined;
-  }, [fabricVariants, selectedVariantId, orderVariant]);
-
-  // Readable name formatted with " · "
-  const selectedVariantDisplayName = useMemo(() => {
-    if (!selectedVariant) return "medebegna · biret · geberdin";
-    return fabricVariantName(selectedVariant).split("-").join(" · ");
-  }, [selectedVariant]);
-
-  // Standard quality thresholds
-  const standardWeight = selectedVariant?.fabric?.standardWeightG ?? 64;
-
-  // Real-time averages for the current form entry
-  const numQty = parseFloat(quantity) || 0;
-  const numWeight = parseFloat(totalWeight) || 0;
-  const currentAvgWeight = numQty > 0 ? numWeight / numQty : 0;
-  const flooredAvg = Math.floor(currentAvgWeight);
-  const isCurrentUnderweight = numQty > 0 && flooredAvg < standardWeight;
-  const weightDeficit = isCurrentUnderweight ? standardWeight - flooredAvg : 0;
-  const suggestedWeightPerPiece = weightDeficit * 10;
-  const hasWeightDeduction = deductions.some((d) => d.factor === "weight");
-
-  // Live financial preview
-  const totalDeductionPerPiece = useMemo(
-    () => deductions.reduce((sum, d) => sum + (Number(d.perPiece) || 0), 0),
-    [deductions],
-  );
-  const liveGross = useMemo(
-    () => numQty * (parseFloat(unitPrice) || 0),
-    [numQty, unitPrice],
-  );
-  const liveDeductionAmount = useMemo(
-    () => totalDeductionPerPiece * numQty,
-    [totalDeductionPerPiece, numQty],
-  );
-  const liveNetFabricValue = useMemo(
-    () => liveGross - liveDeductionAmount,
-    [liveGross, liveDeductionAmount],
-  );
-
-  function handleApplyWeightDeduction() {
-    if (suggestedWeightPerPiece <= 0) return;
-    setDeductions((prev) => {
-      const rest = prev.filter((d) => d.factor !== "weight");
-      return [
-        ...rest,
-        {
-          factor: "weight",
-          perPiece: suggestedWeightPerPiece,
-          remark: `Avg ${flooredAvg}g is ${weightDeficit}g below standard ${standardWeight}g (-${suggestedWeightPerPiece} ETB/piece)`,
-        },
-      ];
-    });
-  }
-
-  function handleAddCustomFactor() {
-    const p = parseFloat(factorPerPiece);
-    if (isNaN(p) || p <= 0) {
-      setError("Please specify a deduction amount per piece greater than 0");
-      return;
-    }
-    setDeductions((prev) => {
-      const rest = prev.filter((d) => d.factor !== factorType);
-      return [
-        ...rest,
-        {
-          factor: factorType,
-          perPiece: p,
-          remark: factorRemark.trim() || undefined,
-        },
-      ];
-    });
-    setFactorPerPiece("");
-    setFactorRemark("");
-    setAddFactorOpen(false);
-  }
-
-  function handleRemoveDeduction(factor: string) {
-    setDeductions((prev) => prev.filter((d) => d.factor !== factor));
-  }
-
-  // Handle opening modal (Image 1)
-  function handleOpenModal() {
-    setModalSearch("");
-    if (selectedVariant) {
-      if (selectedVariant.fabricId || selectedVariant.fabric?.fabricId) {
-        setModalFabricId(String(selectedVariant.fabricId ?? selectedVariant.fabric?.fabricId));
-      }
-      if (selectedVariant.warpColorId || selectedVariant.warpColor?.colorId) {
-        setModalWarpColorId(String(selectedVariant.warpColorId ?? selectedVariant.warpColor?.colorId));
-      }
-      if (selectedVariant.weftColorId || selectedVariant.weftColor?.colorId) {
-        setModalWeftColorId(String(selectedVariant.weftColorId ?? selectedVariant.weftColor?.colorId));
-      }
-      if (selectedVariant.designId || selectedVariant.design?.designId) {
-        setModalDesignId(String(selectedVariant.designId ?? selectedVariant.design?.designId));
-      }
-    }
-    setIsModalOpen(true);
-  }
-
-  const modalFabricOptions = useMemo(() => {
-    return fabrics.map((f) => ({
-      id: String(f.fabricId),
-      title: f.name,
-    }));
-  }, [fabrics]);
-
-  const modalDesignOptions = useMemo(() => {
-    return [
-      { id: "", title: "None / Standard" },
-      ...designs.map((d) => ({
-        id: String(d.designId),
-        title: d.name,
-      })),
-    ];
-  }, [designs]);
-
-  const modalColorOptions = useMemo(() => {
-    return colors.map((c) => ({
-      id: String(c.colorId),
-      title: c.name,
-    }));
-  }, [colors]);
-
-  // Filtered variants for Image 1 modal search
-  const filteredModalVariants = useMemo(() => {
-    const q = modalSearch.trim().toLowerCase();
-    const active = fabricVariants.filter((v) => v.isActive !== false);
-    if (!q) return active.slice(0, 10);
-    return active.filter((v) => {
-      const name = fabricVariantName(v).toLowerCase();
-      const dotName = name.split("-").join(" ");
-      const sku = (v.sku ?? "").toLowerCase();
-      return name.includes(q) || dotName.includes(q) || sku.includes(q);
-    });
-  }, [fabricVariants, modalSearch]);
-
-  // Recently used pills for Image 1
-  const recentlyUsedPills = useMemo(() => {
-    const list: Array<{ label: string; variant: FabricVariant }> = [];
-    fabricVariants.slice(0, 3).forEach((v) => {
-      const label = fabricVariantName(v).split("-").join(" · ");
-      list.push({ label, variant: v });
-    });
-    return list;
-  }, [fabricVariants]);
-
-  // Apply selected variant from modal
-  function handleSelectModalVariant(variant: FabricVariant) {
-    setSelectedVariantId(variant.fabricVariantId);
-    const p = (variant as any).basePrice ?? (variant as any).currentPrice?.weaverRate ?? variant.fabric?.standardWeightG;
-    if (p && !editReturn) {
-      setUnitPrice(String(p));
-    }
-    setIsModalOpen(false);
-  }
-
-  // Handle "Use this fabric" from custom combination in modal
-  async function handleApplyCustomModalFabric() {
-    try {
-      if (!modalFabricId || !modalWarpColorId || !modalWeftColorId || !modalDesignId) {
-        setIsModalOpen(false);
-        return;
-      }
-      // Check if existing variant matches
-      const match = fabricVariants.find(
-        (v) =>
-          String(v.fabricId ?? v.fabric?.fabricId) === modalFabricId &&
-          String(v.warpColorId ?? v.warpColor?.colorId) === modalWarpColorId &&
-          String(v.weftColorId ?? v.weftColor?.colorId) === modalWeftColorId &&
-          String(v.designId ?? v.design?.designId) === modalDesignId,
-      );
-      if (match) {
-        handleSelectModalVariant(match);
-        return;
-      }
-      // Create new variant
-      const created = await catalogApi.createFabricVariant({
-        fabricId: Number(modalFabricId),
-        warpColorId: Number(modalWarpColorId),
-        weftColorId: Number(modalWeftColorId),
-        designId: Number(modalDesignId),
-      });
-      setFabricVariants((prev) => [created, ...prev]);
-      handleSelectModalVariant(created);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create fabric variant");
-      setIsModalOpen(false);
-    }
-  }
-
-  // Handle Submit (Create or Update Fabric Return)
-  async function handleSubmit(e?: FormEvent) {
-    if (e) e.preventDefault();
-    if (!canRecord) return;
-
-    setError("");
-    const qty = parseFloat(quantity);
-    const weight = parseFloat(totalWeight);
-    const price = parseFloat(unitPrice) || 0;
-
-    if (!qty || qty <= 0) {
-      setError("Please enter a valid quantity greater than 0.");
-      quantityInputRef.current?.focus();
-      return;
-    }
-    if (!weight || weight <= 0) {
-      setError("Please enter a valid total weight (g) greater than 0.");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const zigId = String(order.zigId ?? "");
-      const varId = selectedVariantId || order.fabricVariantId || orderVariant.fabricVariantId;
-      if (!varId) {
-        throw new Error("Please select a fabric variant.");
-      }
-
-      if (editingReturnId) {
-        // Update existing return
-        await fabricReturnsApi.update(editingReturnId, {
-          quantityReturned: qty,
-          totalWeight: weight,
-          unitPrice: price,
-          lengthCm: lengthCm ? Number(lengthCm) : undefined,
-          widthCm: widthCm ? Number(widthCm) : undefined,
-          remark: remark || undefined,
-          deductions,
-        });
-        onSaved("Fabric return updated.");
-        handleCancelEdit();
-      } else {
-        // Record new fabric return
-        await fabricReturnsApi.create({
-          zigId,
-          fabricVariantId: varId,
-          quantityReturned: qty,
-          totalWeight: weight,
-          unitPrice: price,
-          lengthCm: lengthCm ? Number(lengthCm) : undefined,
-          widthCm: widthCm ? Number(widthCm) : undefined,
-          remark: remark || undefined,
-          deductions,
-        });
-        onSaved(`Fabric return recorded: ${selectedVariantDisplayName}`);
-
-        // As specified in Image 2: "After saving, quantity and weight clear and the cursor returns to Quantity."
-        setQuantity("");
-        setTotalWeight("");
-        setRemark("");
-        setDeductions([]);
-        setAddFactorOpen(false);
-        setTimeout(() => {
-          quantityInputRef.current?.focus();
-        }, 50);
-      }
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : "Failed to save fabric return");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  // Cancel edit mode
-  function handleCancelEdit() {
-    setEditingReturnId(null);
-    setQuantity("");
-    setTotalWeight("");
-    setRemark("");
-    setDeductions([]);
-    setAddFactorOpen(false);
-    setSelectedVariantId(Number(order.fabricVariantId ?? orderVariant.fabricVariantId ?? 0));
-    if (onCancel) onCancel();
-    quantityInputRef.current?.focus();
-  }
-
-  // Start editing a specific return from the right card
-  function handleStartEdit(ret: FabricReturnRow) {
-    setEditingReturnId(ret.returnId);
-    setQuantity(String(ret.quantityReturned));
-    setTotalWeight(String(ret.totalWeight));
-    setUnitPrice(String(ret.unitPrice));
-    if (ret.lengthCm) setLengthCm(String(ret.lengthCm));
-    if (ret.widthCm) setWidthCm(String(ret.widthCm));
-    setRemark(ret.remark ?? "");
-    setDeductions(ret.deductions ? [...(ret.deductions as any)] : []);
-    const vId = Number(ret.fabricVariant?.fabricVariantId ?? ret.fabricVariantId);
-    if (vId) setSelectedVariantId(vId);
-    setError("");
-    quantityInputRef.current?.focus();
-  }
-
-  // Delete return from right card
-  async function handleDeleteReturn(returnId: number) {
-    if (!window.confirm("Are you sure you want to delete this fabric return?")) return;
-    try {
-      await fabricReturnsApi.delete(returnId);
-      onSaved("Fabric return deleted.");
-      if (editingReturnId === returnId) {
-        handleCancelEdit();
-      }
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : "Failed to delete return");
-    }
-  }
-
-  // Enter key press in inputs to trigger submit
   function handleInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleSubmit();
+      form.handleSubmit();
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // Group fabric returns for the Right Card (Image 2)
-  // ─────────────────────────────────────────────────────────────
-  const groupedReturns = useMemo(() => {
-    const rawList = Array.isArray(order.fabricReturns) ? order.fabricReturns : [];
-    const map = new Map<
-      number,
-      {
-        variantId: number;
-        variant: FabricVariant | null;
-        label: string;
-        standardWeightG: number;
-        totalQty: number;
-        totalWeight: number;
-        avgG: number;
-        grossTotal: number;
-        deductionTotal: number;
-        netTotal: number;
-        returns: FabricReturnRow[];
-      }
-    >();
-
-    rawList.forEach((ret: any) => {
-      const v = (ret.fabricVariant ?? orderVariant) as FabricVariant;
-      const vId = Number(v?.fabricVariantId ?? ret.fabricVariantId ?? 0);
-      const retQty = Number(ret.quantityReturned || 0);
-      const retWeight = Number(ret.totalWeight || 0);
-      const retPrice = Number(ret.unitPrice || 0);
-      const gross = ret.grossFabricValue !== undefined ? Number(ret.grossFabricValue) : retQty * retPrice;
-      const deduction = ret.deductionAmount !== undefined ? Number(ret.deductionAmount) : 0;
-      const net = gross - deduction;
-
-      if (!map.has(vId)) {
-        const label = v ? fabricVariantName(v).split("-").join(" · ") : "medebegna · biret · geberdin";
-        const stdW = v?.fabric?.standardWeightG ?? 64;
-        map.set(vId, {
-          variantId: vId,
-          variant: v,
-          label,
-          standardWeightG: stdW,
-          totalQty: 0,
-          totalWeight: 0,
-          avgG: 0,
-          grossTotal: 0,
-          deductionTotal: 0,
-          netTotal: 0,
-          returns: [],
-        });
-      }
-
-      const group = map.get(vId)!;
-      group.totalQty += retQty;
-      group.totalWeight += retWeight;
-      group.grossTotal += gross;
-      group.deductionTotal += deduction;
-      group.netTotal += net;
-      group.returns.push(ret);
-    });
-
-    map.forEach((g) => {
-      g.avgG = g.totalQty > 0 ? Math.round(g.totalWeight / g.totalQty) : 0;
-    });
-
-    return Array.from(map.values());
-  }, [order.fabricReturns, orderVariant]);
-
-  const grandTotal = useMemo(() => {
-    return groupedReturns.reduce((acc, g) => acc + g.netTotal, 0);
-  }, [groupedReturns]);
+  const numQty = parseFloat(form.quantity) || 0;
 
   return (
     <div style={{ width: "100%", margin: "0 0 1.5rem 0" }}>
-      {/* 2-Column Responsive Layout matching Image 2 */}
+      {/* 2-Column Responsive Layout */}
       <div
         style={{
           display: "grid",
@@ -551,17 +48,15 @@ export function FabricReturnForm({
           alignItems: "start",
         }}
       >
-        {/* ─────────────────────────────────────────────────────────────
-            LEFT CARD: Record fabric return (Image 2)
-           ───────────────────────────────────────────────────────────── */}
+        {/* LEFT CARD: Record fabric return */}
         {canRecord && (
           <div
             style={{
-              background: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "14px",
+              background: "var(--color-surface, #ffffff)",
+              border: "1px solid var(--color-border-subtle, #e2e8f0)",
+              borderRadius: "var(--radius-lg, 14px)",
               padding: "1.5rem",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+              boxShadow: "var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05))",
             }}
           >
             {/* Card Title */}
@@ -570,50 +65,44 @@ export function FabricReturnForm({
                 margin: "0 0 1.25rem 0",
                 fontSize: "1.15rem",
                 fontWeight: 700,
-                color: "#0f172a",
+                color: "var(--color-text, #0f172a)",
               }}
             >
-              {editingReturnId ? `Edit fabric return #${editingReturnId}` : "Record fabric return"}
+              {form.editingReturnId
+                ? `Edit fabric return #${form.editingReturnId}`
+                : "Record fabric return"}
             </h3>
 
             {/* Error banner */}
-            {error && (
+            {form.error && (
               <div
                 style={{
-                  background: "#fee2e2",
-                  border: "1px solid #fca5a5",
-                  borderRadius: "8px",
+                  background: "var(--color-danger-subtle, #fee2e2)",
+                  border: "1px solid var(--color-danger-border, #fca5a5)",
+                  borderRadius: "var(--radius-sm, 8px)",
                   padding: "0.6rem 0.85rem",
                   marginBottom: "1rem",
                   fontSize: "0.85rem",
-                  color: "#b91c1c",
+                  color: "var(--color-danger, #b91c1c)",
                 }}
               >
-                {error}
+                {form.error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit}>
-              {/* Fabric Variant Row (Image 2) */}
+            <form onSubmit={form.handleSubmit}>
+              {/* Fabric Variant Row */}
               <div style={{ marginBottom: "1rem" }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.82rem",
-                    fontWeight: 600,
-                    color: "#475569",
-                    marginBottom: "0.35rem",
-                  }}
-                >
+                <label className="form-label" style={{ marginBottom: "0.35rem" }}>
                   Fabric
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <div
                     style={{
                       flex: 1,
-                      background: "#fffdf5",
-                      border: "1px solid #fed7aa",
-                      borderRadius: "8px",
+                      background: "var(--color-orange-50, #fffdf5)",
+                      border: "1px solid var(--color-orange-200, #fed7aa)",
+                      borderRadius: "var(--radius-sm, 8px)",
                       padding: "0.55rem 0.85rem",
                       display: "flex",
                       alignItems: "center",
@@ -625,35 +114,26 @@ export function FabricReturnForm({
                         width: 8,
                         height: 8,
                         borderRadius: "50%",
-                        background: "#ea580c",
+                        background: "var(--color-primary, #ea580c)",
                         display: "inline-block",
                       }}
                     />
-                    <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.92rem" }}>
-                      {selectedVariantDisplayName}
+                    <span style={{ fontWeight: 600, color: "var(--color-text, #1e293b)", fontSize: "0.92rem" }}>
+                      {form.selectedVariantDisplayName}
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={handleOpenModal}
-                    style={{
-                      background: "#ffffff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "8px",
-                      padding: "0.55rem 1rem",
-                      fontSize: "0.85rem",
-                      fontWeight: 600,
-                      color: "#334155",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
+                    onClick={form.handleOpenModal}
+                    className="btn btn-secondary"
+                    style={{ padding: "0.55rem 1rem", fontSize: "0.85rem", whiteSpace: "nowrap" }}
                   >
                     Change
                   </button>
                 </div>
               </div>
 
-              {/* Numeric Inputs Row: Quantity, Total weight (g), Unit price (ETB) (Image 2) */}
+              {/* Numeric Inputs Row: Quantity, Total weight (g), Unit price (ETB) */}
               <div
                 style={{
                   display: "grid",
@@ -664,52 +144,27 @@ export function FabricReturnForm({
               >
                 {/* Quantity */}
                 <div>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      color: "#475569",
-                      marginBottom: "0.3rem",
-                    }}
-                  >
+                  <label className="form-label" style={{ fontSize: "0.8rem", marginBottom: "0.3rem" }}>
                     Quantity
                   </label>
                   <input
-                    ref={quantityInputRef}
+                    ref={form.quantityInputRef}
                     type="number"
                     min={1}
                     step={1}
                     placeholder="0"
                     required
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
+                    value={form.quantity}
+                    onChange={(e) => form.setQuantity(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    style={{
-                      width: "100%",
-                      boxSizing: "border-box",
-                      padding: "0.55rem 0.75rem",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "1rem",
-                      fontWeight: 600,
-                      color: "#0f172a",
-                      outline: "none",
-                    }}
+                    className="input"
+                    style={{ fontSize: "1rem", fontWeight: 600 }}
                   />
                 </div>
 
                 {/* Total weight (g) */}
                 <div>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      color: "#475569",
-                      marginBottom: "0.3rem",
-                    }}
-                  >
+                  <label className="form-label" style={{ fontSize: "0.8rem", marginBottom: "0.3rem" }}>
                     Total weight (g)
                   </label>
                   <input
@@ -718,34 +173,17 @@ export function FabricReturnForm({
                     step="any"
                     placeholder="0"
                     required
-                    value={totalWeight}
-                    onChange={(e) => setTotalWeight(e.target.value)}
+                    value={form.totalWeight}
+                    onChange={(e) => form.setTotalWeight(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    style={{
-                      width: "100%",
-                      boxSizing: "border-box",
-                      padding: "0.55rem 0.75rem",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "1rem",
-                      fontWeight: 600,
-                      color: "#0f172a",
-                      outline: "none",
-                    }}
+                    className="input"
+                    style={{ fontSize: "1rem", fontWeight: 600 }}
                   />
                 </div>
 
                 {/* Unit price (ETB) */}
                 <div>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      color: "#475569",
-                      marginBottom: "0.3rem",
-                    }}
-                  >
+                  <label className="form-label" style={{ fontSize: "0.8rem", marginBottom: "0.3rem" }}>
                     Unit price (ETB)
                   </label>
                   <input
@@ -753,25 +191,16 @@ export function FabricReturnForm({
                     min={0}
                     step="any"
                     placeholder="0"
-                    value={unitPrice}
-                    onChange={(e) => setUnitPrice(e.target.value)}
+                    value={form.unitPrice}
+                    onChange={(e) => form.setUnitPrice(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    style={{
-                      width: "100%",
-                      boxSizing: "border-box",
-                      padding: "0.55rem 0.75rem",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "1rem",
-                      fontWeight: 600,
-                      color: "#0f172a",
-                      outline: "none",
-                    }}
+                    className="input"
+                    style={{ fontSize: "1rem", fontWeight: 600 }}
                   />
                 </div>
               </div>
 
-              {/* Quality Average & Minimum Standard Indicator (Image 2) */}
+              {/* Quality Average & Minimum Standard Indicator */}
               <div
                 style={{
                   display: "flex",
@@ -781,39 +210,30 @@ export function FabricReturnForm({
                   flexWrap: "wrap",
                 }}
               >
-                {currentAvgWeight > 0 && (
+                {form.flooredAvg > 0 && (
                   <span
-                    style={{
-                      background: isCurrentUnderweight ? "#fef3c7" : "#dcfce7",
-                      color: isCurrentUnderweight ? "#92400e" : "#15803d",
-                      borderRadius: "9999px",
-                      padding: "0.3rem 0.75rem",
-                      fontSize: "0.82rem",
-                      fontWeight: 600,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "0.35rem",
-                    }}
+                    className={`badge ${form.isCurrentUnderweight ? "badge-warning" : "badge-success"}`}
+                    style={{ padding: "0.3rem 0.75rem", fontSize: "0.82rem" }}
                   >
-                    {isCurrentUnderweight ? "⚠" : "✓"} Avg {currentAvgWeight.toFixed(1)} g per piece
+                    {form.isCurrentUnderweight ? "⚠" : "✓"} Avg {form.flooredAvg} g per piece
                   </span>
                 )}
-                <span style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                  Minimum average {standardWeight} g
+                <span style={{ fontSize: "0.82rem", color: "var(--color-text-muted, #64748b)" }}>
+                  Minimum average {form.standardWeight} g
                 </span>
               </div>
 
-              {/* Collapsible Accordion: More details (Image 2) */}
+              {/* Collapsible Accordion: More details */}
               <div
                 style={{
-                  border: "1px dashed #cbd5e1",
-                  borderRadius: "8px",
+                  border: "1px dashed var(--color-border-subtle, #cbd5e1)",
+                  borderRadius: "var(--radius-sm, 8px)",
                   padding: "0.65rem 0.85rem",
                   marginTop: "1rem",
                 }}
               >
                 <div
-                  onClick={() => setDetailsOpen(!detailsOpen)}
+                  onClick={() => form.setDetailsOpen(!form.detailsOpen)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -822,104 +242,62 @@ export function FabricReturnForm({
                     userSelect: "none",
                   }}
                 >
-                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#334155" }}>
-                    More details · {lengthCm || "64"} × {widthCm || "120"} cm ·{" "}
-                    {remark ? remark : "no remark"}
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-secondary, #334155)" }}>
+                    More details · {form.lengthCm || "64"} × {form.widthCm || "120"} cm ·{" "}
+                    {form.remark ? form.remark : "no remark"}
                   </span>
-                  <span style={{ fontSize: "0.85rem", color: "#64748b" }}>
-                    {detailsOpen ? "⌃" : "⌵"}
+                  <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted, #64748b)" }}>
+                    {form.detailsOpen ? "⌃" : "⌵"}
                   </span>
                 </div>
-                {detailsOpen && (
+                {form.detailsOpen && (
                   <div
                     style={{
                       marginTop: "0.75rem",
                       paddingTop: "0.75rem",
-                      borderTop: "1px dashed #e2e8f0",
+                      borderTop: "1px dashed var(--color-border-subtle, #e2e8f0)",
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
                       gap: "0.75rem",
                     }}
                   >
                     <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          color: "#64748b",
-                          marginBottom: "0.25rem",
-                        }}
-                      >
+                      <label className="form-label" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>
                         Length (cm)
                       </label>
                       <input
                         type="number"
                         min={0}
-                        value={lengthCm}
-                        onChange={(e) => setLengthCm(e.target.value)}
-                        style={{
-                          width: "100%",
-                          boxSizing: "border-box",
-                          padding: "0.45rem 0.65rem",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "0.9rem",
-                        }}
+                        value={form.lengthCm}
+                        onChange={(e) => form.setLengthCm(e.target.value)}
+                        className="input"
+                        style={{ fontSize: "0.9rem", padding: "0.45rem 0.65rem" }}
                       />
                     </div>
                     <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          color: "#64748b",
-                          marginBottom: "0.25rem",
-                        }}
-                      >
+                      <label className="form-label" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>
                         Width (cm)
                       </label>
                       <input
                         type="number"
                         min={0}
-                        value={widthCm}
-                        onChange={(e) => setWidthCm(e.target.value)}
-                        style={{
-                          width: "100%",
-                          boxSizing: "border-box",
-                          padding: "0.45rem 0.65rem",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "0.9rem",
-                        }}
+                        value={form.widthCm}
+                        onChange={(e) => form.setWidthCm(e.target.value)}
+                        className="input"
+                        style={{ fontSize: "0.9rem", padding: "0.45rem 0.65rem" }}
                       />
                     </div>
                     <div style={{ gridColumn: "span 2" }}>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          color: "#64748b",
-                          marginBottom: "0.25rem",
-                        }}
-                      >
+                      <label className="form-label" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>
                         Remark / ማስታወሻ
                       </label>
                       <input
                         type="text"
-                        value={remark}
+                        value={form.remark}
                         placeholder="Optional"
-                        onChange={(e) => setRemark(e.target.value)}
-                        style={{
-                          width: "100%",
-                          boxSizing: "border-box",
-                          padding: "0.45rem 0.65rem",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "0.9rem",
-                        }}
+                        onChange={(e) => form.setRemark(e.target.value)}
+                        className="input"
+                        style={{ fontSize: "0.9rem", padding: "0.45rem 0.65rem" }}
                       />
                     </div>
                   </div>
@@ -927,280 +305,32 @@ export function FabricReturnForm({
               </div>
 
               {/* Quality Deductions Section */}
-              <div
-                style={{
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "10px",
-                  padding: "1rem",
-                  marginTop: "1.25rem",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                    <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>
-                      Quality Deductions
-                    </span>
-                    <span
-                      style={{
-                        background: deductions.length > 0 ? "#fee2e2" : "#f1f5f9",
-                        color: deductions.length > 0 ? "#991b1b" : "#64748b",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        padding: "1px 7px",
-                        borderRadius: "9999px",
-                      }}
-                    >
-                      {deductions.length}
-                    </span>
-                  </div>
+              <DeductionsSection
+                deductions={form.deductions}
+                numQty={numQty}
+                isCurrentUnderweight={form.isCurrentUnderweight}
+                hasWeightDeduction={form.hasWeightDeduction}
+                flooredAvg={form.flooredAvg}
+                weightDeficit={form.weightDeficit}
+                standardWeight={form.standardWeight}
+                suggestedWeightPerPiece={form.suggestedWeightPerPiece}
+                handleApplyWeightDeduction={form.handleApplyWeightDeduction}
+                handleRemoveDeduction={form.handleRemoveDeduction}
+                addFactorOpen={form.addFactorOpen}
+                setAddFactorOpen={form.setAddFactorOpen}
+                factorType={form.factorType}
+                setFactorType={form.setFactorType}
+                factorPerPiece={form.factorPerPiece}
+                setFactorPerPiece={form.setFactorPerPiece}
+                factorRemark={form.factorRemark}
+                setFactorRemark={form.setFactorRemark}
+                handleAddCustomFactor={form.handleAddCustomFactor}
+                liveGross={form.liveGross}
+                liveDeductionAmount={form.liveDeductionAmount}
+                liveNetFabricValue={form.liveNetFabricValue}
+              />
 
-                  {!addFactorOpen && (
-                    <button
-                      type="button"
-                      onClick={() => setAddFactorOpen(true)}
-                      style={{
-                        background: "#ffffff",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "6px",
-                        padding: "0.3rem 0.65rem",
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        color: "#334155",
-                        cursor: "pointer",
-                      }}
-                    >
-                      + Add factor
-                    </button>
-                  )}
-                </div>
-
-                {/* Underweight auto-suggestion banner */}
-                {isCurrentUnderweight && !hasWeightDeduction && (
-                  <div
-                    style={{
-                      background: "#fffbeb",
-                      border: "1px solid #fde68a",
-                      borderRadius: "8px",
-                      padding: "0.6rem 0.85rem",
-                      marginBottom: "0.75rem",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "0.5rem",
-                      fontSize: "0.82rem",
-                      color: "#92400e",
-                    }}
-                  >
-                    <span>
-                      ⚠️ Average weight ({flooredAvg}g) is {weightDeficit}g below standard ({standardWeight}g).
-                      Suggested deduction: <strong>{suggestedWeightPerPiece} ETB/piece</strong>.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleApplyWeightDeduction}
-                      style={{
-                        background: "#ea580c",
-                        color: "#ffffff",
-                        border: "none",
-                        borderRadius: "6px",
-                        padding: "0.3rem 0.65rem",
-                        fontSize: "0.78rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Apply
-                    </button>
-                  </div>
-                )}
-
-                {/* Applied Deductions List */}
-                {deductions.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", fontStyle: "italic" }}>
-                    No quality deductions applied. Weaver will receive full piece rate.
-                  </p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", marginBottom: "0.75rem" }}>
-                    {deductions.map((d) => {
-                      const factorMeta = DEDUCTION_FACTORS.find((f) => f.value === d.factor);
-                      const factorLabel = factorMeta ? factorMeta.label : d.factor;
-                      const factorSubtotal = (Number(d.perPiece) || 0) * numQty;
-
-                      return (
-                        <div
-                          key={d.factor}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            background: "#ffffff",
-                            border: "1px solid #fed7aa",
-                            borderRadius: "7px",
-                            padding: "0.45rem 0.75rem",
-                            fontSize: "0.82rem",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                            <span
-                              style={{
-                                background: "#ffedd5",
-                                color: "#9a3412",
-                                fontWeight: 700,
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                fontSize: "0.75rem",
-                              }}
-                            >
-                              {factorLabel}
-                            </span>
-                            <span style={{ fontWeight: 600, color: "#dc2626" }}>
-                              -{d.perPiece} ETB/pc
-                            </span>
-                            {numQty > 0 && (
-                              <span style={{ color: "#64748b", fontSize: "0.78rem" }}>
-                                (= -{factorSubtotal.toLocaleString()} ETB)
-                              </span>
-                            )}
-                            {d.remark && (
-                              <span style={{ color: "#64748b", fontSize: "0.78rem", fontStyle: "italic" }}>
-                                · {d.remark}
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            title="Remove deduction"
-                            onClick={() => handleRemoveDeduction(d.factor)}
-                            style={{
-                              background: "transparent",
-                              border: "none",
-                              color: "#ef4444",
-                              fontSize: "0.95rem",
-                              cursor: "pointer",
-                              padding: "0 0.25rem",
-                              fontWeight: 700,
-                            }}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Inline Add Factor Form */}
-                {addFactorOpen && (
-                  <div
-                    style={{
-                      background: "#ffffff",
-                      border: "1px dashed #cbd5e1",
-                      borderRadius: "8px",
-                      padding: "0.75rem",
-                      marginTop: "0.5rem",
-                    }}
-                  >
-                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 3 }}>
-                          Factor / Reason
-                        </label>
-                        <select
-                          value={factorType}
-                          onChange={(e) => setFactorType(e.target.value)}
-                          style={{ width: "100%", padding: "0.4rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
-                        >
-                          {DEDUCTION_FACTORS.map((f) => (
-                            <option key={f.value} value={f.value}>
-                              {f.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#64748b", marginBottom: 3 }}>
-                          Deduction / piece (ETB)
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          min={0.01}
-                          placeholder="e.g. 10"
-                          value={factorPerPiece}
-                          onChange={(e) => setFactorPerPiece(e.target.value)}
-                          style={{ width: "100%", padding: "0.4rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: "0.5rem" }}>
-                      <input
-                        type="text"
-                        placeholder="Optional note / observation"
-                        value={factorRemark}
-                        onChange={(e) => setFactorRemark(e.target.value)}
-                        style={{ width: "100%", padding: "0.4rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
-                      />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.4rem" }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAddFactorOpen(false);
-                          setFactorPerPiece("");
-                          setFactorRemark("");
-                        }}
-                        style={{ padding: "0.3rem 0.65rem", borderRadius: 6, border: "1px solid #cbd5e1", background: "#fff", fontSize: "0.8rem", cursor: "pointer" }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAddCustomFactor}
-                        style={{ padding: "0.3rem 0.85rem", borderRadius: 6, border: "none", background: "var(--brand, #c2410c)", color: "#fff", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Live Financial Calculation Breakdown */}
-                {numQty > 0 && (
-                  <div
-                    style={{
-                      borderTop: "1px solid #e2e8f0",
-                      marginTop: "0.75rem",
-                      paddingTop: "0.6rem",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: "0.5rem",
-                      fontSize: "0.82rem",
-                    }}
-                  >
-                    <div>
-                      <span style={{ color: "#64748b" }}>Gross: </span>
-                      <strong>{liveGross.toLocaleString()} ETB</strong>
-                      {liveDeductionAmount > 0 && (
-                        <span style={{ color: "#dc2626", marginLeft: "0.5rem" }}>
-                          Deduction: -{liveDeductionAmount.toLocaleString()} ETB
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontWeight: 800, color: "#0f172a" }}>
-                      Net Fabric Pay:{" "}
-                      <span style={{ color: liveNetFabricValue >= 0 ? "#15803d" : "#b91c1c" }}>
-                        {liveNetFabricValue.toLocaleString()} ETB
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer Actions (Image 2) */}
+              {/* Footer Actions */}
               <div
                 style={{
                   display: "flex",
@@ -1214,7 +344,7 @@ export function FabricReturnForm({
                   style={{
                     margin: 0,
                     fontSize: "0.78rem",
-                    color: "#64748b",
+                    color: "var(--color-text-muted, #64748b)",
                     lineHeight: 1.35,
                     maxWidth: 260,
                   }}
@@ -1222,53 +352,29 @@ export function FabricReturnForm({
                   After saving, quantity and weight clear and the cursor returns to Quantity.
                 </p>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  {editingReturnId && (
+                  {form.editingReturnId && (
                     <button
                       type="button"
-                      onClick={handleCancelEdit}
-                      style={{
-                        padding: "0.6rem 1rem",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        background: "#ffffff",
-                        color: "#475569",
-                        fontWeight: 600,
-                        fontSize: "0.88rem",
-                        cursor: "pointer",
-                      }}
+                      onClick={form.handleCancelEdit}
+                      className="btn btn-secondary"
                     >
                       Cancel
                     </button>
                   )}
                   <button
                     type="submit"
-                    disabled={saving || !quantity || !totalWeight}
+                    disabled={form.saving || !form.quantity || !form.totalWeight}
+                    className="btn btn-primary"
                     style={{
-                      background:
-                        saving || !quantity || !totalWeight
-                          ? "#cbd5e1"
-                          : "var(--brand, #c2410c)",
-                      color: "#ffffff",
-                      fontWeight: 700,
-                      border: "none",
-                      borderRadius: "8px",
-                      padding: "0.6rem 1.25rem",
-                      fontSize: "0.92rem",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "0.5rem",
-                      cursor:
-                        saving || !quantity || !totalWeight
-                          ? "not-allowed"
-                          : "pointer",
-                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                      transition: "background 0.15s ease",
                     }}
                   >
                     <span>
-                      {saving
+                      {form.saving
                         ? "Saving…"
-                        : editingReturnId
+                        : form.editingReturnId
                         ? "Update return"
                         : "Save return"}
                     </span>
@@ -1291,608 +397,38 @@ export function FabricReturnForm({
           </div>
         )}
 
-        {/* ─────────────────────────────────────────────────────────────
-            RIGHT CARD: Fabric returned (Image 2)
-           ───────────────────────────────────────────────────────────── */}
-        <div
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            borderRadius: "14px",
-            padding: "1.5rem",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-          }}
-        >
-          {/* Card Title */}
-          <h3
-            style={{
-              margin: "0 0 1rem 0",
-              fontSize: "1.15rem",
-              fontWeight: 700,
-              color: "#0f172a",
-            }}
-          >
-            Fabric returned
-          </h3>
-
-          {/* Table Column Headers (Image 2) */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              borderBottom: "1px solid #f1f5f9",
-              paddingBottom: "0.5rem",
-              marginBottom: "0.75rem",
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              color: "#64748b",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}
-          >
-            <span style={{ flex: 1 }}>Fabric</span>
-            <span style={{ width: 44, textAlign: "center" }}>Qty</span>
-            <span style={{ width: 60, textAlign: "center" }}>Avg g</span>
-            <span style={{ width: 85, textAlign: "right" }}>Subtotal</span>
-          </div>
-
-          {/* Empty state */}
-          {groupedReturns.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "2.5rem 1rem",
-                color: "#94a3b8",
-              }}
-            >
-              <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem" }}>📭</div>
-              <div style={{ fontWeight: 600, color: "#64748b" }}>
-                No fabric returns recorded yet
-              </div>
-              <div style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
-                Use the form on the left to record the first piece.
-              </div>
-            </div>
-          ) : (
-            groupedReturns.map((group) => (
-              <div key={group.variantId} style={{ marginBottom: "1.25rem" }}>
-                {/* Group Summary Row (Image 2) */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "0.35rem 0",
-                    fontWeight: 700,
-                    color: "#0f172a",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.4rem",
-                    }}
-                  >
-                    <span style={{ fontSize: "0.8rem", color: "#64748b" }}>⌵</span>
-                    <span>{group.label}</span>
-                  </div>
-                  <span style={{ width: 44, textAlign: "center" }}>{group.totalQty}</span>
-                  <span style={{ width: 60, textAlign: "center" }}>{group.avgG} g</span>
-                  <span style={{ width: 85, textAlign: "right", color: "#15803d" }}>
-                    {group.netTotal.toLocaleString()}
-                  </span>
-                </div>
-
-                {group.deductionTotal > 0 && (
-                  <div style={{ margin: "0.15rem 0 0.4rem 1.35rem" }}>
-                    <span
-                      style={{
-                        background: "#fee2e2",
-                        color: "#991b1b",
-                        padding: "0.15rem 0.6rem",
-                        borderRadius: "9999px",
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        display: "inline-block",
-                      }}
-                    >
-                      Total deductions: -{group.deductionTotal.toLocaleString()} ETB
-                    </span>
-                  </div>
-                )}
-
-                {/* Sub-rows: Individual Returns (Image 2) */}
-                <div
-                  style={{
-                    background: "#fffdf5",
-                    borderRadius: "8px",
-                    border: "1px solid #fef3c7",
-                    overflow: "hidden",
-                    marginTop: "0.35rem",
-                  }}
-                >
-                  {group.returns.map((ret: any, idx) => {
-                    const rGross = ret.grossFabricValue !== undefined ? Number(ret.grossFabricValue) : (Number(ret.quantityReturned || 0) * Number(ret.unitPrice || 0));
-                    const rDeduction = ret.deductionAmount !== undefined ? Number(ret.deductionAmount) : 0;
-                    const rNet = rGross - rDeduction;
-                    const rDeductions: DeductionEntry[] = ret.deductions || [];
-
-                    return (
-                      <div
-                        key={ret.returnId}
-                        style={{
-                          padding: "0.6rem 0.85rem",
-                          borderBottom: idx < group.returns.length - 1 ? "1px solid #fef3c7" : "none",
-                          fontSize: "0.85rem",
-                          color: "#334155",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontWeight: 600, color: "#0f172a" }}>
-                            Return {idx + 1} · {Number(ret.totalWeight).toLocaleString()} g ({ret.quantityReturned} pcs)
-                          </span>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                            <span style={{ fontWeight: 700, color: rNet >= 0 ? "#15803d" : "#b91c1c" }}>
-                              {rNet.toLocaleString()} ETB
-                            </span>
-                            {canRecord && (
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                                <button
-                                  type="button"
-                                  title="Edit this return"
-                                  onClick={() => handleStartEdit(ret)}
-                                  style={{
-                                    background: "transparent",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    color: "#64748b",
-                                    padding: "0.15rem",
-                                    fontSize: "0.95rem",
-                                  }}
-                                >
-                                  ✎
-                                </button>
-                                <button
-                                  type="button"
-                                  title="Delete this return"
-                                  onClick={() => handleDeleteReturn(ret.returnId)}
-                                  style={{
-                                    background: "transparent",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    color: "#ef4444",
-                                    padding: "0.15rem",
-                                    fontSize: "0.85rem",
-                                  }}
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Deductions & details line */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginTop: "3px", fontSize: "0.76rem" }}>
-                          <span style={{ color: "#64748b" }}>
-                            Gross: {rGross.toLocaleString()} ETB
-                          </span>
-                          {rDeductions.length > 0 && (
-                            <>
-                              <span style={{ color: "#cbd5e1" }}>•</span>
-                              {rDeductions.map((d, dIdx) => (
-                                <span
-                                  key={dIdx}
-                                  style={{
-                                    background: "#fee2e2",
-                                    color: "#991b1b",
-                                    padding: "1px 5px",
-                                    borderRadius: "3px",
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  {d.factor}: -{d.perPiece}/pc
-                                </span>
-                              ))}
-                              <span style={{ color: "#dc2626", fontWeight: 600 }}>
-                                (-{rDeduction.toLocaleString()} ETB)
-                              </span>
-                            </>
-                          )}
-                          {ret.remark && (
-                            <>
-                              <span style={{ color: "#cbd5e1" }}>•</span>
-                              <span style={{ color: "#64748b", fontStyle: "italic" }}>
-                                {ret.remark}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
-          )}
-
-          {/* Card Total Footer (Image 2) */}
-          <div
-            style={{
-              borderTop: "1px solid #e2e8f0",
-              marginTop: "1.25rem",
-              paddingTop: "0.85rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontWeight: 700,
-              color: "#0f172a",
-            }}
-          >
-            <span style={{ fontSize: "1rem" }}>Net fabric total</span>
-            <span style={{ fontSize: "1.05rem", color: "#15803d" }}>{grandTotal.toLocaleString()} ETB</span>
-          </div>
-        </div>
+        {/* RIGHT CARD: Fabric returned */}
+        <GroupedReturnsCard
+          groupedReturns={form.groupedReturns}
+          grandTotal={form.grandTotal}
+          canRecord={canRecord}
+          onStartEdit={form.handleStartEdit}
+          onDeleteReturn={form.handleDeleteReturn}
+        />
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          MODAL: Record fabric return · Changing fabric (Image 1)
-         ───────────────────────────────────────────────────────────── */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Record fabric return"
-        subtitle="Changing fabric"
-        maxWidth={540}
-      >
-        <div>
-          {/* Find existing fabric Search (Image 1) */}
-          <div style={{ marginBottom: "1rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                color: "#334155",
-                marginBottom: "0.4rem",
-              }}
-            >
-              Find an existing fabric
-            </label>
-              <div style={{ position: "relative" }}>
-                <span
-                  style={{
-                    position: "absolute",
-                    left: "0.85rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "#64748b",
-                    display: "flex",
-                    alignItems: "center",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder="biret geberdin"
-                  value={modalSearch}
-                  onChange={(e) => setModalSearch(e.target.value)}
-                  autoFocus
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "0.65rem 0.75rem 0.65rem 2.4rem",
-                    borderRadius: "10px",
-                    border: "2px solid #ea580c",
-                    fontSize: "0.95rem",
-                    fontWeight: 500,
-                    color: "#0f172a",
-                    outline: "none",
-                  }}
-                />
-              </div>
-
-              {/* Matching Search Results List (Image 1) */}
-              <div
-                style={{
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "10px",
-                  overflow: "hidden",
-                  marginTop: "0.6rem",
-                  maxHeight: 180,
-                  overflowY: "auto",
-                }}
-              >
-                {filteredModalVariants.map((v) => {
-                  const label = fabricVariantName(v).split("-").join(" · ");
-                  const isCurrent = v.fabricVariantId === selectedVariantId;
-                  return (
-                    <div
-                      key={v.fabricVariantId}
-                      onClick={() => handleSelectModalVariant(v)}
-                      style={{
-                        padding: "0.65rem 0.85rem",
-                        background: isCurrent ? "#fffdf0" : "#ffffff",
-                        borderBottom: "1px solid #f1f5f9",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        cursor: "pointer",
-                        transition: "background 0.15s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isCurrent) e.currentTarget.style.background = "#f8fafc";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isCurrent) e.currentTarget.style.background = "#ffffff";
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "0.9rem",
-                          fontWeight: 600,
-                          color: isCurrent ? "#0f172a" : "#334155",
-                        }}
-                      >
-                        {label}
-                      </span>
-                      {isCurrent && (
-                        <span
-                          style={{
-                            background: "#dcfce7",
-                            color: "#166534",
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            padding: "0.2rem 0.6rem",
-                            borderRadius: "9999px",
-                          }}
-                        >
-                          Current
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Recently used chips (Image 1) */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                marginTop: "0.85rem",
-                flexWrap: "wrap",
-              }}
-            >
-              <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#64748b" }}>
-                Recently used
-              </span>
-              {recentlyUsedPills.map((pill, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleSelectModalVariant(pill.variant)}
-                  style={{
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "9999px",
-                    padding: "0.3rem 0.75rem",
-                    fontSize: "0.8rem",
-                    color: "#334155",
-                    cursor: "pointer",
-                    fontWeight: 500,
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#f1f5f9";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#f8fafc";
-                  }}
-                >
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Divider (Image 1: Not in the list? Describe it) */}
-            <div
-              style={{
-                position: "relative",
-                textAlign: "center",
-                margin: "1.35rem 0",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  background: "#e2e8f0",
-                }}
-              />
-              <span
-                style={{
-                  position: "relative",
-                  background: "#ffffff",
-                  padding: "0 0.75rem",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  color: "#64748b",
-                }}
-              >
-                Not in the list? Describe it
-              </span>
-            </div>
-
-            {/* Custom 2-Column Selects (Image 1) */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "0.85rem",
-                marginBottom: "0.75rem",
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#475569",
-                    marginBottom: "0.3rem",
-                  }}
-                >
-                  Fabric type
-                </label>
-                <SearchableSelect
-                  options={modalFabricOptions}
-                  value={modalFabricId}
-                  onChange={(val) => setModalFabricId(val)}
-                  placeholder="Select fabric..."
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#475569",
-                    marginBottom: "0.3rem",
-                  }}
-                >
-                  Design
-                </label>
-                <SearchableSelect
-                  options={modalDesignOptions}
-                  value={modalDesignId}
-                  onChange={(val) => setModalDesignId(val)}
-                  placeholder="Select design..."
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#475569",
-                    marginBottom: "0.3rem",
-                  }}
-                >
-                  Warp color
-                </label>
-                <SearchableSelect
-                  options={modalColorOptions}
-                  value={modalWarpColorId}
-                  onChange={(val) => setModalWarpColorId(val)}
-                  placeholder="Select warp color..."
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    color: "#475569",
-                    marginBottom: "0.3rem",
-                  }}
-                >
-                  Weft color
-                </label>
-                <SearchableSelect
-                  options={modalColorOptions}
-                  value={modalWeftColorId}
-                  onChange={(val) => setModalWeftColorId(val)}
-                  placeholder="Select weft color..."
-                />
-              </div>
-            </div>
-
-            {/* Helper text (Image 1) */}
-            <p
-              style={{
-                margin: "0 0 1.5rem",
-                fontSize: "0.78rem",
-                color: "#64748b",
-                lineHeight: 1.4,
-              }}
-            >
-              If this combination does not exist yet, a new fabric type is created when you save.
-            </p>
-
-            {/* Modal Buttons (Image 1) */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "0.75rem",
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  padding: "0.55rem 1.25rem",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  background: "#ffffff",
-                  color: "#334155",
-                  fontWeight: 600,
-                  fontSize: "0.9rem",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleApplyCustomModalFabric}
-                style={{
-                  padding: "0.55rem 1.35rem",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: "var(--brand, #c2410c)",
-                  color: "#ffffff",
-                  fontWeight: 700,
-                  fontSize: "0.9rem",
-                  cursor: "pointer",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                }}
-              >
-                Use this fabric
-              </button>
-            </div>
-        </div>
-      </Modal>
+      {/* MODAL: Record fabric return · Changing fabric */}
+      <FabricVariantPickerModal
+        isOpen={form.isModalOpen}
+        onClose={() => form.setIsModalOpen(false)}
+        selectedVariantId={Number(form.selectedVariant?.fabricVariantId ?? 0)}
+        fabrics={form.fabrics}
+        colors={form.colors}
+        designs={form.designs}
+        fabricVariants={form.fabricVariants}
+        modalSearch={form.modalSearch}
+        setModalSearch={form.setModalSearch}
+        modalFabricId={form.modalFabricId}
+        setModalFabricId={form.setModalFabricId}
+        modalWarpColorId={form.modalWarpColorId}
+        setModalWarpColorId={form.setModalWarpColorId}
+        modalWeftColorId={form.modalWeftColorId}
+        setModalWeftColorId={form.setModalWeftColorId}
+        modalDesignId={form.modalDesignId}
+        setModalDesignId={form.setModalDesignId}
+        onSelectVariant={form.handleSelectModalVariant}
+        onApplyCustomVariant={form.handleApplyCustomModalFabric}
+      />
     </div>
   );
 }
