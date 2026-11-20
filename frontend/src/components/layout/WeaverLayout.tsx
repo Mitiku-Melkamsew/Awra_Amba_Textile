@@ -1,37 +1,36 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 
 const links = [
-  { to: "/merchant", label: "Available Fabrics", icon: "🧣", amharic: "የሚገኙ ጨርቆች", end: true },
-  { to: "/merchant/prices", label: "Official Price List", icon: "🏷️", amharic: "የሽያጭ ዋጋ ዝርዝር" },
+  { to: "/weaver",            label: "My Work Orders", icon: "🧵", amharic: "የኔ ዝግ", end: true },
+  { to: "/weaver/rates",       label: "Piece Rates & Prices", icon: "🏷️", amharic: "የሥራ ተመን" },
+  { to: "/weaver/calculator",  label: "Wage Calculator", icon: "🧮", amharic: "የገቢ ስሌት" },
+  { to: "/weaver/payments",   label: "Settled Payments", icon: "💳", amharic: "ክፍያ" },
 ];
 
-export function MerchantLayout() {
+export function WeaverLayout() {
   const { user, logout } = useAuth();
 
   const initials = user?.username
     ? user.username.slice(0, 2).toUpperCase()
-    : "MC";
+    : "WV";
 
   return (
     <div className="app-shell">
-      {/* ── Merchant Sidebar ── */}
-      <aside className="sidebar merchant-sidebar">
+      {/* ── Weaver Sidebar ── */}
+      <aside className="sidebar weaver-sidebar">
         <div className="sidebar-brand">
-          <div
-            className="sidebar-brand-mark"
-            style={{ background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)" }}
-          >
-            🏬
+          <div className="sidebar-brand-mark" style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)" }}>
+            🪢
           </div>
           <div className="sidebar-brand-info">
             <p className="sidebar-brand-eyebrow">አውራ አምባ ቴክስታይል</p>
-            <p className="sidebar-brand-name">Merchant Portal</p>
+            <p className="sidebar-brand-name">Weaver Workspace</p>
           </div>
         </div>
 
-        <nav className="sidebar-nav" aria-label="Merchant navigation">
-          <p className="sidebar-nav-label">Commercial Catalog / ካታሎግ</p>
+        <nav className="sidebar-nav" aria-label="Weaver navigation">
+          <p className="sidebar-nav-label">My Account / የኔ ሂሳብ</p>
           {links.map((link) => (
             <NavLink
               key={link.to}
@@ -49,19 +48,16 @@ export function MerchantLayout() {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-status-pill merchant">
-            <span className="status-indicator-dot" /> Active Commercial Buyer
+          <div className="sidebar-status-pill weaver">
+            <span className="status-indicator-dot" /> Active Artisan
           </div>
           <div className="sidebar-user">
-            <div
-              className="sidebar-user-avatar"
-              style={{ background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)" }}
-            >
+            <div className="sidebar-user-avatar" style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)" }}>
               {initials}
             </div>
             <div className="sidebar-user-details">
-              <span className="sidebar-user-name">{user?.fullName || user?.username || "Merchant Partner"}</span>
-              <span className="sidebar-user-role" style={{ color: "#7DD3FC" }}>Wholesale Buyer</span>
+              <span className="sidebar-user-name">{user?.username ?? "Weaver"}</span>
+              <span className="sidebar-user-role" style={{ color: "#6EE7B7" }}>Cooperative Artisan</span>
             </div>
           </div>
           <button
@@ -84,11 +80,11 @@ export function MerchantLayout() {
       </aside>
 
       {/* ── Main Content Area ── */}
-      <main className="main-content" style={{ background: "#F8FAFC" }}>
+      <main className="main-content" style={{ background: "#F4FDF8" }}>
         <Outlet />
       </main>
     </div>
   );
 }
 
-export default MerchantLayout;
+export default WeaverLayout;

@@ -264,7 +264,7 @@ export function ReportsPage() {
               </div>
               <button
                 type="button"
-                className="btn-link-action"
+                className="btn btn-link"
                 onClick={() => setShowHisabList(!showHisabList)}
               >
                 {showHisabList ? "Close ✕" : "Open >"}
@@ -303,7 +303,7 @@ export function ReportsPage() {
                           <td style={{ textAlign: "right" }}>
                             <Link
                               to={`/admin/reports/hisab/payment/${p.paymentId}?print=1`}
-                              className="btn-sm primary"
+                              className="btn btn-primary btn-sm"
                               target="_blank"
                             >
                               🖨 Receipt
@@ -347,7 +347,7 @@ export function ReportsPage() {
 
             <button
               type="button"
-              className="btn-secondary-white btn-full-width"
+              className="btn btn-secondary btn-full-width"
               onClick={() => navigate("/admin/weavers")}
             >
               See all weavers
@@ -375,7 +375,7 @@ export function ReportsPage() {
 
             <button
               type="button"
-              className="btn-secondary-white btn-full-width"
+              className="btn btn-secondary btn-full-width"
               onClick={() => navigate("/admin/transactions")}
             >
               See all merchants

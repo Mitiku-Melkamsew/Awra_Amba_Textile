@@ -198,7 +198,7 @@ export function StockPage() {
         {/* Low stock toggle */}
         <button
           type="button"
-          className={`btn-toggle-filter ${lowStockOnly ? "active" : ""}`}
+          className={`btn btn-sm ${lowStockOnly ? "btn-primary" : "btn-secondary"}`}
           onClick={() => setLowStockOnly(!lowStockOnly)}
         >
           Low stock only

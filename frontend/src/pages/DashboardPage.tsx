@@ -109,7 +109,7 @@ export function DashboardPage() {
         </div>
         <button
           type="button"
-          className="btn-primary-rust"
+          className="btn btn-primary"
           onClick={() => navigate("/admin/weavers")}
         >
           + Issue zig
@@ -132,7 +132,7 @@ export function DashboardPage() {
               {readyToSettleAmount.toLocaleString()} ETB from returned zigs
             </p>
             <div className="attention-card-action">
-              <Link to="/admin/settlement" className="btn-secondary-white">
+              <Link to="/admin/settlement" className="btn btn-secondary">
                 Review settlement
               </Link>
             </div>
@@ -150,7 +150,7 @@ export function DashboardPage() {
               {lowStockYarnCount} yarn · {lowStockFabricCount} fabric
             </p>
             <div className="attention-card-action">
-              <Link to="/admin/stock" className="btn-secondary-white">
+              <Link to="/admin/stock" className="btn btn-secondary">
                 See stock
               </Link>
             </div>
@@ -168,7 +168,7 @@ export function DashboardPage() {
               {unpaidTxnAmount.toLocaleString()} ETB still due
             </p>
             <div className="attention-card-action">
-              <Link to="/admin/transactions" className="btn-secondary-white">
+              <Link to="/admin/transactions" className="btn btn-secondary">
                 Open transactions
               </Link>
             </div>

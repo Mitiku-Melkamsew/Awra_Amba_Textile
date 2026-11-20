@@ -1,11 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { HomeRedirect } from "./components/HomeRedirect";
-import { Layout } from "./components/Layout";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { RoleRoute } from "./components/RoleRoute";
-import { WeaverLayout } from "./components/WeaverLayout";
-import { MerchantLayout } from "./components/MerchantLayout";
+import { HomeRedirect, ProtectedRoute, RoleRoute } from "./components/auth";
+import { Layout, MerchantLayout, WeaverLayout } from "./components/layout";
 import { AuthProvider } from "./context/AuthContext";
 
 // Lazy-loaded Public Pages
@@ -43,8 +39,6 @@ const WeaverRatesPage = lazy(() => import("./pages/weaver/WeaverRatesPage").then
 const WeaverCalculatorPage = lazy(() => import("./pages/weaver/WeaverCalculatorPage").then((m) => ({ default: m.WeaverCalculatorPage })));
 const MerchantFabricsPage = lazy(() => import("./pages/merchant/MerchantFabricsPage").then((m) => ({ default: m.MerchantFabricsPage })));
 const MerchantPricesPage = lazy(() => import("./pages/merchant/MerchantPricesPage").then((m) => ({ default: m.MerchantPricesPage })));
-
-import "./App.css";
 
 function RouteLoadingFallback() {
   return (

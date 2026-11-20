@@ -1,0 +1,46 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - PRINT STYLES
+   ───────────────────────────────────────────────────────────── */
+
+@layer pages {
+  @media print {
+    .no-print,
+    .sidebar,
+    .topbar,
+    .app-shell > aside,
+    button,
+    .btn,
+    a[class*="btn-"] {
+      display: none !important;
+    }
+
+    .app-shell {
+      display: block !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    .main-content {
+      height: auto !important;
+      overflow: visible !important;
+      background: #fff !important;
+    }
+
+    .page {
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+
+    .hisab-print {
+      padding: 0 !important;
+      background: #fff !important;
+      color: #000 !important;
+    }
+
+    .hisab-table th,
+    .hisab-table td {
+      border-color: #333 !important;
+      color: #000 !important;
+    }
+  }
+}

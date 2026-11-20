@@ -1,0 +1,191 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - STOCK ON HAND PAGE
+   ───────────────────────────────────────────────────────────── */
+
+@layer pages {
+  .stock-on-hand-page {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .stock-page-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .title-amharic {
+    font-weight: 500;
+    color: #6B7280;
+    font-size: 21px;
+  }
+
+  .stock-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stock-kpi-card {
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+  }
+
+  .stock-kpi-warning {
+    background: #FEF9E7;
+    border-color: #FEF08A;
+  }
+
+  .stock-kpi-label {
+    font-size: 13px;
+    color: #6B7280;
+    font-weight: 500;
+  }
+
+  .stock-kpi-num {
+    font-size: 32px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0.25rem 0 0.2rem;
+  }
+
+  .stock-kpi-sub {
+    font-size: 13px;
+    color: #6B7280;
+  }
+
+  .stock-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .segmented-tab-group {
+    display: inline-flex;
+    background: #F1F5F9;
+    padding: 3px;
+    border-radius: 10px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .segmented-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #4B5563;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .segmented-tab-btn.active {
+    background: #FFFFFF;
+    color: #111827;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .tab-count-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #B45309;
+  }
+
+  .stock-search-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon-svg {
+    position: absolute;
+    left: 12px;
+    color: #9CA3AF;
+    pointer-events: none;
+  }
+
+  .stock-search-input {
+    width: 100%;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 8px 12px 8px 36px;
+    font-size: 13.5px;
+    background: #FFFFFF;
+    color: #111827;
+  }
+
+  .stock-table-card {
+    border-radius: 12px;
+    border: 1px solid #E5E7EB;
+    background: #FFFFFF;
+    overflow: hidden;
+  }
+
+  .stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .stock-table th {
+    padding: 12px 20px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #64748B;
+    border-bottom: 1px solid #F1F5F9;
+    background: #FFFFFF;
+  }
+
+  .stock-table td {
+    padding: 14px 20px;
+    border-bottom: 1px solid #F1F5F9;
+    vertical-align: middle;
+  }
+
+  .stock-item-name {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .stock-item-sku {
+    font-size: 12px;
+    color: #64748B;
+    margin-top: 2px;
+  }
+
+  .stock-item-qty {
+    font-size: 17px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .stock-empty-td {
+    text-align: center;
+    padding: 2.5rem;
+    color: #64748B;
+    font-size: 13.5px;
+  }
+
+  .stock-footnote {
+    font-size: 12.5px;
+    color: #9CA3AF;
+    margin-top: 1rem;
+  }
+}

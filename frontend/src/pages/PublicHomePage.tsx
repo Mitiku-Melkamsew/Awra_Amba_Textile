@@ -222,7 +222,7 @@ export function PublicHomePage() {
                     ? "/weaver"
                     : "/merchant"
                 }
-                className="btn-primary-rust btn-sm"
+                className="btn btn-primary btn-sm"
               >
                 {lang === "en" ? "Go to Dashboard →" : "ወደ ዳሽቦርድ ሂድ →"}
               </Link>
@@ -231,7 +231,7 @@ export function PublicHomePage() {
                 <Link to="/login" className="public-staff-link">
                   {lang === "en" ? "Weaver or staff" : "ሸማኔ ወይም ሰራተኛ"}
                 </Link>
-                <Link to="/login" className="btn-primary-rust btn-sm">
+                <Link to="/login" className="btn btn-primary btn-sm">
                   {lang === "en" ? "Merchant sign in" : "የነጋዴ መግቢያ"}
                 </Link>
               </>
@@ -262,10 +262,10 @@ export function PublicHomePage() {
             </p>
 
             <div className="public-hero-cta">
-              <a href="#fabrics" className="btn-primary-rust">
+              <a href="#fabrics" className="btn btn-primary">
                 {lang === "en" ? "Browse fabrics →" : "ጨርቆችን ይመልከቱ →"}
               </a>
-              <Link to="/signup?role=merchant" className="btn-secondary-white">
+              <Link to="/signup?role=merchant" className="btn btn-secondary">
                 {lang === "en" ? "Create a merchant account" : "የነጋዴ መለያ ይፍጠሩ"}
               </Link>
             </div>
@@ -372,7 +372,7 @@ export function PublicHomePage() {
 
         {/* Button to browse all */}
         <div className="fabrics-section-footer">
-          <Link to="/merchant" className="btn-secondary-white btn-browse-warp">
+          <Link to="/merchant" className="btn btn-secondary">
             {lang === "en"
               ? "See all fabrics, filter by warp and weft →"
               : "ሁሉንም ጨርቆች ይመልከቱ፣ በድርና ማግ ያጣሩ →"}

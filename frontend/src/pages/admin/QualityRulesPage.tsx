@@ -179,7 +179,7 @@ export function QualityRulesPage() {
 
         <button
           type="button"
-          className="btn-primary-rust"
+          className="btn btn-primary"
           onClick={() => {
             setShowAddModal(true);
             setNewDeduction("");
@@ -238,11 +238,11 @@ export function QualityRulesPage() {
       )}
 
       {/* ── Master-Detail Grid ── */}
-      <div className="rules-master-detail-grid">
+      <div className="master-detail">
         {/* Left Table */}
-        <div className="prices-table-container">
+        <div className="data-table-container">
           <div className="prices-table-card">
-            <table className="prices-table">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th style={{ width: "32%" }}>Factor</th>
@@ -302,8 +302,7 @@ export function QualityRulesPage() {
                         <td style={{ textAlign: "right" }}>
                           <button
                             type="button"
-                            className="btn-secondary-white btn-sm"
-                            style={{ padding: "0.35rem 0.65rem", fontSize: "12.5px" }}
+                            className="btn btn-secondary btn-sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSelectRule(rule);
@@ -382,7 +381,7 @@ export function QualityRulesPage() {
               <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
                 <button
                   type="submit"
-                  className="btn-primary-rust"
+                  className="btn btn-primary"
                   style={{ flex: 1 }}
                   disabled={isSaving}
                 >
@@ -390,7 +389,7 @@ export function QualityRulesPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn-secondary-white"
+                  className="btn btn-secondary"
                   onClick={() => setEditDeduction(String(selectedRule.deductionPerUnit))}
                 >
                   Cancel
@@ -468,14 +467,14 @@ export function QualityRulesPage() {
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
             <button
               type="button"
-              className="btn-secondary-white"
+              className="btn btn-secondary"
               onClick={() => setShowAddModal(false)}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="btn-primary-rust"
+              className="btn btn-primary"
               disabled={isCreating}
             >
               {isCreating ? "Adding…" : "Add rule"}

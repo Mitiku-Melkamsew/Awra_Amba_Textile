@@ -431,9 +431,8 @@ export function AuditLogsPage() {
 
           <button
             type="button"
-            className="btn-secondary-white"
+            className="btn btn-secondary btn-sm"
             onClick={handleClearFilters}
-            style={{ fontSize: "13px", padding: "0.45rem 0.9rem" }}
           >
             Clear filters
           </button>
@@ -442,7 +441,7 @@ export function AuditLogsPage() {
 
       {/* ── Table Card ── */}
       <div className="card" style={{ padding: 0, borderRadius: "12px", overflow: "hidden", border: "1px solid #E5E7EB" }}>
-        <table className="prices-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
               <th style={{ width: "18%" }}>When</th>
@@ -573,7 +572,7 @@ export function AuditLogsPage() {
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
               type="button"
-              className="btn-secondary-white btn-sm"
+              className="btn btn-secondary btn-sm"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               style={{ opacity: page <= 1 ? 0.5 : 1 }}
@@ -582,7 +581,7 @@ export function AuditLogsPage() {
             </button>
             <button
               type="button"
-              className="btn-secondary-white btn-sm"
+              className="btn btn-secondary btn-sm"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               style={{ opacity: page >= totalPages ? 0.5 : 1 }}

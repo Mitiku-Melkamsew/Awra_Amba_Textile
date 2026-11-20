@@ -19,3 +19,12 @@
 @import "./05-components/navigation.css";
 @import "./05-components/feedback.css";
 @import "./06-utilities.css";
+@import "./07-pages/auth.css";
+@import "./07-pages/dashboard.css";
+@import "./07-pages/stock.css";
+@import "./07-pages/activity-logs.css";
+@import "./07-pages/reports.css";
+@import "./07-pages/prices.css";
+@import "./07-pages/settlement.css";
+@import "./07-pages/public-home.css";
+@import "./07-pages/print.css";

@@ -1,0 +1,45 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - SETTLEMENT PAGE
+   ───────────────────────────────────────────────────────────── */
+
+@layer pages {
+  .settlement-weaver-block {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .settlement-weaver-block:last-child {
+    border-bottom: none;
+  }
+
+  .settlement-weaver-name {
+    font-weight: 700;
+    font-size: 15px;
+    margin: 0 0 2px;
+    color: var(--text);
+  }
+
+  .settlement-weaver-meta {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin: 0 0 0.5rem;
+  }
+
+  .settlement-net {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .net-amount {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .net-amount.negative {
+    color: var(--red);
+  }
+}

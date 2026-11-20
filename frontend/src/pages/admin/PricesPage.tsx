@@ -488,7 +488,7 @@ export function PricesPage() {
         </h1>
         <button
           type="button"
-          className="btn-primary-rust"
+          className="btn btn-primary"
           onClick={() => {
             setShowNewPriceModal(true);
             setStatusMessage("");
@@ -555,11 +555,11 @@ export function PricesPage() {
 
       {/* ── Tab Content ── */}
       {tab === "fabricPrices" ? (
-        <div className={`prices-master-detail-grid ${selectedFabricItem ? "" : "no-panel"}`}>
+        <div className={`master-detail ${selectedFabricItem ? "" : "no-panel"}`}>
           {/* Left Table */}
-          <div className="prices-table-container">
+          <div className="data-table-container">
             <div className="prices-table-card">
-              <table className="prices-table">
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th style={{ width: "24%" }}>Fabric · ጨርቅ</th>
@@ -599,7 +599,7 @@ export function PricesPage() {
                           <td style={{ textAlign: "right" }}>
                             <button
                               type="button"
-                              className="btn-secondary-white btn-sm"
+                              className="btn btn-secondary btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleSelectFabric(item);
@@ -735,14 +735,14 @@ export function PricesPage() {
                 <div className="price-edit-actions">
                   <button
                     type="submit"
-                    className="btn-primary-rust btn-full-width"
+                    className="btn btn-primary btn-full-width"
                     disabled={isSaving}
                   >
                     {isSaving ? "Saving..." : "Save new price"}
                   </button>
                   <button
                     type="button"
-                    className="btn-secondary-white btn-full-width"
+                    className="btn btn-secondary btn-full-width"
                     onClick={() => handleSelectFabric(selectedFabricItem)}
                   >
                     Cancel
@@ -758,11 +758,11 @@ export function PricesPage() {
         </div>
       ) : (
         /* ── Yarn Prices Tab (Master-Detail matching design) ── */
-        <div className={`prices-master-detail-grid ${selectedYarnItem ? "" : "no-panel"}`}>
+        <div className={`master-detail ${selectedYarnItem ? "" : "no-panel"}`}>
           {/* Left: Yarn Table */}
-          <div className="prices-table-container">
+          <div className="data-table-container">
             <div className="prices-table-card">
-              <table className="prices-table">
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th style={{ width: "20%", whiteSpace: "nowrap" }}>Yarn · ጥጥ</th>
@@ -803,7 +803,7 @@ export function PricesPage() {
                         <td style={{ textAlign: "right" }}>
                           <button
                             type="button"
-                            className="btn-secondary-white btn-sm"
+                            className="btn btn-secondary btn-sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSelectYarn(item);
@@ -914,14 +914,14 @@ export function PricesPage() {
                 <div className="price-edit-actions">
                   <button
                     type="submit"
-                    className="btn-primary-rust btn-full-width"
+                    className="btn btn-primary btn-full-width"
                     disabled={isSaving}
                   >
                     {isSaving ? "Saving..." : "Save new price"}
                   </button>
                   <button
                     type="button"
-                    className="btn-secondary-white btn-full-width"
+                    className="btn btn-secondary btn-full-width"
                     onClick={() => handleSelectYarn(selectedYarnItem)}
                   >
                     Cancel
@@ -1022,10 +1022,10 @@ export function PricesPage() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
-                    <button type="button" className="btn-secondary-white" onClick={() => setShowNewPriceModal(false)}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowNewPriceModal(false)}>
                       Cancel
                     </button>
-                    <button type="submit" className="btn-primary-rust" disabled={isSaving}>
+                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
                       {isSaving ? "Creating..." : "Create fabric price"}
                     </button>
                   </div>
@@ -1128,10 +1128,10 @@ export function PricesPage() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
-                    <button type="button" className="btn-secondary-white" onClick={() => setShowNewPriceModal(false)}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowNewPriceModal(false)}>
                       Cancel
                     </button>
-                    <button type="submit" className="btn-primary-rust" disabled={isSaving}>
+                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
                       {isSaving ? "Creating..." : "Create yarn price"}
                     </button>
                   </div>
