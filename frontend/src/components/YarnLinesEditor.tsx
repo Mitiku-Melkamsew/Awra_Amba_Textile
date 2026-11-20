@@ -7,6 +7,7 @@ import type {
 import { applyYarnVariantToLine, createYarnLineDraft } from "../utils/yarnLines";
 import { yarnVariantLabels } from "../utils/variantNames";
 import { VariantSearch } from "./VariantSearch";
+import { SearchableSelect } from "./common";
 
 interface YarnLinesEditorProps {
   lines: YarnLineDraft[];
@@ -48,10 +49,20 @@ export function YarnLinesEditor({
     [activeVariants],
   );
 
-  const outOfStockVariants = useMemo(
-    () => activeVariants.filter((v) => Number((v as any).stockSnapshot ?? 0) <= 0),
-    [activeVariants],
-  );
+  const saleYarnOptions = useMemo(() => {
+    return activeVariants.map((v) => {
+      const stock = Number((v as any).stockSnapshot ?? 0);
+      const price = (v as any).sellingPrice ?? v.basePrice;
+      const label = labels.get(v.yarnVariantId) ?? v.sku;
+      return {
+        id: String(v.yarnVariantId),
+        title: `${label} [${v.sku}]`,
+        subtitle: `ETB ${price}`,
+        badge: `${stock} in stock`,
+        badgeColor: stock > 0 ? { bg: "#dcfce7", text: "#166534" } : { bg: "#fee2e2", text: "#991b1b" },
+      };
+    });
+  }, [activeVariants, labels]);
 
   function addLine() {
     const draft = createYarnLineDraft();
@@ -204,10 +215,11 @@ export function YarnLinesEditor({
                 <label style={{ display: "block", marginBottom: "0.35rem", fontWeight: 600, fontSize: "0.88rem" }}>
                   Select Available Yarn / የሚሸጠውን ክር ይምረጡ <span style={{ color: "var(--red, #dc2626)" }}>*</span>
                 </label>
-                <select
+                <SearchableSelect
+                  options={saleYarnOptions}
                   value={line.yarnVariantId}
-                  onChange={(e) => {
-                    const variant = activeVariants.find((v) => String(v.yarnVariantId) === e.target.value);
+                  onChange={(val) => {
+                    const variant = activeVariants.find((v) => String(v.yarnVariantId) === val);
                     if (variant) {
                       handleSelectVariant(line.id, variant);
                     } else {
@@ -219,44 +231,8 @@ export function YarnLinesEditor({
                       );
                     }
                   }}
-                  style={{
-                    width: "100%",
-                    height: 42,
-                    fontSize: "0.95rem",
-                    borderRadius: "6px",
-                    border: "1px solid var(--border, #cbd5e1)",
-                    padding: "0 0.75rem",
-                  }}
-                >
-                  <option value="">
-                    -- Choose an available yarn variant ({inStockVariants.length} in stock) --
-                  </option>
-                  {inStockVariants.length > 0 && (
-                    <optgroup label="🟢 Ready in Stock (Available to Sell)">
-                      {inStockVariants.map((v) => {
-                        const price = (v as any).sellingPrice ?? v.basePrice;
-                        const label = labels.get(v.yarnVariantId) ?? v.sku;
-                        return (
-                          <option key={v.yarnVariantId} value={v.yarnVariantId}>
-                            {label} [{v.sku}] — 🟢 {Number((v as any).stockSnapshot)} in stock — ETB {price}
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                  )}
-                  {outOfStockVariants.length > 0 && (
-                    <optgroup label="🔴 Out of Stock (0 Available)">
-                      {outOfStockVariants.map((v) => {
-                        const label = labels.get(v.yarnVariantId) ?? v.sku;
-                        return (
-                          <option key={v.yarnVariantId} value={v.yarnVariantId} disabled>
-                            {label} [{v.sku}] — 0 in stock
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                  )}
-                </select>
+                  placeholder={`Search yarn (${inStockVariants.length} in stock)...`}
+                />
 
                 {/* Selected Summary */}
                 {selectedVariant && (

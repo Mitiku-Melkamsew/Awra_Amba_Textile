@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { prisma } from "../../lib/prisma.js";
 import {
   DirectTransactionService,
   normalizeYarnPurchase,
@@ -27,8 +28,9 @@ export class DirectTransactionController {
 
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
-      const txn = await DirectTransactionService.getTransaction(id);
+      const id = String(req.params.id);
+      const type = req.query.type as string | undefined;
+      const txn = await DirectTransactionService.getTransaction(id, type);
       res.json(txn);
     } catch (error) {
       next(error);
@@ -44,7 +46,15 @@ export class DirectTransactionController {
       // `yarn_purchase` is accepted on this endpoint as a thin facade so the
       // commercial transactions UI has a single creation path.
       if (body.type === "yarn_purchase") {
-        if (body.supplierId == null) {
+        let supplierId = body.supplierId != null ? Number(body.supplierId) : null;
+        if (supplierId == null && body.lines?.[0]?.yarnVariantId) {
+          const firstVar = await prisma.yarnVariant.findUnique({
+            where: { yarnVariantId: Number(body.lines[0].yarnVariantId) },
+            select: { supplierId: true },
+          });
+          if (firstVar) supplierId = firstVar.supplierId;
+        }
+        if (supplierId == null) {
           throw new ValidationError("supplierId is required for yarn purchases.");
         }
         const lines = (body.lines ?? []).map((l: any) => {
@@ -61,7 +71,7 @@ export class DirectTransactionController {
         });
         const createdPurchase = await ProcurementService.createPurchase(
           {
-            supplierId: Number(body.supplierId),
+            supplierId,
             notes: body.notes ?? null,
             lines,
           },
@@ -94,7 +104,7 @@ export class DirectTransactionController {
 
   static async recordPayment(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = String(req.params.id);
       const actorUserId = req.user!.userId;
       const payment = await DirectTransactionService.recordPayment(id, req.body, actorUserId);
       res.status(201).json(payment);
@@ -105,7 +115,7 @@ export class DirectTransactionController {
 
   static async cancel(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = String(req.params.id);
       const actorUserId = req.user!.userId;
       const cancelled = await DirectTransactionService.cancelTransaction(id, actorUserId);
       res.json(cancelled);

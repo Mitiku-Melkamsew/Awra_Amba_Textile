@@ -762,17 +762,17 @@ export const transactionsApi = {
     };
   },
   deliver: async (transactionId: string) => {
-    return directTransactionService.getTransaction(Number(transactionId));
+    return directTransactionService.getTransaction(transactionId);
   },
   addPayment: async (transactionId: string, data: { amount: number; paymentMethod?: string; notes?: string }) => {
-    return directTransactionService.recordPayment(Number(transactionId), {
+    return directTransactionService.recordPayment(transactionId, {
       amount: data.amount,
       paymentMethod: data.paymentMethod || "cash",
       notes: data.notes,
     });
   },
   cancel: async (transactionId: string) => {
-    return directTransactionService.cancelTransaction(Number(transactionId));
+    return directTransactionService.cancelTransaction(transactionId);
   },
 };
 

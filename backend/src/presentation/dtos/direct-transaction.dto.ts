@@ -46,10 +46,10 @@ export const CreateDirectTransactionSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.type === "yarn_purchase") {
-      if (data.supplierId == null) {
+      if (data.supplierId == null && !data.lines?.[0]?.yarnVariantId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "supplierId is required for yarn_purchase",
+          message: "supplierId or yarn variant is required for yarn_purchase",
           path: ["supplierId"],
         });
       }

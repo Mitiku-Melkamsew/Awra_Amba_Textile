@@ -13,6 +13,7 @@ import {
 import { userService, workOrderService } from "../../infrastructure/services";
 import { fabricNameFromParts, fabricVariantName } from "../../utils/variantNames";
 import { findZigZagDesignId } from "../../utils/defaultDesign";
+import { Modal, SearchableSelect } from "../../components/common";
 
 interface YarnLineItem {
   id: string;
@@ -320,6 +321,40 @@ export function IssueZigPage() {
     }
     setIsModalOpen(false);
   }
+
+  // Options for SearchableSelect
+  const yarnVariantOptions = useMemo(() => {
+    return yarnVariants.map((y) => ({
+      id: String(y.yarnVariantId),
+      title: formatYarnName(y),
+      badge: `${y.stockSnapshot ?? 0} pcs`,
+      badgeColor: (y.stockSnapshot ?? 0) > 0 ? { bg: "#dcfce7", text: "#166534" } : { bg: "#fee2e2", text: "#991b1b" },
+    }));
+  }, [yarnVariants]);
+
+  const modalFabricOptions = useMemo(() => {
+    return fabrics.map((f) => ({
+      id: String(f.fabricId),
+      title: f.name,
+    }));
+  }, [fabrics]);
+
+  const modalDesignOptions = useMemo(() => {
+    return [
+      { id: "", title: "None / Standard" },
+      ...designs.map((d) => ({
+        id: String(d.designId),
+        title: d.name,
+      })),
+    ];
+  }, [designs]);
+
+  const modalColorOptions = useMemo(() => {
+    return colors.map((c) => ({
+      id: String(c.colorId),
+      title: c.name,
+    }));
+  }, [colors]);
 
   // Filtered fabric variants for modal search (Image 1)
   const filteredModalVariants = useMemo(() => {
@@ -837,26 +872,12 @@ export function IssueZigPage() {
                       >
                         {/* Yarn Dropdown */}
                         <div>
-                          <select
+                          <SearchableSelect
+                            options={yarnVariantOptions}
                             value={line.yarnVariantId}
-                            onChange={(e) => handleYarnVariantChange(line.id, e.target.value)}
-                            style={{
-                              width: "100%",
-                              height: 40,
-                              padding: "0 0.65rem",
-                              borderRadius: "6px",
-                              border: "1px solid #cbd5e1",
-                              fontSize: "0.9rem",
-                              background: "#ffffff",
-                            }}
-                          >
-                            <option value="">-- Choose yarn --</option>
-                            {yarnVariants.map((y) => (
-                              <option key={y.yarnVariantId} value={y.yarnVariantId}>
-                                {formatYarnName(y)} ({y.stockSnapshot} pcs in stock)
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => handleYarnVariantChange(line.id, val)}
+                            placeholder="-- Choose yarn --"
+                          />
                         </div>
 
                         {/* Quantity Input */}
@@ -1199,75 +1220,28 @@ export function IssueZigPage() {
         </div>
       </form>
 
-      {/* FABRIC SELECTION MODAL (Image 1: Record Fabric Return / Changing Fabric) */}
-      {isModalOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsModalOpen(false);
-          }}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              width: "100%",
-              maxWidth: 520,
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-              padding: "1.75rem",
-              border: "1px solid #e2e8f0",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
-          >
-            {/* Modal Header (Image 1) */}
-            <div
+      {/* FABRIC SELECTION MODAL (Record Fabric Return / Changing Fabric) */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Select fabric / ጨርቅ ምረጡ"
+        subtitle="Changing fabric"
+        maxWidth={540}
+      >
+        <div>
+          {/* Find existing fabric Search (Image 1) */}
+          <div style={{ marginBottom: "1rem" }}>
+            <label
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "1.25rem",
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#334155",
+                marginBottom: "0.4rem",
               }}
             >
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "1.2rem",
-                  fontWeight: 700,
-                  color: "var(--text-main, #0f172a)",
-                }}
-              >
-                Select fabric / ጨርቅ ምረጡ
-              </h3>
-              <span style={{ fontSize: "0.85rem", color: "#64748b" }}>Changing fabric</span>
-            </div>
-
-            {/* Find existing fabric Search (Image 1) */}
-            <div style={{ marginBottom: "1rem" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  color: "#334155",
-                  marginBottom: "0.4rem",
-                }}
-              >
-                Find an existing fabric
-              </label>
+              Find an existing fabric
+            </label>
               <div style={{ position: "relative" }}>
                 <span
                   style={{
@@ -1449,69 +1423,48 @@ export function IssueZigPage() {
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.25rem", color: "#475569" }}>
                   Fabric type
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalFabricOptions}
                   value={modalFabricId}
-                  onChange={(e) => setModalFabricId(e.target.value)}
-                  style={{ width: "100%", height: 38, borderRadius: "6px", border: "1px solid #cbd5e1", padding: "0 0.5rem" }}
-                >
-                  {fabrics.map((f) => (
-                    <option key={f.fabricId} value={f.fabricId}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalFabricId(val)}
+                  placeholder="Select fabric..."
+                />
               </div>
 
               <div>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.25rem", color: "#475569" }}>
                   Design
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalDesignOptions}
                   value={modalDesignId}
-                  onChange={(e) => setModalDesignId(e.target.value)}
-                  style={{ width: "100%", height: 38, borderRadius: "6px", border: "1px solid #cbd5e1", padding: "0 0.5rem" }}
-                >
-                  <option value="">None / Standard</option>
-                  {designs.map((d) => (
-                    <option key={d.designId} value={d.designId}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalDesignId(val)}
+                  placeholder="Select design..."
+                />
               </div>
 
               <div>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.25rem", color: "#475569" }}>
                   Warp color
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalColorOptions}
                   value={modalWarpColorId}
-                  onChange={(e) => setModalWarpColorId(e.target.value)}
-                  style={{ width: "100%", height: 38, borderRadius: "6px", border: "1px solid #cbd5e1", padding: "0 0.5rem" }}
-                >
-                  {colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalWarpColorId(val)}
+                  placeholder="Select warp color..."
+                />
               </div>
 
               <div>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, marginBottom: "0.25rem", color: "#475569" }}>
                   Weft color
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalColorOptions}
                   value={modalWeftColorId}
-                  onChange={(e) => setModalWeftColorId(e.target.value)}
-                  style={{ width: "100%", height: 38, borderRadius: "6px", border: "1px solid #cbd5e1", padding: "0 0.5rem" }}
-                >
-                  {colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalWeftColorId(val)}
+                  placeholder="Select weft color..."
+                />
               </div>
             </div>
 
@@ -1569,9 +1522,8 @@ export function IssueZigPage() {
                 Use this fabric
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export type DirectTransactionStatus =
 
 export interface DirectTransactionItem {
   lineId: number;
-  transactionId: number;
+  transactionId: number | string;
   fabricVariantId?: number | null;
   yarnVariantId?: number | null;
   quantity: number | string;
@@ -34,7 +34,7 @@ export interface DirectTransactionItem {
 
 export interface DirectPayment {
   paymentId: number;
-  transactionId: number;
+  transactionId: number | string;
   amount: number | string;
   paymentDate: string;
   paymentMethod?: string | null;

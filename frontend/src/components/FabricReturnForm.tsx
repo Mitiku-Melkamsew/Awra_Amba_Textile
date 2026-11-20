@@ -12,6 +12,7 @@ import {
 } from "../api";
 import { fabricVariantName } from "../utils/variantNames";
 import { findZigZagDesignId } from "../utils/defaultDesign";
+import { Modal, SearchableSelect } from "./common";
 
 type FabricReturnRow = WorkOrderDetail["fabricReturns"][number];
 
@@ -253,6 +254,30 @@ export function FabricReturnForm({
     }
     setIsModalOpen(true);
   }
+
+  const modalFabricOptions = useMemo(() => {
+    return fabrics.map((f) => ({
+      id: String(f.fabricId),
+      title: f.name,
+    }));
+  }, [fabrics]);
+
+  const modalDesignOptions = useMemo(() => {
+    return [
+      { id: "", title: "None / Standard" },
+      ...designs.map((d) => ({
+        id: String(d.designId),
+        title: d.name,
+      })),
+    ];
+  }, [designs]);
+
+  const modalColorOptions = useMemo(() => {
+    return colors.map((c) => ({
+      id: String(c.colorId),
+      title: c.name,
+    }));
+  }, [colors]);
 
   // Filtered variants for Image 1 modal search
   const filteredModalVariants = useMemo(() => {
@@ -1517,77 +1542,27 @@ export function FabricReturnForm({
       {/* ─────────────────────────────────────────────────────────────
           MODAL: Record fabric return · Changing fabric (Image 1)
          ───────────────────────────────────────────────────────────── */}
-      {isModalOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsModalOpen(false);
-          }}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              width: "100%",
-              maxWidth: 520,
-              boxShadow:
-                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-              padding: "1.75rem",
-              border: "1px solid #e2e8f0",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
-          >
-            {/* Modal Header (Image 1) */}
-            <div
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Record fabric return"
+        subtitle="Changing fabric"
+        maxWidth={540}
+      >
+        <div>
+          {/* Find existing fabric Search (Image 1) */}
+          <div style={{ marginBottom: "1rem" }}>
+            <label
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "1.25rem",
+                display: "block",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#334155",
+                marginBottom: "0.4rem",
               }}
             >
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "1.2rem",
-                  fontWeight: 700,
-                  color: "#0f172a",
-                }}
-              >
-                Record fabric return
-              </h3>
-              <span style={{ fontSize: "0.9rem", color: "#64748b", fontWeight: 500 }}>
-                Changing fabric
-              </span>
-            </div>
-
-            {/* Find existing fabric Search (Image 1) */}
-            <div style={{ marginBottom: "1rem" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  color: "#334155",
-                  marginBottom: "0.4rem",
-                }}
-              >
-                Find an existing fabric
-              </label>
+              Find an existing fabric
+            </label>
               <div style={{ position: "relative" }}>
                 <span
                   style={{
@@ -1793,26 +1768,12 @@ export function FabricReturnForm({
                 >
                   Fabric type
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalFabricOptions}
                   value={modalFabricId}
-                  onChange={(e) => setModalFabricId(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "0.55rem 0.75rem",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "0.9rem",
-                    color: "#0f172a",
-                    background: "#ffffff",
-                  }}
-                >
-                  {fabrics.map((f) => (
-                    <option key={f.fabricId} value={f.fabricId}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalFabricId(val)}
+                  placeholder="Select fabric..."
+                />
               </div>
 
               <div>
@@ -1827,26 +1788,12 @@ export function FabricReturnForm({
                 >
                   Design
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalDesignOptions}
                   value={modalDesignId}
-                  onChange={(e) => setModalDesignId(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "0.55rem 0.75rem",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "0.9rem",
-                    color: "#0f172a",
-                    background: "#ffffff",
-                  }}
-                >
-                  {designs.map((d) => (
-                    <option key={d.designId} value={d.designId}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalDesignId(val)}
+                  placeholder="Select design..."
+                />
               </div>
 
               <div>
@@ -1861,26 +1808,12 @@ export function FabricReturnForm({
                 >
                   Warp color
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalColorOptions}
                   value={modalWarpColorId}
-                  onChange={(e) => setModalWarpColorId(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "0.55rem 0.75rem",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "0.9rem",
-                    color: "#0f172a",
-                    background: "#ffffff",
-                  }}
-                >
-                  {colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalWarpColorId(val)}
+                  placeholder="Select warp color..."
+                />
               </div>
 
               <div>
@@ -1895,26 +1828,12 @@ export function FabricReturnForm({
                 >
                   Weft color
                 </label>
-                <select
+                <SearchableSelect
+                  options={modalColorOptions}
                   value={modalWeftColorId}
-                  onChange={(e) => setModalWeftColorId(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "0.55rem 0.75rem",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "0.9rem",
-                    color: "#0f172a",
-                    background: "#ffffff",
-                  }}
-                >
-                  {colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setModalWeftColorId(val)}
+                  placeholder="Select weft color..."
+                />
               </div>
             </div>
 
@@ -1972,9 +1891,8 @@ export function FabricReturnForm({
                 Use this fabric
               </button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

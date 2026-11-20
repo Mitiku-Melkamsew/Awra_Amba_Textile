@@ -3949,8 +3949,28 @@ a.btn-primary-rust:hover {
 }
 
 .catalog-master-detail-grid .prices-table {
-  min-width: 620px;
   width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+.catalog-master-detail-grid .prices-table th,
+.catalog-master-detail-grid .prices-table td,
+.catalog-master-detail-grid .prices-table .price-row td {
+  padding: 10px 10px !important;
+  font-size: 13px;
+}
+
+.catalog-master-detail-grid .prices-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748B;
+  white-space: nowrap;
+}
+
+.rules-master-detail-grid .prices-table th,
+.rules-master-detail-grid .prices-table td {
+  padding: 12px 14px;
 }
 
 .catalog-outer-layout {

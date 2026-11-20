@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { calculationsApi, reportsApi } from "../../api";
 import type { CommittedSettlementSummary } from "../../api";
 import { formatDateDDMMYY } from "../../utils/formatDate";
+import { Modal } from "../../components/common";
 
 export function SettlementHistoryPage() {
   const [rows, setRows] = useState<CommittedSettlementSummary[] | null>(null);
@@ -196,22 +197,16 @@ export function SettlementHistoryPage() {
       )}
 
       {/* Disburse Batch Payment Modal */}
-      {payingBatch && (
-        <div className="modal-backdrop" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
-          <div className="card" style={{ maxWidth: "480px", width: "100%", background: "#FFFFFF", borderRadius: "12px", boxShadow: "var(--shadow-xl)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
-              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700 }}>
-                💳 Disburse Batch Payment / ክፍያ ፈጽም
-              </h3>
-              <button
-                type="button"
-                onClick={() => setPayingBatch(null)}
-                style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "var(--text-muted)" }}
-              >
-                ✕
-              </button>
-            </div>
-
+      <Modal
+        isOpen={!!payingBatch}
+        onClose={() => {
+          if (!isSubmittingPayout) setPayingBatch(null);
+        }}
+        title="💳 Disburse Batch Payment / ክፍያ ፈጽም"
+        maxWidth={500}
+      >
+        {payingBatch && (
+          <div>
             {payoutError && <div className="error-msg" style={{ marginBottom: "1rem" }}><span>⚠️</span> {payoutError}</div>}
 
             <form onSubmit={handleConfirmPayout} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -286,8 +281,8 @@ export function SettlementHistoryPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

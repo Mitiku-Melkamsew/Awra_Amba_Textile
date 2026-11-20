@@ -1,7 +1,7 @@
 import { DirectTxnStatus, DirectTxnType } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AuditService } from "./audit.service.js";
-import { NotFoundError } from "../../domain/errors/domain-errors.js";
+import { NotFoundError, ValidationError } from "../../domain/errors/domain-errors.js";
 
 export interface CreateDirectTxnLineInput {
   fabricVariantId?: number | null;
@@ -403,13 +403,15 @@ const yarnPurchaseInclude = {
 };
 
 export function normalizeYarnPurchase(p: any) {
+  const isCancelled = Boolean(p.notes && p.notes.includes("[CANCELLED]"));
+  const txnId = `yp-${p.purchaseId}`;
   const lines = (p.lines ?? []).map((l: any) => {
     const qty = Number(l.quantity);
     const unitPrice = Number(l.unitPrice);
     const lineTotal = Math.round(qty * unitPrice * 100) / 100;
     return {
       lineId: l.lineId,
-      transactionId: p.purchaseId,
+      transactionId: txnId,
       yarnVariantId: l.yarnVariantId,
       fabricVariantId: null,
       quantity: qty,
@@ -425,11 +427,12 @@ export function normalizeYarnPurchase(p: any) {
   const totalAmount = lines.reduce((acc: number, l: any) => acc + l.lineTotal, 0);
 
   return {
-    transactionId: p.purchaseId,
+    transactionId: txnId,
+    purchaseId: p.purchaseId,
     type: "yarn_purchase",
-    status: DirectTxnStatus.paid,
+    status: isCancelled ? DirectTxnStatus.cancelled : DirectTxnStatus.paid,
     totalAmount,
-    amountPaid: totalAmount,
+    amountPaid: isCancelled ? 0 : totalAmount,
     transactionDate: p.purchaseDate,
     createdAt: p.purchaseDate,
     deliveredAt: p.purchaseDate,
@@ -443,16 +446,18 @@ export function normalizeYarnPurchase(p: any) {
     createdByUserId: p.createdByUserId,
     createdBy: p.createdBy,
     lines,
-    payments: [
-      {
-        paymentId: p.purchaseId,
-        transactionId: p.purchaseId,
-        amount: totalAmount,
-        paymentMethod: "Supplier Invoice",
-        paymentDate: p.purchaseDate,
-        notes: "Direct procurement",
-      },
-    ],
+    payments: isCancelled
+      ? []
+      : [
+          {
+            paymentId: p.purchaseId,
+            transactionId: txnId,
+            amount: totalAmount,
+            paymentMethod: "Supplier Invoice",
+            paymentDate: p.purchaseDate,
+            notes: "Direct procurement",
+          },
+        ],
   };
 }
 
@@ -543,23 +548,46 @@ export class DirectTransactionService {
     };
   }
 
-  static async getTransaction(transactionId: number) {
-    const txn = await prisma.directTransaction.findUnique({
-      where: { transactionId },
-      include: txnInclude,
-    });
+  static async getTransaction(transactionId: number | string, typeHint?: string) {
+    const str = String(transactionId).trim();
+    const isYarnPurchaseId =
+      str.toLowerCase().startsWith("yp-") ||
+      str.toLowerCase().startsWith("yp_") ||
+      typeHint === "yarn_purchase";
 
-    if (txn) {
-      return txn;
+    if (isYarnPurchaseId) {
+      const purchaseId = Number(str.replace(/[^0-9]/g, ""));
+      if (Number.isFinite(purchaseId)) {
+        const purchase = await prisma.yarnPurchase.findUnique({
+          where: { purchaseId },
+          include: yarnPurchaseInclude,
+        });
+        if (purchase) {
+          return normalizeYarnPurchase(purchase);
+        }
+      }
+      throw new NotFoundError(`Yarn purchase ${transactionId} not found`);
     }
 
-    const purchase = await prisma.yarnPurchase.findUnique({
-      where: { purchaseId: transactionId },
-      include: yarnPurchaseInclude,
-    });
+    const numId = Number(str);
+    if (!Number.isNaN(numId)) {
+      const txn = await prisma.directTransaction.findUnique({
+        where: { transactionId: numId },
+        include: txnInclude,
+      });
 
-    if (purchase) {
-      return normalizeYarnPurchase(purchase);
+      if (txn) {
+        return txn;
+      }
+
+      const purchase = await prisma.yarnPurchase.findUnique({
+        where: { purchaseId: numId },
+        include: yarnPurchaseInclude,
+      });
+
+      if (purchase) {
+        return normalizeYarnPurchase(purchase);
+      }
     }
 
     throw new NotFoundError(`Transaction ${transactionId} not found`);
@@ -570,12 +598,17 @@ export class DirectTransactionService {
   }
 
   static async recordPayment(
-    transactionId: number,
+    transactionId: number | string,
     data: { amount: number; paymentMethod?: string; notes?: string },
     actorUserId: number,
   ) {
+    const str = String(transactionId).trim();
+    if (str.toLowerCase().startsWith("yp-") || str.toLowerCase().startsWith("yp_")) {
+      throw new ValidationError("Yarn purchases are settled in full upon receipt. Additional payments cannot be recorded.");
+    }
+    const numId = Number(str);
     return recordDirectTransactionPayment({
-      transactionId,
+      transactionId: numId,
       amount: data.amount,
       paymentMethod: data.paymentMethod,
       notes: data.notes,
@@ -583,7 +616,46 @@ export class DirectTransactionService {
     });
   }
 
-  static async cancelTransaction(transactionId: number, actorUserId: number) {
-    return cancelDirectTransaction(transactionId, actorUserId);
+  static async cancelTransaction(transactionId: number | string, actorUserId: number) {
+    const str = String(transactionId).trim();
+    if (str.toLowerCase().startsWith("yp-") || str.toLowerCase().startsWith("yp_")) {
+      const purchaseId = Number(str.replace(/[^0-9]/g, ""));
+      return prisma.$transaction(async (tx) => {
+        const purchase = await tx.yarnPurchase.findUnique({
+          where: { purchaseId },
+          include: { lines: true, supplier: true },
+        });
+        if (!purchase) {
+          throw new NotFoundError(`Yarn purchase ${purchaseId} not found`);
+        }
+        for (const line of purchase.lines) {
+          await tx.yarnVariant.update({
+            where: { yarnVariantId: line.yarnVariantId },
+            data: { stockSnapshot: { decrement: line.quantity } },
+          });
+        }
+        const updatedNotes = purchase.notes
+          ? `${purchase.notes} [CANCELLED]`
+          : "[CANCELLED]";
+        const updatedPurchase = await tx.yarnPurchase.update({
+          where: { purchaseId },
+          data: { notes: updatedNotes },
+          include: yarnPurchaseInclude,
+        });
+        await AuditService.record(
+          {
+            actorUserId,
+            action: "procurement.cancelled",
+            entityType: "yarn_purchase",
+            entityId: purchaseId,
+          },
+          tx,
+        );
+        return normalizeYarnPurchase(updatedPurchase);
+      });
+    }
+
+    const numId = Number(str);
+    return cancelDirectTransaction(numId, actorUserId);
   }
 }

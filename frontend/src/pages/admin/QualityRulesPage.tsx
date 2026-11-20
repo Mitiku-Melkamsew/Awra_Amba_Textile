@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import type { FormEvent } from "react";
 import { catalogApi, type QualityRuleRow } from "../../api";
+import { Modal } from "../../components/common";
 
 const DEFAULT_QUALITY_RULES: QualityRuleRow[] = [
   {
@@ -153,8 +154,7 @@ export function QualityRulesPage() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
-          marginBottom: "1.5rem",
-          flexWrap: "wrap",
+          marginBottom: "1.25rem",
           gap: "1rem",
         }}
       >
@@ -177,44 +177,53 @@ export function QualityRulesPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-          <label
+        <button
+          type="button"
+          className="btn-primary-rust"
+          onClick={() => {
+            setShowAddModal(true);
+            setNewDeduction("");
+            setErrorMessage("");
+          }}
+        >
+          + Add rule
+        </button>
+      </div>
+
+      {/* ── Controls Row above table ── */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          marginBottom: "0.75rem",
+          maxWidth: selectedRule ? "calc(100% - 364px)" : "100%",
+        }}
+      >
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            fontSize: "13.5px",
+            fontWeight: 500,
+            color: "#374151",
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={showClosed}
+            onChange={(e) => setShowClosed(e.target.checked)}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              fontSize: "13.5px",
-              fontWeight: 500,
-              color: "#374151",
+              width: 16,
+              height: 16,
+              accentColor: "#C2410C",
               cursor: "pointer",
             }}
-          >
-            <input
-              type="checkbox"
-              checked={showClosed}
-              onChange={(e) => setShowClosed(e.target.checked)}
-              style={{
-                width: 16,
-                height: 16,
-                accentColor: "#C2410C",
-                cursor: "pointer",
-              }}
-            />
-            Show closed rules
-          </label>
-
-          <button
-            type="button"
-            className="btn-primary-rust"
-            onClick={() => {
-              setShowAddModal(true);
-              setNewDeduction("");
-              setErrorMessage("");
-            }}
-          >
-            + Add rule
-          </button>
-        </div>
+          />
+          Show closed rules
+        </label>
       </div>
 
       {statusMessage && (
@@ -402,92 +411,78 @@ export function QualityRulesPage() {
       </div>
 
       {/* ── Add Quality Rule Modal ── */}
-      {showAddModal && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 440 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add quality rule</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleAddRule}>
-              <div className="field-label">
-                Factor
-                <select
-                  value={newFactor}
-                  onChange={(e) => setNewFactor(e.target.value)}
-                  className="input-field"
-                >
-                  <option value="weight">Weight</option>
-                </select>
-                <span className="field-label-sub">
-                  Length and width are not used in settlements yet.
-                </span>
-              </div>
-
-              <div className="field-label">
-                Unit
-                <input
-                  type="text"
-                  value={newUnit}
-                  onChange={(e) => setNewUnit(e.target.value)}
-                  className="input-field input-read-only"
-                  readOnly
-                />
-              </div>
-
-              <div className="field-label">
-                Deduction per gram (ETB)
-                <input
-                  type="number"
-                  step="any"
-                  min="0.01"
-                  placeholder="e.g. 10"
-                  value={newDeduction}
-                  onChange={(e) => setNewDeduction(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              {/* Warning note */}
-              <div className="warning-callout-box">
-                <span style={{ fontSize: "14px" }}>ⓘ</span>
-                <div>
-                  Only one weight rule can be active. Adding one replaces the current rate.
-                </div>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={isCreating}
-                >
-                  {isCreating ? "Adding…" : "Add rule"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Add quality rule"
+        maxWidth={440}
+      >
+        <form onSubmit={handleAddRule}>
+          <div className="field-label">
+            Factor
+            <select
+              value={newFactor}
+              onChange={(e) => setNewFactor(e.target.value)}
+              className="input-field"
+            >
+              <option value="weight">Weight</option>
+            </select>
+            <span className="field-label-sub">
+              Length and width are not used in settlements yet.
+            </span>
           </div>
-        </div>
-      )}
+
+          <div className="field-label">
+            Unit
+            <input
+              type="text"
+              value={newUnit}
+              onChange={(e) => setNewUnit(e.target.value)}
+              className="input-field input-read-only"
+              readOnly
+            />
+          </div>
+
+          <div className="field-label">
+            Deduction per gram (ETB)
+            <input
+              type="number"
+              step="any"
+              min="0.01"
+              placeholder="e.g. 10"
+              value={newDeduction}
+              onChange={(e) => setNewDeduction(e.target.value)}
+              className="input-field"
+              required
+            />
+          </div>
+
+          {/* Warning note */}
+          <div className="warning-callout-box">
+            <span style={{ fontSize: "14px" }}>ⓘ</span>
+            <div>
+              Only one weight rule can be active. Adding one replaces the current rate.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={isCreating}
+            >
+              {isCreating ? "Adding…" : "Add rule"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

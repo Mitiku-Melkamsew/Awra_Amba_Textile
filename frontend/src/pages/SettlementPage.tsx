@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { calculationsApi, reportsApi } from "../api";
 import { formatDateDDMMYY } from "../utils/formatDate";
 import type { OutOfCutoffZig, PendingSettlementsSummary, ZigLedgerItem } from "../domain/models";
+import { Modal } from "../components/common";
 
 interface BatchPreview {
   previewId: string;
@@ -984,25 +985,17 @@ export function SettlementPage() {
       )}
 
       {/* Dispute Cancellation Modal */}
-      {cancellingPayment && (
-        <div
-          className="modal-backdrop"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-        >
-          <div className="card" style={{ maxWidth: "440px", width: "100%", background: "#FFFFFF", borderRadius: "10px" }}>
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "16px", fontWeight: 700, color: "#DC2626" }}>
-              Cancel Settlement for {cancellingPayment.weaverName}
-            </h3>
-            <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "0 0 1rem" }}>
+      <Modal
+        isOpen={!!cancellingPayment}
+        onClose={() => {
+          if (!cancelLoading) setCancellingPayment(null);
+        }}
+        title={`Cancel Settlement for ${cancellingPayment?.weaverName}`}
+        maxWidth={460}
+      >
+        {cancellingPayment && (
+          <div>
+            <p style={{ fontSize: "13.5px", color: "var(--text-muted)", margin: "0 0 1rem", lineHeight: 1.5 }}>
               This will release all fabric returns for this weaver back to the unsettled pool so a corrected settlement can be generated.
             </p>
             <form onSubmit={handleConfirmCancelSettlement}>
@@ -1039,116 +1032,89 @@ export function SettlementPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Disburse Payout Modal Dialog */}
-      {showPayoutModal && (
-        <div
-          className="modal-backdrop"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-        >
-          <div className="card" style={{ maxWidth: "480px", width: "100%", background: "#FFFFFF", borderRadius: "12px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                borderBottom: "1px solid var(--border)",
-                paddingBottom: "0.75rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700 }}>💳 Disburse Batch Payment / ክፍያ ፈጽም</h3>
-              <button
-                type="button"
-                onClick={() => setShowPayoutModal(false)}
-                style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "var(--text-muted)" }}
-              >
-                ✕
-              </button>
+      <Modal
+        isOpen={showPayoutModal}
+        onClose={() => {
+          if (!payoutLoading) setShowPayoutModal(false);
+        }}
+        title="💳 Disburse Batch Payment / ክፍያ ፈጽም"
+        maxWidth={500}
+      >
+        <div>
+          {payoutError && (
+            <div className="error-msg" style={{ marginBottom: "1rem" }}>
+              <span>⚠️</span> {payoutError}
+            </div>
+          )}
+
+          <form onSubmit={handleDisbursePayout} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ background: "var(--bg-subtle)", padding: "0.85rem", borderRadius: "8px", fontSize: "13px" }}>
+              <div>
+                Batch Reference: <strong>#{committedPreviewId}</strong>
+              </div>
+              <div>
+                Artisans Count: <strong>{committedWeaverCount} weavers</strong>
+              </div>
+              <div>
+                Total Payout: <strong>{Math.round(committedTotal).toLocaleString()} ETB</strong>
+              </div>
             </div>
 
-            {payoutError && (
-              <div className="error-msg" style={{ marginBottom: "1rem" }}>
-                <span>⚠️</span> {payoutError}
-              </div>
-            )}
+            <div>
+              <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, marginBottom: "0.25rem" }}>
+                Payment Method / የክፍያ ዘዴ
+              </label>
+              <select
+                value={payoutMethod}
+                onChange={(e) => setPayoutMethod(e.target.value)}
+                style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "6px", border: "1px solid var(--border)" }}
+              >
+                <option value="cash">Cash (ጥሬ ገንዘብ)</option>
+                <option value="bank_transfer">Commercial Bank of Ethiopia (CBE)</option>
+                <option value="telebirr">Telebirr (ቴሌብር)</option>
+                <option value="coop_bank">Cooperative Bank (ኅብረት ሥራ ባንክ)</option>
+                <option value="check">Check (ቼክ)</option>
+              </select>
+            </div>
 
-            <form onSubmit={handleDisbursePayout} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div style={{ background: "var(--bg-subtle)", padding: "0.85rem", borderRadius: "8px", fontSize: "13px" }}>
-                <div>
-                  Batch Reference: <strong>#{committedPreviewId}</strong>
-                </div>
-                <div>
-                  Artisans Count: <strong>{committedWeaverCount} weavers</strong>
-                </div>
-                <div>
-                  Total Payout: <strong>{Math.round(committedTotal).toLocaleString()} ETB</strong>
-                </div>
-              </div>
+            <div>
+              <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, marginBottom: "0.25rem" }}>
+                Payment Notes / ማስታወሻ (optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Cash Voucher #45"
+                value={payoutNotes}
+                onChange={(e) => setPayoutNotes(e.target.value)}
+                style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "6px", border: "1px solid var(--border)" }}
+              />
+            </div>
 
-              <div>
-                <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, marginBottom: "0.25rem" }}>
-                  Payment Method / የክፍያ ዘዴ
-                </label>
-                <select
-                  value={payoutMethod}
-                  onChange={(e) => setPayoutMethod(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "6px", border: "1px solid var(--border)" }}
-                >
-                  <option value="cash">Cash (ጥሬ ገንዘብ)</option>
-                  <option value="bank_transfer">Commercial Bank of Ethiopia (CBE)</option>
-                  <option value="telebirr">Telebirr (ቴሌብር)</option>
-                  <option value="coop_bank">Cooperative Bank (ኅብረት ሥራ ባንክ)</option>
-                  <option value="check">Check (ቼክ)</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, marginBottom: "0.25rem" }}>
-                  Payment Notes / ማስታወሻ (optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cash Voucher #45"
-                  value={payoutNotes}
-                  onChange={(e) => setPayoutNotes(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "6px", border: "1px solid var(--border)" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => setShowPayoutModal(false)}
-                  disabled={payoutLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ background: "#059669", borderColor: "#059669" }}
-                  disabled={payoutLoading}
-                >
-                  {payoutLoading ? "Disbursing Payment…" : "✓ Confirm Disbursement / አጽድቅ"}
-                </button>
-              </div>
-            </form>
-          </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowPayoutModal(false)}
+                disabled={payoutLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{ background: "#059669", borderColor: "#059669" }}
+                disabled={payoutLoading}
+              >
+                {payoutLoading ? "Disbursing Payment…" : "✓ Confirm Disbursement / አጽድቅ"}
+              </button>
+            </div>
+          </form>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

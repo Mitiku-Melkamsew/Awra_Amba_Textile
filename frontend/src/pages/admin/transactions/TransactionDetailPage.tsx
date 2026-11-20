@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { transactionsApi } from "../../../api";
 import { formatDateDDMMYY } from "../../../utils/formatDate";
+import { Modal } from "../../../components/common";
 
 function lineName(line: any): string {
   if (line.fabricVariant) {
@@ -25,6 +26,13 @@ function lineName(line: any): string {
 }
 
 function counterpartyTitle(txn: any): { label: string; name: string; phone?: string } {
+  if (txn.supplier) {
+    return {
+      label: "Supplier · አቅራቢ",
+      name: txn.supplier.name || "Supplier",
+      phone: txn.supplier.contactPhone || txn.supplier.phone,
+    };
+  }
   if (txn.merchant) {
     return {
       label: "Merchant · ገዢ ነጋዴ",
@@ -39,29 +47,24 @@ function counterpartyTitle(txn: any): { label: string; name: string; phone?: str
       phone: txn.weaver.phone,
     };
   }
-  if (txn.supplier) {
-    return {
-      label: "Supplier · አቅራቢ",
-      name: txn.supplier.name || "Supplier",
-      phone: txn.supplier.contactPhone,
-    };
-  }
   return { label: "Counterparty", name: "—" };
 }
 
 function getTypeBadge(type: string) {
-  switch (type) {
-    case "fabric_sale_to_merchant":
-      return { label: "Sell fabric", bg: "#e0f2fe", text: "#0369a1" };
-    case "fabric_purchase_from_weaver":
-      return { label: "Buy fabric", bg: "#f0fdf4", text: "#166534" };
-    case "yarn_sale_to_weaver":
-      return { label: "Sell yarn", bg: "#eff6ff", text: "#1d4ed8" };
-    case "yarn_purchase":
-      return { label: "Buy yarn", bg: "#f1f5f9", text: "#334155" };
-    default:
-      return { label: type || "Transaction", bg: "#f1f5f9", text: "#475569" };
+  const norm = String(type || "").toLowerCase();
+  if (norm.includes("yarn") && (norm.includes("purchase") || norm.includes("buy"))) {
+    return { label: "Buy yarn", bg: "#f1f5f9", text: "#334155" };
   }
+  if (norm.includes("fabric") && (norm.includes("purchase") || norm.includes("buy"))) {
+    return { label: "Buy fabric", bg: "#f0fdf4", text: "#166534" };
+  }
+  if (norm.includes("yarn") && (norm.includes("sale") || norm.includes("sell"))) {
+    return { label: "Sell yarn", bg: "#eff6ff", text: "#1d4ed8" };
+  }
+  if (norm.includes("fabric") && (norm.includes("sale") || norm.includes("sell"))) {
+    return { label: "Sell fabric", bg: "#e0f2fe", text: "#0369a1" };
+  }
+  return { label: type || "Transaction", bg: "#f1f5f9", text: "#475569" };
 }
 
 export function TransactionDetailPage() {
@@ -562,78 +565,57 @@ export function TransactionDetailPage() {
       </div>
 
       {/* Cancel Confirmation Modal */}
-      {showCancelModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={() => setShowCancelModal(false)}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              padding: "1.75rem",
-              width: "100%",
-              maxWidth: "460px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "18px", fontWeight: 800, color: "#991b1b" }}>
-              Cancel Transaction [{txn.transactionId}]?
-            </h3>
-            <p style={{ fontSize: "14px", color: "#475569", lineHeight: 1.5, margin: "0 0 1.5rem" }}>
-              Are you sure you want to cancel this transaction? Inventory stocks will be restored to their previous state, and this transaction will be marked as cancelled.
-            </p>
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => {
+          if (!busy) setShowCancelModal(false);
+        }}
+        title={`Cancel Transaction [${txn.transactionId}]?`}
+        maxWidth={460}
+      >
+        <div>
+          <p style={{ fontSize: "14px", color: "#475569", lineHeight: 1.5, margin: "0 0 1.5rem" }}>
+            Are you sure you want to cancel this transaction? Inventory stocks will be restored to their previous state, and this transaction will be marked as cancelled.
+          </p>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-              <button
-                type="button"
-                onClick={() => setShowCancelModal(false)}
-                disabled={busy}
-                style={{
-                  background: "#ffffff",
-                  border: "1px solid #cbd5e1",
-                  padding: "0.55rem 1rem",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  color: "#475569",
-                }}
-              >
-                Keep transaction
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmCancel}
-                disabled={busy}
-                style={{
-                  background: "#dc2626",
-                  border: "none",
-                  padding: "0.55rem 1rem",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: "#ffffff",
-                  cursor: busy ? "not-allowed" : "pointer",
-                }}
-              >
-                {busy ? "Cancelling…" : "Yes, cancel transaction"}
-              </button>
-            </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(false)}
+              disabled={busy}
+              style={{
+                background: "#ffffff",
+                border: "1px solid #cbd5e1",
+                padding: "0.55rem 1rem",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#475569",
+              }}
+            >
+              Keep transaction
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmCancel}
+              disabled={busy}
+              style={{
+                background: "#dc2626",
+                border: "none",
+                padding: "0.55rem 1rem",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "#ffffff",
+                cursor: busy ? "not-allowed" : "pointer",
+              }}
+            >
+              {busy ? "Cancelling…" : "Yes, cancel transaction"}
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

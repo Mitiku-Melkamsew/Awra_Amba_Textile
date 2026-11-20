@@ -19,6 +19,7 @@ import {
 } from "../utils/yarnLines";
 import { FabricReturnForm } from "./FabricReturnForm";
 import { YarnLinesEditor } from "./YarnLinesEditor";
+import { Modal } from "./common";
 
 function variantLabel(parts: Array<string | undefined>) {
   return parts.filter(Boolean).join(" · ");
@@ -1339,135 +1340,80 @@ export function ZigDetailView({
       {/* ─────────────────────────────────────────────────────────────
           SAFETY CONFIRMATION MODAL FOR CANCELLING ZIG (Design for Error)
          ───────────────────────────────────────────────────────────── */}
-      {isCancelModalOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(15, 23, 42, 0.55)",
-            backdropFilter: "blur(3px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !cancelling) {
-              setIsCancelModalOpen(false);
-            }
-          }}
-        >
-          <div
+      <Modal
+        isOpen={isCancelModalOpen}
+        onClose={() => {
+          if (!cancelling) setIsCancelModalOpen(false);
+        }}
+        title={`Cancel Zig ${order.zigId}?`}
+        maxWidth={460}
+      >
+        <div>
+          <p
             style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              width: "100%",
-              maxWidth: 460,
-              boxShadow:
-                "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-              padding: "1.75rem",
-              border: "1px solid #fecaca",
+              margin: "0 0 1rem 0",
+              fontSize: "0.92rem",
+              color: "#334155",
+              lineHeight: 1.5,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: "#fee2e2",
-                  color: "#dc2626",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.2rem",
-                  flexShrink: 0,
-                }}
-              >
-                ⚠️
-              </div>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "1.2rem",
-                  fontWeight: 800,
-                  color: "#991b1b",
-                }}
-              >
-                Cancel Zig {order.zigId}?
-              </h3>
-            </div>
+            Are you sure you want to cancel this work order for <strong>{weaverDisplayName}</strong>?
+          </p>
 
-            <p
-              style={{
-                margin: "0 0 1rem 0",
-                fontSize: "0.92rem",
-                color: "#334155",
-                lineHeight: 1.5,
-              }}
-            >
-              Are you sure you want to cancel this work order for <strong>{weaverDisplayName}</strong>?
-            </p>
+          <div
+            style={{
+              background: "#fef2f2",
+              border: "1px solid #fca5a5",
+              borderRadius: "8px",
+              padding: "0.75rem 1rem",
+              marginBottom: "1.5rem",
+              fontSize: "0.82rem",
+              color: "#991b1b",
+              lineHeight: 1.45,
+            }}
+          >
+            <strong>Notice:</strong> This action permanently halts work order {order.zigId}. It cannot be undone, and the weaver will not be able to return additional fabric against this zig.
+          </div>
 
-            <div
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              disabled={cancelling}
+              onClick={() => setIsCancelModalOpen(false)}
               style={{
-                background: "#fef2f2",
-                border: "1px solid #fca5a5",
+                padding: "0.6rem 1.25rem",
                 borderRadius: "8px",
-                padding: "0.75rem 1rem",
-                marginBottom: "1.5rem",
-                fontSize: "0.82rem",
-                color: "#991b1b",
-                lineHeight: 1.45,
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                color: "#475569",
+                fontWeight: 600,
+                fontSize: "0.92rem",
+                cursor: "pointer",
               }}
             >
-              <strong>Notice:</strong> This action permanently halts work order {order.zigId}. It cannot be undone, and the weaver will not be able to return additional fabric against this zig.
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-              <button
-                type="button"
-                disabled={cancelling}
-                onClick={() => setIsCancelModalOpen(false)}
-                style={{
-                  padding: "0.6rem 1.25rem",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  background: "#ffffff",
-                  color: "#475569",
-                  fontWeight: 600,
-                  fontSize: "0.92rem",
-                  cursor: "pointer",
-                }}
-              >
-                Keep Zig
-              </button>
-              <button
-                type="button"
-                disabled={cancelling}
-                onClick={handleConfirmCancelZig}
-                style={{
-                  padding: "0.6rem 1.35rem",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: "#dc2626",
-                  color: "#ffffff",
-                  fontWeight: 700,
-                  fontSize: "0.92rem",
-                  cursor: cancelling ? "not-allowed" : "pointer",
-                  boxShadow: "0 1px 2px rgba(220, 38, 38, 0.2)",
-                }}
-              >
-                {cancelling ? "Cancelling…" : "Yes, Cancel This Zig"}
-              </button>
-            </div>
+              Keep Zig
+            </button>
+            <button
+              type="button"
+              disabled={cancelling}
+              onClick={handleConfirmCancelZig}
+              style={{
+                padding: "0.6rem 1.35rem",
+                borderRadius: "8px",
+                border: "none",
+                background: "#dc2626",
+                color: "#ffffff",
+                fontWeight: 700,
+                fontSize: "0.92rem",
+                cursor: cancelling ? "not-allowed" : "pointer",
+                boxShadow: "0 1px 2px rgba(220, 38, 38, 0.2)",
+              }}
+            >
+              {cancelling ? "Cancelling…" : "Yes, Cancel This Zig"}
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

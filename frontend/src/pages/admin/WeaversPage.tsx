@@ -5,6 +5,7 @@ import { weaversApi } from "../../api";
 import type { Weaver } from "../../api";
 import { WeaverRatesTransparency } from "../../components/WeaverRatesTransparency";
 import { WeaverWageCalculator } from "../../components/WeaverWageCalculator";
+import { Modal } from "../../components/common";
 
 export function WeaversPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -572,72 +573,13 @@ export function WeaversPage() {
       {/* ─────────────────────────────────────────────────────────────
           MODAL: Add Weaver
          ───────────────────────────────────────────────────────────── */}
-      {showAdd && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAdd(false);
-          }}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              width: "100%",
-              maxWidth: 480,
-              boxShadow:
-                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-              padding: "1.75rem",
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "1.25rem",
-              }}
-            >
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "1.2rem",
-                  fontWeight: 700,
-                  color: "#0f172a",
-                }}
-              >
-                + Register New Weaver
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAdd(false)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  fontSize: "1.2rem",
-                  color: "#64748b",
-                  cursor: "pointer",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreate}>
+      <Modal
+        isOpen={showAdd}
+        onClose={() => setShowAdd(false)}
+        title="+ Register New Weaver"
+        maxWidth={480}
+      >
+        <form onSubmit={handleCreate}>
               <div
                 style={{
                   display: "grid",
@@ -818,9 +760,7 @@ export function WeaversPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import type { FormEvent } from "react";
 import { catalogApi } from "../../api";
 import type { FabricVariant, FabricPriceRow } from "../../api";
+import { SearchableSelect, Modal } from "../../components/common";
 
 type CatalogTab =
   | "fabrics"
@@ -69,6 +70,45 @@ export function CatalogPage() {
   const [colors, setColors] = useState<any[]>([]);
   const [designs, setDesigns] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+
+  const fabricOptions = useMemo(() => {
+    return fabrics.map((f) => ({
+      id: f.fabricId,
+      title: f.name,
+      subtitle: `${f.standardWeightG}g · ${f.standardLengthCm}x${f.standardWidthCm}cm`,
+    }));
+  }, [fabrics]);
+
+  const colorOptions = useMemo(() => {
+    return colors.map((c) => ({
+      id: c.colorId,
+      title: c.name,
+      badge: c.hexCode || undefined,
+    }));
+  }, [colors]);
+
+  const designOptions = useMemo(() => {
+    return designs.map((d) => ({
+      id: d.designId,
+      title: d.name,
+    }));
+  }, [designs]);
+
+  const yarnOptions = useMemo(() => {
+    return yarns.map((y) => ({
+      id: y.yarnId,
+      title: y.name,
+      subtitle: [y.material, y.type].filter(Boolean).join(" · "),
+    }));
+  }, [yarns]);
+
+  const supplierOptions = useMemo(() => {
+    return suppliers.map((s) => ({
+      id: s.supplierId,
+      title: s.name,
+      subtitle: s.contactPhone ? `Phone: ${s.contactPhone}` : undefined,
+    }));
+  }, [suppliers]);
 
   // Selection state for master-detail
   const [selectedFabricId, setSelectedFabricId] = useState<number | null>(2); // defaults to gabi
@@ -1053,552 +1093,419 @@ export function CatalogPage() {
       </div>
 
       {/* ── Add Fabric Modal ── */}
-      {showAddModal && tab === "fabrics" && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 460 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add fabric</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateFabric}>
-              <div className="field-label">
-                Name · የሞርት ስም
-                <input
-                  type="text"
-                  placeholder="e.g. Gabi / ጋቢ"
-                  value={newFabricName}
-                  onChange={(e) => setNewFabricName(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div className="field-label">
-                Standard weight (g) · መደበኛ ክብደት
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="Required"
-                  value={newFabricWeight}
-                  onChange={(e) => setNewFabricWeight(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div className="field-label">
-                  Length (cm)
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    placeholder="Required"
-                    value={newFabricLength}
-                    onChange={(e) => setNewFabricLength(e.target.value)}
-                    className="input-field"
-                    required
-                  />
-                </div>
-                <div className="field-label">
-                  Width (cm)
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    placeholder="Required"
-                    value={newFabricWidth}
-                    onChange={(e) => setNewFabricWidth(e.target.value)}
-                    className="input-field"
-                    required
-                  />
-                </div>
-              </div>
-
-              <p style={{ margin: "0.5rem 0 1.25rem", fontSize: "12.5px", color: "#64748B", lineHeight: 1.45 }}>
-                All three measurements are required. Weight below the standard is deducted at settlement.
-              </p>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={saving}
-                >
-                  {saving ? "Adding…" : "Add fabric"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showAddModal && tab === "fabrics"}
+        onClose={() => setShowAddModal(false)}
+        title="Add fabric · አዲስ ጨርቅ"
+        subtitle="All three measurements are required. Weight below the standard is deducted at settlement."
+        maxWidth={460}
+      >
+        <form onSubmit={handleCreateFabric}>
+          <div className="field-label">
+            Name · የምርት ስም
+            <input
+              type="text"
+              placeholder="e.g. Gabi / ጋቢ"
+              value={newFabricName}
+              onChange={(e) => setNewFabricName(e.target.value)}
+              className="input-field"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div className="field-label">
+            Standard weight (g) · መደበኛ ክብደት
+            <input
+              type="number"
+              step="any"
+              min="0"
+              placeholder="Required"
+              value={newFabricWeight}
+              onChange={(e) => setNewFabricWeight(e.target.value)}
+              className="input-field"
+              required
+            />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div className="field-label">
+              Length (cm)
+              <input
+                type="number"
+                step="any"
+                min="0"
+                placeholder="Required"
+                value={newFabricLength}
+                onChange={(e) => setNewFabricLength(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+            <div className="field-label">
+              Width (cm)
+              <input
+                type="number"
+                step="any"
+                min="0"
+                placeholder="Required"
+                value={newFabricWidth}
+                onChange={(e) => setNewFabricWidth(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+
+          <p style={{ margin: "0.5rem 0 1.25rem", fontSize: "12.5px", color: "#64748B", lineHeight: 1.45 }}>
+            All three measurements are required. Weight below the standard is deducted at settlement.
+          </p>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={saving}
+            >
+              {saving ? "Adding…" : "Add fabric"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Add Fabric Type (Variant) Modal ── */}
-      {showAddModal && tab === "fabricVariants" && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 460 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add fabric type</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
+      <Modal
+        isOpen={showAddModal && tab === "fabricVariants"}
+        onClose={() => setShowAddModal(false)}
+        title="Add fabric type · አዲስ የጨርቅ ዓይነት"
+        subtitle="Combine a base fabric with design pattern and warp/weft colors."
+        maxWidth={460}
+      >
+        <form onSubmit={handleCreateFabricVariant}>
+          <div className="field-label" style={{ marginBottom: "0.85rem" }}>
+            <span style={{ display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Fabric · ጨርቅ</span>
+            <SearchableSelect
+              value={newFvFabricId ? String(newFvFabricId) : ""}
+              onChange={(val) => setNewFvFabricId(val ? Number(val) : "")}
+              options={fabricOptions}
+              placeholder="Search fabric…"
+              required
+            />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.85rem" }}>
+            <div className="field-label">
+              <span style={{ display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Warp color · የድር</span>
+              <SearchableSelect
+                value={newFvWarpColorId ? String(newFvWarpColorId) : ""}
+                onChange={(val) => setNewFvWarpColorId(val ? Number(val) : "")}
+                options={colorOptions}
+                placeholder="Search warp color…"
+                required
+              />
             </div>
 
-            <form onSubmit={handleCreateFabricVariant}>
-              <div className="field-label">
-                Fabric
-                <select
-                  value={newFvFabricId}
-                  onChange={(e) => setNewFvFabricId(Number(e.target.value))}
-                  className="input-field"
-                  required
-                >
-                  <option value="">Select fabric</option>
-                  {fabrics.map((f) => (
-                    <option key={f.fabricId} value={f.fabricId}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div className="field-label">
-                  Warp color
-                  <select
-                    value={newFvWarpColorId}
-                    onChange={(e) => setNewFvWarpColorId(Number(e.target.value))}
-                    className="input-field"
-                    required
-                  >
-                    <option value="">Select color</option>
-                    {colors.map((c) => (
-                      <option key={c.colorId} value={c.colorId}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-label">
-                  Weft color
-                  <select
-                    value={newFvWeftColorId}
-                    onChange={(e) => setNewFvWeftColorId(Number(e.target.value))}
-                    className="input-field"
-                    required
-                  >
-                    <option value="">Select color</option>
-                    {colors.map((c) => (
-                      <option key={c.colorId} value={c.colorId}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="field-label">
-                Design pattern
-                <select
-                  value={newFvDesignId}
-                  onChange={(e) => setNewFvDesignId(Number(e.target.value))}
-                  className="input-field"
-                  required
-                >
-                  <option value="">Select design</option>
-                  {designs.map((d) => (
-                    <option key={d.designId} value={d.designId}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field-label">
-                SKU (optional)
-                <input
-                  type="text"
-                  placeholder="e.g. F-GAB-001"
-                  value={newFvSku}
-                  onChange={(e) => setNewFvSku(e.target.value)}
-                  className="input-field"
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={saving}
-                >
-                  {saving ? "Adding…" : "Add fabric type"}
-                </button>
-              </div>
-            </form>
+            <div className="field-label">
+              <span style={{ display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Weft color · የማግ</span>
+              <SearchableSelect
+                value={newFvWeftColorId ? String(newFvWeftColorId) : ""}
+                onChange={(val) => setNewFvWeftColorId(val ? Number(val) : "")}
+                options={colorOptions}
+                placeholder="Search weft color…"
+                required
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="field-label" style={{ marginBottom: "0.85rem" }}>
+            <span style={{ display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Design pattern · ጥበብ/ስልት</span>
+            <SearchableSelect
+              value={newFvDesignId ? String(newFvDesignId) : ""}
+              onChange={(val) => setNewFvDesignId(val ? Number(val) : "")}
+              options={designOptions}
+              placeholder="Search design…"
+              required
+            />
+          </div>
+
+          <div className="field-label" style={{ marginBottom: "1.25rem" }}>
+            SKU (optional)
+            <input
+              type="text"
+              placeholder="e.g. F-GAB-001"
+              value={newFvSku}
+              onChange={(e) => setNewFvSku(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={saving}
+            >
+              {saving ? "Adding…" : "Add fabric type"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Add Yarn Modal ── */}
-      {showAddModal && tab === "yarns" && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 440 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add yarn</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateYarn}>
-              <div className="field-label">
-                Yarn material name · የክር ስም
-                <input
-                  type="text"
-                  placeholder="e.g. Cotton / ጥጥ"
-                  value={newSimpleName}
-                  onChange={(e) => setNewSimpleName(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={saving}
-                >
-                  {saving ? "Saving…" : "Add yarn"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showAddModal && tab === "yarns"}
+        onClose={() => setShowAddModal(false)}
+        title="Add yarn · አዲስ ክር"
+        subtitle="Define a new raw yarn material."
+        maxWidth={440}
+      >
+        <form onSubmit={handleCreateYarn}>
+          <div className="field-label" style={{ marginBottom: "1.25rem" }}>
+            Yarn material name · የክር ስም
+            <input
+              type="text"
+              placeholder="e.g. Cotton / ጥጥ"
+              value={newSimpleName}
+              onChange={(e) => setNewSimpleName(e.target.value)}
+              className="input-field"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Add yarn"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Add Yarn Type (Variant) Modal ── */}
-      {showAddModal && tab === "yarnVariants" && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 460 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add yarn type</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateYarnVariant}>
-              <div className="field-label">
-                Yarn
-                <select
-                  value={newYvYarnId}
-                  onChange={(e) => setNewYvYarnId(Number(e.target.value))}
-                  className="input-field"
-                  required
-                >
-                  <option value="">Select yarn</option>
-                  {yarns.map((y) => (
-                    <option key={y.yarnId} value={y.yarnId}>
-                      {y.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field-label">
-                Color
-                <select
-                  value={newYvColorId}
-                  onChange={(e) => setNewYvColorId(Number(e.target.value))}
-                  className="input-field"
-                  required
-                >
-                  <option value="">Select color</option>
-                  {colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field-label">
-                Supplier
-                <select
-                  value={newYvSupplierId}
-                  onChange={(e) => setNewYvSupplierId(Number(e.target.value))}
-                  className="input-field"
-                  required
-                >
-                  <option value="">Select supplier</option>
-                  {suppliers.map((s) => (
-                    <option key={s.supplierId} value={s.supplierId}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="field-label">
-                SKU (optional)
-                <input
-                  type="text"
-                  placeholder="e.g. Y-COT-RED"
-                  value={newYvSku}
-                  onChange={(e) => setNewYvSku(e.target.value)}
-                  className="input-field"
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={saving}
-                >
-                  {saving ? "Adding…" : "Add yarn type"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showAddModal && tab === "yarnVariants"}
+        onClose={() => setShowAddModal(false)}
+        title="Add yarn type · አዲስ የክር ዓይነት"
+        subtitle="Combine a yarn material with color and supplier."
+        maxWidth={460}
+      >
+        <form onSubmit={handleCreateYarnVariant}>
+          <div className="field-label" style={{ marginBottom: "0.85rem" }}>
+            <span style={{ display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Yarn material · የክር ዓይነት</span>
+            <SearchableSelect
+              value={newYvYarnId ? String(newYvYarnId) : ""}
+              onChange={(val) => setNewYvYarnId(val ? Number(val) : "")}
+              options={yarnOptions}
+              placeholder="Search yarn…"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div className="field-label" style={{ marginBottom: "0.85rem" }}>
+            <span style={{ display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Color · ቀለም</span>
+            <SearchableSelect
+              value={newYvColorId ? String(newYvColorId) : ""}
+              onChange={(val) => setNewYvColorId(val ? Number(val) : "")}
+              options={colorOptions}
+              placeholder="Search color…"
+              required
+            />
+          </div>
+
+          <div className="field-label" style={{ marginBottom: "0.85rem" }}>
+            <span style={{ display: "block", marginBottom: "0.3rem", fontWeight: 600 }}>Supplier · አቅራቢ</span>
+            <SearchableSelect
+              value={newYvSupplierId ? String(newYvSupplierId) : ""}
+              onChange={(val) => setNewYvSupplierId(val ? Number(val) : "")}
+              options={supplierOptions}
+              placeholder="Search supplier…"
+              required
+            />
+          </div>
+
+          <div className="field-label" style={{ marginBottom: "1.25rem" }}>
+            SKU (optional)
+            <input
+              type="text"
+              placeholder="e.g. Y-COT-RED"
+              value={newYvSku}
+              onChange={(e) => setNewYvSku(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={saving}
+            >
+              {saving ? "Adding…" : "Add yarn type"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Add Color Modal ── */}
-      {showAddModal && tab === "colors" && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 440 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add color</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateColor}>
-              <div className="field-label">
-                Color name · ቀለም
-                <input
-                  type="text"
-                  placeholder="e.g. Indigo / ሰማያዊ"
-                  value={newSimpleName}
-                  onChange={(e) => setNewSimpleName(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={saving}
-                >
-                  {saving ? "Saving…" : "Add color"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showAddModal && tab === "colors"}
+        onClose={() => setShowAddModal(false)}
+        title="Add color · አዲስ ቀለም"
+        subtitle="Add a new dye/yarn color to the catalog."
+        maxWidth={440}
+      >
+        <form onSubmit={handleCreateColor}>
+          <div className="field-label" style={{ marginBottom: "1.25rem" }}>
+            Color name · ቀለም
+            <input
+              type="text"
+              placeholder="e.g. Indigo / ሰማያዊ"
+              value={newSimpleName}
+              onChange={(e) => setNewSimpleName(e.target.value)}
+              className="input-field"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Add color"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Add Design Modal ── */}
-      {showAddModal && tab === "designs" && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 440 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add design</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateDesign}>
-              <div className="field-label">
-                Design pattern · ጥበብ/ስልት
-                <input
-                  type="text"
-                  placeholder="e.g. Diamond border"
-                  value={newSimpleName}
-                  onChange={(e) => setNewSimpleName(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={saving}
-                >
-                  {saving ? "Saving…" : "Add design"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showAddModal && tab === "designs"}
+        onClose={() => setShowAddModal(false)}
+        title="Add design · አዲስ ጥበብ"
+        subtitle="Add a new pattern or design to the catalog."
+        maxWidth={440}
+      >
+        <form onSubmit={handleCreateDesign}>
+          <div className="field-label" style={{ marginBottom: "1.25rem" }}>
+            Design pattern · ጥበብ/ስልት
+            <input
+              type="text"
+              placeholder="e.g. Diamond border"
+              value={newSimpleName}
+              onChange={(e) => setNewSimpleName(e.target.value)}
+              className="input-field"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Add design"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Add Supplier Modal ── */}
-      {showAddModal && tab === "suppliers" && (
-        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div
-            className="modal-dialog"
-            style={{ maxWidth: 440 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-              <h3 className="modal-title">Add supplier</h3>
-              <button
-                type="button"
-                className="detail-close-btn"
-                onClick={() => setShowAddModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSupplier}>
-              <div className="field-label">
-                Supplier name · አቅራቢ
-                <input
-                  type="text"
-                  placeholder="e.g. Bahir Dar Textile SC"
-                  value={newSimpleName}
-                  onChange={(e) => setNewSimpleName(e.target.value)}
-                  className="input-field"
-                  required
-                />
-              </div>
-
-              <div className="field-label">
-                Contact phone
-                <input
-                  type="text"
-                  placeholder="e.g. 0911000000"
-                  value={newSupplierPhone}
-                  onChange={(e) => setNewSupplierPhone(e.target.value)}
-                  className="input-field"
-                />
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
-                <button
-                  type="button"
-                  className="btn-secondary-white"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary-rust"
-                  disabled={saving}
-                >
-                  {saving ? "Saving…" : "Add supplier"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showAddModal && tab === "suppliers"}
+        onClose={() => setShowAddModal(false)}
+        title="Add supplier · አዲስ አቅራቢ"
+        subtitle="Add a new raw material supplier."
+        maxWidth={440}
+      >
+        <form onSubmit={handleCreateSupplier}>
+          <div className="field-label">
+            Supplier name · አቅራቢ
+            <input
+              type="text"
+              placeholder="e.g. Bahir Dar Textile SC"
+              value={newSimpleName}
+              onChange={(e) => setNewSimpleName(e.target.value)}
+              className="input-field"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div className="field-label" style={{ marginBottom: "1.25rem" }}>
+            Contact phone
+            <input
+              type="text"
+              placeholder="e.g. 0911000000"
+              value={newSupplierPhone}
+              onChange={(e) => setNewSupplierPhone(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              className="btn-secondary-white"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary-rust"
+              disabled={saving}
+            >
+              {saving ? "Saving…" : "Add supplier"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

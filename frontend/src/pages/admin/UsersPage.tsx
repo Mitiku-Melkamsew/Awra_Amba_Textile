@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { userService } from "../../infrastructure/services";
 import type { UserSummary, UserRole } from "../../domain/models";
+import { Modal } from "../../components/common";
 
 function deriveUsername(fullName: string): string {
   const cleaned = fullName
@@ -861,120 +862,70 @@ export function UsersPage() {
       </div>
 
       {/* Deactivate Safety Modal */}
-      {showDeactivateModal && selectedUser && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={() => setShowDeactivateModal(false)}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              padding: "1.75rem",
-              width: "100%",
-              maxWidth: "440px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "18px", fontWeight: 800, color: "#991b1b" }}>
-              Deactivate {selectedUser.fullName}?
-            </h3>
-            <p style={{ fontSize: "14px", color: "#475569", lineHeight: 1.5, margin: "0 0 1.5rem" }}>
-              They will no longer be able to sign in to the platform. All historical transactions, zigs, and payment logs will remain intact.
-            </p>
+      <Modal
+        isOpen={showDeactivateModal && !!selectedUser}
+        onClose={() => setShowDeactivateModal(false)}
+        title={`Deactivate ${selectedUser?.fullName}?`}
+        maxWidth={440}
+      >
+        <div>
+          <p style={{ fontSize: "14px", color: "#475569", lineHeight: 1.5, margin: "0 0 1.5rem" }}>
+            They will no longer be able to sign in to the platform. All historical transactions, zigs, and payment logs will remain intact.
+          </p>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-              <button
-                type="button"
-                onClick={() => setShowDeactivateModal(false)}
-                style={{
-                  background: "#ffffff",
-                  border: "1px solid #cbd5e1",
-                  padding: "0.55rem 1rem",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  color: "#475569",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleActiveStatus}
-                style={{
-                  background: "#dc2626",
-                  border: "none",
-                  padding: "0.55rem 1rem",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: "#ffffff",
-                  cursor: "pointer",
-                }}
-              >
-                Yes, deactivate
-              </button>
-            </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button
+              type="button"
+              onClick={() => setShowDeactivateModal(false)}
+              style={{
+                background: "#ffffff",
+                border: "1px solid #cbd5e1",
+                padding: "0.55rem 1rem",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#475569",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleActiveStatus}
+              style={{
+                background: "#dc2626",
+                border: "none",
+                padding: "0.55rem 1rem",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "#ffffff",
+                cursor: "pointer",
+              }}
+            >
+              Yes, deactivate
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Add User Modal */}
-      {showCreateModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={() => setShowCreateModal(false)}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              padding: "1.75rem",
-              width: "100%",
-              maxWidth: "480px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "20px", fontWeight: 800, color: "#0f172a" }}>
-              Add New User
-            </h3>
-            <p style={{ fontSize: "13.5px", color: "#64748b", margin: "0 0 1.25rem" }}>
-              Username and password will be generated automatically, or you can customize them.
-            </p>
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Add New User"
+        subtitle="Username and password will be generated automatically, or you can customize them."
+        maxWidth={480}
+      >
+        <div>
+          {createError && (
+            <div style={{ background: "#fef2f2", color: "#991b1b", padding: "0.6rem 0.8rem", borderRadius: "8px", fontSize: "13px", marginBottom: "1rem" }}>
+              ⚠️ {createError}
+            </div>
+          )}
 
-            {createError && (
-              <div style={{ background: "#fef2f2", color: "#991b1b", padding: "0.6rem 0.8rem", borderRadius: "8px", fontSize: "13px", marginBottom: "1rem" }}>
-                ⚠️ {createError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <form onSubmit={handleCreateUser} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
                 <label style={{ display: "block", fontSize: "12.5px", fontWeight: 700, color: "#475569", marginBottom: "0.3rem" }}>
                   Full Name (የተጠቃሚ ሙሉ ስም) *
@@ -1112,43 +1063,19 @@ export function UsersPage() {
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Created Credentials Modal */}
-      {createdCredentials && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={() => setCreatedCredentials(null)}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              padding: "1.75rem",
-              width: "100%",
-              maxWidth: "440px",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        isOpen={!!createdCredentials}
+        onClose={() => setCreatedCredentials(null)}
+        title="User Successfully Created"
+        subtitle={createdCredentials ? `Share these credentials with ${createdCredentials.fullName}.` : undefined}
+        maxWidth={440}
+      >
+        {createdCredentials && (
+          <div>
             <div style={{ fontSize: "28px", textAlign: "center", marginBottom: "0.5rem" }}>🎉</div>
-            <h3 style={{ margin: "0 0 0.5rem", fontSize: "18px", fontWeight: 800, textAlign: "center", color: "#0f172a" }}>
-              User Successfully Created
-            </h3>
-            <p style={{ fontSize: "13.5px", color: "#64748b", textAlign: "center", margin: "0 0 1.25rem" }}>
-              Share these credentials with {createdCredentials.fullName}.
-            </p>
 
             <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem", marginBottom: "1.25rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem", fontSize: "13.5px" }}>
@@ -1207,8 +1134,8 @@ export function UsersPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

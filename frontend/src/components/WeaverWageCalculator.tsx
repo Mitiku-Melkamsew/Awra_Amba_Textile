@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { catalogApi, type Fabric, type QualityRuleRow } from "../api";
+import { SearchableSelect } from "./common";
 
 export function WeaverWageCalculator() {
   const [fabrics, setFabrics] = useState<Fabric[]>([]);
@@ -41,6 +42,15 @@ export function WeaverWageCalculator() {
       .catch((err) => setError(err.message || "Failed to load calculator parameters"))
       .finally(() => setLoading(false));
   }, []);
+
+  // Options for fabric SearchableSelect
+  const fabricOptions = useMemo(() => {
+    return fabrics.map((f) => ({
+      id: String(f.fabricId),
+      title: f.name,
+      subtitle: `${f.standardLengthCm}×${f.standardWidthCm}cm · ${f.standardWeightG}g`,
+    }));
+  }, [fabrics]);
 
   // When fabric changes, update targets
   function handleFabricChange(fabricId: string) {
@@ -121,20 +131,17 @@ export function WeaverWageCalculator() {
             <span>📐</span> Calculation Parameters / መለኪያዎች
           </h3>
 
-          <label>
-            <span>Fabric Product / የጨርቁ ዓይነት</span>
-            <select
+          <div style={{ marginBottom: "0.75rem" }}>
+            <label style={{ display: "block", marginBottom: "0.35rem", fontWeight: 600, fontSize: "0.88rem" }}>
+              Fabric Product / የጨርቁ ዓይነት
+            </label>
+            <SearchableSelect
+              options={fabricOptions}
               value={selectedFabricId}
-              onChange={(e) => handleFabricChange(e.target.value)}
-              style={{ height: 42, fontWeight: 600 }}
-            >
-              {fabrics.map((f) => (
-                <option key={f.fabricId} value={f.fabricId}>
-                  🧣 {f.name} ({f.standardLengthCm}×{f.standardWidthCm}cm · {f.standardWeightG}g)
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(val) => handleFabricChange(val)}
+              placeholder="Search fabric..."
+            />
+          </div>
 
           <div className="form-row">
             <label>
