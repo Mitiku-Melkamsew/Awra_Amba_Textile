@@ -59,11 +59,34 @@ export function TransactionFormPage() {
   >([]);
   const [fabricVariants, setFabricVariants] = useState<any[]>([]);
   const [yarnVariants, setYarnVariants] = useState<any[]>([]);
+  const [fabrics, setFabrics] = useState<any[]>([]);
+  const [yarns, setYarns] = useState<any[]>([]);
+  const [colors, setColors] = useState<any[]>([]);
+  const [designs, setDesigns] = useState<any[]>([]);
 
-  // Quick Add Modal state
+  // Quick Add Party Modal state
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
   const [newPartyName, setNewPartyName] = useState("");
   const [newPartyPhone, setNewPartyPhone] = useState("");
+
+  // Quick Add Variant Modal state
+  const [showAddVariantModal, setShowAddVariantModal] = useState(false);
+  const [targetLineIdForVariant, setTargetLineIdForVariant] = useState<string | null>(null);
+  const [savingVariant, setSavingVariant] = useState(false);
+  const [variantModalError, setVariantModalError] = useState("");
+
+  // Fabric Variant Fields
+  const [newFvFabricId, setNewFvFabricId] = useState("");
+  const [newFvWarpColorId, setNewFvWarpColorId] = useState("");
+  const [newFvWeftColorId, setNewFvWeftColorId] = useState("");
+  const [newFvDesignId, setNewFvDesignId] = useState("");
+  const [newFvSku, setNewFvSku] = useState("");
+
+  // Yarn Variant Fields
+  const [newYvYarnId, setNewYvYarnId] = useState("");
+  const [newYvColorId, setNewYvColorId] = useState("");
+  const [newYvSupplierId, setNewYvSupplierId] = useState("");
+  const [newYvSku, setNewYvSku] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -84,6 +107,10 @@ export function TransactionFormPage() {
         if (!isMounted) return;
 
         setSuppliers(lookup.suppliers || []);
+        setFabrics(lookup.fabrics || []);
+        setYarns(lookup.yarns || []);
+        setColors(lookup.colors || []);
+        setDesigns(lookup.designs || []);
         setWeavers(w || []);
         setMerchants(m || []);
         setFabricVariants(f || []);
@@ -257,10 +284,12 @@ export function TransactionFormPage() {
         setMerchants((prev) => [...prev, m]);
         setMerchantUserId(String(m.userId));
       } else if (category === "yarn_purchase") {
-        // Mock add supplier if needed
-        const newSupp = { supplierId: Date.now(), name: newPartyName.trim() };
-        setSuppliers((prev) => [...prev, newSupp]);
-        setSupplierId(String(newSupp.supplierId));
+        const supp = await catalogApi.createSupplier({
+          name: newPartyName.trim(),
+          contactPhone: newPartyPhone.trim() || undefined,
+        });
+        setSuppliers((prev) => [...prev, supp]);
+        setSupplierId(String(supp.supplierId));
       } else {
         const w = await weaversApi.create({
           fullName: newPartyName.trim(),
@@ -588,9 +617,11 @@ export function TransactionFormPage() {
               padding: "1.25rem 1.5rem",
             }}
           >
-            <h3 style={{ margin: "0 0 1rem", fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>
-              Items
-            </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800, color: "#0f172a" }}>
+                Items
+              </h3>
+            </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {lines.map((l, index) => {
@@ -637,7 +668,7 @@ export function TransactionFormPage() {
                           <option value="">Select {isFabric ? "fabric" : "yarn"}…</option>
                           {isFabric
                             ? fabricVariants.map((f) => {
-                                const name = f.fabric?.name || f.product?.name || "medebegna";
+                                const name = f.fabric?.name || "medebegna";
                                 const warp = f.warpColor?.name || f.color?.name || "";
                                 const weft = f.weftColor?.name || "";
                                 const design = f.design?.name || "";
@@ -782,26 +813,28 @@ export function TransactionFormPage() {
               })}
 
               {/* + Add item Button */}
-              <button
-                type="button"
-                onClick={handleAddLine}
-                style={{
-                  background: "#ffffff",
-                  border: "1px dashed #cbd5e1",
-                  borderRadius: "8px",
-                  padding: "0.65rem",
-                  fontSize: "13.5px",
-                  fontWeight: 600,
-                  color: "#475569",
-                  cursor: "pointer",
-                  width: "100%",
-                  transition: "border-color 0.15s ease",
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.borderColor = "#c2410c")}
-                onMouseOut={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-              >
-                + Add item
-              </button>
+              <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.25rem" }}>
+                <button
+                  type="button"
+                  onClick={handleAddLine}
+                  style={{
+                    flex: 1,
+                    background: "#ffffff",
+                    border: "1px dashed #cbd5e1",
+                    borderRadius: "8px",
+                    padding: "0.65rem",
+                    fontSize: "13.5px",
+                    fontWeight: 600,
+                    color: "#475569",
+                    cursor: "pointer",
+                    transition: "border-color 0.15s ease",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.borderColor = "#c2410c")}
+                  onMouseOut={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
+                >
+                  + Add item
+                </button>
+              </div>
             </div>
           </div>
 
@@ -964,7 +997,6 @@ export function TransactionFormPage() {
         </div>
       </div>
 
-      {/* Quick Add Party Modal */}
       {showAddPartyModal && (
         <div
           style={{
@@ -1079,6 +1111,7 @@ export function TransactionFormPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

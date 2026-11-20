@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../lib/prisma.js";
-import { commitSettlement } from "./settlement-core.service.js";
+import { SettlementService } from "./settlement.service.js";
 import {
   createDirectTransaction,
   recordDirectTransactionPayment,
-} from "./direct-transaction-core.service.js";
+} from "./direct-transaction.service.js";
 import { WorkOrderStatus, DirectTxnStatus } from "@prisma/client";
 
 /**
@@ -124,16 +124,17 @@ describe.skipIf(!runIntegrationTests)("System Redesign Integration - Production,
     });
 
     // 5. Commit settlement
-    const settlementResult = await commitSettlement({
+    const batchResult = await SettlementService.commitSingleSettlement({
       weaverUserId,
       returnIds: [return1.returnId, return2.returnId],
       yarnGivenIds: [yarnGiven.yarnGivenId],
       paymentMethod: "Bank Transfer",
       recordedByUserId: adminUserId,
-      markAsPaid: true,
+      autoPay: true,
     });
 
-    expect(settlementResult.amount).toBe(48000);
+    const settlementResult = batchResult.settlements[0];
+    expect(Number(settlementResult.netAmount)).toBe(48000);
 
     // 6. Verify work order is now reconciled
     const updatedOrder = await prisma.workOrder.findUniqueOrThrow({ where: { zigId } });

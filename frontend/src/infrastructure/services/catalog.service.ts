@@ -11,9 +11,14 @@ import type {
   FabricPrice,
   YarnPrice,
   QualityRule,
+  AvailableFabric,
 } from "../../domain/models";
 
 export const catalogService = {
+  async getPublicCatalog(): Promise<AvailableFabric[]> {
+    return request<AvailableFabric[]>("/catalog/public");
+  },
+
   async getLookup(): Promise<CatalogLookupBundle> {
     return request<CatalogLookupBundle>("/catalog/lookup");
   },

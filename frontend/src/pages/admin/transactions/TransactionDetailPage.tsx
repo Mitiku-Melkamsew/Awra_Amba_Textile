@@ -7,7 +7,7 @@ import { formatDateDDMMYY } from "../../../utils/formatDate";
 function lineName(line: any): string {
   if (line.fabricVariant) {
     const f = line.fabricVariant;
-    const fabricName = f.fabric?.name || f.product?.name || "medebegna";
+    const fabricName = f.fabric?.name || "medebegna";
     const warp = f.warpColor?.name || f.color?.name || "";
     const weft = f.weftColor?.name || "";
     const design = f.design?.name || "";

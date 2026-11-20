@@ -14,47 +14,32 @@ export class ReportController {
   static async getPaymentHisab(req: Request, res: Response, next: NextFunction) {
     try {
       const paymentId = Number(req.params.id);
-      const format = req.query.format as string;
-      const queryType = req.query.type as string | undefined;
-
-      const type: "payment" | "settlement" | "auto" = req.path.includes("/payment/")
-        ? "payment"
-        : req.path.includes("/settlement/")
-          ? "settlement"
-          : queryType === "payment" || queryType === "settlement"
-            ? queryType
-            : "auto";
-
-      if (format === "csv") {
-        const csv = await ReportService.exportPaymentHisabCsv(paymentId, type);
+      if (req.query.format === "csv") {
+        const csv = await ReportService.exportPaymentHisabCsv(paymentId);
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
-        res.setHeader("Content-Disposition", `attachment; filename="HISAB-${paymentId}.csv"`);
+        res.setHeader("Content-Disposition", `attachment; filename="HISAB-PAYMENT-${paymentId}.csv"`);
         res.send(csv);
         return;
       }
 
-      const report = await ReportService.getPaymentHisabStatement(paymentId, type);
-      res.json(report);
+      res.json(await ReportService.getPaymentHisab(paymentId));
     } catch (error) {
       next(error);
     }
   }
 
-  static async getHisab(req: Request, res: Response, next: NextFunction) {
+  static async getSettlementHisab(req: Request, res: Response, next: NextFunction) {
     try {
       const settlementId = Number(req.params.id);
-      const format = req.query.format as string;
-
-      if (format === "csv") {
-        const csv = await ReportService.exportHisabCsv(settlementId);
+      if (req.query.format === "csv") {
+        const csv = await ReportService.exportSettlementHisabCsv(settlementId);
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
-        res.setHeader("Content-Disposition", `attachment; filename="HISAB-${settlementId}.csv"`);
+        res.setHeader("Content-Disposition", `attachment; filename="HISAB-SETTLEMENT-${settlementId}.csv"`);
         res.send(csv);
         return;
       }
 
-      const report = await ReportService.getHisabStatement(settlementId);
-      res.json(report);
+      res.json(await ReportService.getSettlementHisab(settlementId));
     } catch (error) {
       next(error);
     }

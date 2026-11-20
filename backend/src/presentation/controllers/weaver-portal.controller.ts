@@ -98,7 +98,7 @@ export class WeaverPortalController {
         { entityType: "settlement", weaverUserId: settlement.weaverUserId },
       );
 
-      const report = await ReportService.getHisabStatement(id);
+      const report = await ReportService.getSettlementHisab(id);
       res.json(report);
     } catch (error) {
       next(error);

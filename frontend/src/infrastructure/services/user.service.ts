@@ -41,9 +41,6 @@ export const userService = {
     return users.map((u) => {
       const parts = u.fullName.split(" ");
       return {
-        // Users with the weaver role are the weavers; the schema has no separate
-        // weavers table, so weaverId is the user's id.
-        weaverId: u.userId,
         userId: u.userId,
         firstName: parts[0] || u.fullName,
         lastName: parts.slice(1).join(" ") || "",

@@ -100,19 +100,48 @@ export class StockService {
       orderBy: { sku: "asc" },
     });
 
-    return variants.map((fv) => ({
-      fabricVariantId: fv.fabricVariantId,
-      sku: fv.sku,
-      fabricId: fv.fabricId,
-      fabricName: fv.fabric.name,
-      standardLengthCm: fv.fabric.standardLengthCm,
-      standardWidthCm: fv.fabric.standardWidthCm,
-      standardWeightG: fv.fabric.standardWeightG,
-      design: fv.design?.name ?? "Standard",
-      warpColor: fv.warpColor?.name ?? "Natural",
-      weftColor: fv.weftColor?.name ?? "Natural",
-      sellingPrice: Number(fv.fabric.prices[0]?.sellingPrice ?? 0),
-      weaverRate: maskInternalPrices ? undefined : Number(fv.fabric.prices[0]?.weaverRate ?? 0),
+    if (variants.length > 0) {
+      return variants.map((fv) => ({
+        fabricVariantId: fv.fabricVariantId,
+        sku: fv.sku,
+        fabricId: fv.fabricId,
+        fabricName: fv.fabric.name,
+        standardLengthCm: fv.fabric.standardLengthCm,
+        standardWidthCm: fv.fabric.standardWidthCm,
+        standardWeightG: fv.fabric.standardWeightG,
+        design: fv.design?.name ?? "Standard",
+        warpColor: fv.warpColor?.name ?? "Natural",
+        weftColor: fv.weftColor?.name ?? "Natural",
+        sellingPrice: Number(fv.fabric.prices[0]?.sellingPrice ?? 0),
+        weaverRate: maskInternalPrices ? undefined : Number(fv.fabric.prices[0]?.weaverRate ?? 0),
+      }));
+    }
+
+    const fabrics = await prisma.fabric.findMany({
+      where: { isActive: true },
+      include: {
+        prices: {
+          where: { isActive: true },
+          orderBy: { effectiveFrom: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return fabrics.map((f, idx) => ({
+      fabricVariantId: idx + 1,
+      sku: `F-${String(f.fabricId).padStart(3, "0")}`,
+      fabricId: f.fabricId,
+      fabricName: f.name,
+      standardLengthCm: f.standardLengthCm,
+      standardWidthCm: f.standardWidthCm,
+      standardWeightG: f.standardWeightG,
+      design: "Standard",
+      warpColor: "Natural",
+      weftColor: "Natural",
+      sellingPrice: Number(f.prices[0]?.sellingPrice ?? 0),
+      weaverRate: maskInternalPrices ? undefined : Number(f.prices[0]?.weaverRate ?? 0),
     }));
   }
 }

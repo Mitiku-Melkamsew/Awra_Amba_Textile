@@ -1,12 +1,10 @@
 import { DirectTxnType, UserRole } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import {
-  buildHisabReport,
   buildHisabReportByPaymentId,
   buildHisabReportBySettlementId,
   hisabToCsv,
 } from "./hisab-report.service.js";
-import { NotFoundError } from "../../domain/errors/domain-errors.js";
 
 export class ReportService {
   static async listSettlementPayments() {
@@ -34,52 +32,26 @@ export class ReportService {
   }
 
   /**
-   * Generates a HISAB-5 structured statement for a given settlement ID
+   * HISAB statement addressed by settlement ID.
    */
-  static async getHisabStatement(settlementId: number) {
-    const report = await buildHisabReport(settlementId);
-    if (!report) {
-      throw new NotFoundError(`Settlement report for ID ${settlementId} not found`);
-    }
-    return report;
+  static async getSettlementHisab(settlementId: number) {
+    return buildHisabReportBySettlementId(settlementId);
   }
 
-  /**
-   * Generates a CSV export of the HISAB statement
-   */
-  static async exportHisabCsv(settlementId: number): Promise<string> {
-    const report = await this.getHisabStatement(settlementId);
+  static async exportSettlementHisabCsv(settlementId: number): Promise<string> {
+    const report = await this.getSettlementHisab(settlementId);
     return hisabToCsv(report);
   }
 
   /**
-   * Resolve a HISAB statement for an explicit ID space.
-   *
-   * `auto` keeps the legacy `/reports/hisab/:id` behaviour (payment first,
-   * then settlement) but the UI always uses an explicit type.
+   * HISAB receipt addressed by payment ID.
    */
-  static async getPaymentHisabStatement(
-    id: number,
-    type: "payment" | "settlement" | "auto" = "auto",
-  ) {
-    if (type === "payment") return buildHisabReportByPaymentId(id);
-    if (type === "settlement") return buildHisabReportBySettlementId(id);
-
-    try {
-      return await buildHisabReportByPaymentId(id);
-    } catch (error) {
-      if (error instanceof Error && error.message === "CONFLICT:Payment not found.") {
-        return buildHisabReportBySettlementId(id);
-      }
-      throw error;
-    }
+  static async getPaymentHisab(paymentId: number) {
+    return buildHisabReportByPaymentId(paymentId);
   }
 
-  static async exportPaymentHisabCsv(
-    id: number,
-    type: "payment" | "settlement" | "auto" = "auto",
-  ): Promise<string> {
-    const report = await this.getPaymentHisabStatement(id, type);
+  static async exportPaymentHisabCsv(paymentId: number): Promise<string> {
+    const report = await this.getPaymentHisab(paymentId);
     return hisabToCsv(report);
   }
 

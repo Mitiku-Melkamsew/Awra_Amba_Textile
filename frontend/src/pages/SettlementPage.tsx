@@ -7,7 +7,7 @@ import type { OutOfCutoffZig, PendingSettlementsSummary, ZigLedgerItem } from ".
 interface BatchPreview {
   previewId: string;
   weavers: Array<{
-    weaverId: number;
+    userId: number;
     weaverName: string;
     zigIds: string[];
     returnCount: number;
@@ -62,13 +62,11 @@ interface BatchPreview {
 }
 
 interface CommittedPayment {
-  paymentId: number;
-  settlementId?: number;
-  weaverId: number;
+  settlementId: number;
+  weaverUserId: number;
   weaverName: string;
   amount: number;
   status?: string;
-  reconciledZigIds: string[];
 }
 
 type Step = "idle" | "previewed" | "committed";
@@ -244,11 +242,10 @@ export function SettlementPage() {
         );
         setPayments((prev) =>
           prev.map((p) => {
-            const settlementId = Number(p.settlementId ?? p.paymentId);
+            const settlementId = Number(p.settlementId);
             const paid = bySettlement.get(settlementId);
             return {
               ...p,
-              paymentId: paid?.settlementPaymentId ?? p.paymentId,
               status: paid || fullyPaid ? "paid" : p.status,
             };
           }),
@@ -269,7 +266,7 @@ export function SettlementPage() {
     setCancelLoading(true);
     try {
       await calculationsApi.cancelSettlement(
-        cancellingPayment.settlementId ?? cancellingPayment.paymentId,
+        cancellingPayment.settlementId,
         cancellationReason.trim(),
       );
 
@@ -278,8 +275,7 @@ export function SettlementPage() {
       );
       setPayments((prev) =>
         prev.map((p) =>
-          p.paymentId === cancellingPayment.paymentId ||
-          (p.settlementId && p.settlementId === cancellingPayment.settlementId)
+          p.settlementId === cancellingPayment.settlementId
             ? { ...p, status: "cancelled" }
             : p,
         ),
@@ -590,16 +586,17 @@ export function SettlementPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.weavers.map((w) => {
-                      const isExpanded = expandedWeaverId === w.weaverId;
+                    {preview.weavers.map((w: any) => {
+                      const weaverId = w.userId;
+                      const isExpanded = expandedWeaverId === weaverId;
                       return (
                         <>
-                          <tr key={w.weaverId}>
+                          <tr key={weaverId}>
                             <td style={{ fontWeight: 600 }}>{w.weaverName}</td>
                             <td>{w.zigIds.join(", ")}</td>
                             <td style={{ textAlign: "right" }}>{w.returnCount} pcs</td>
                             <td style={{ textAlign: "right" }}>
-                              {w.yarnDebits.reduce((sum, y) => sum + y.cost, 0).toLocaleString()} ETB
+                              {w.yarnDebits.reduce((sum: number, y: any) => sum + y.cost, 0).toLocaleString()} ETB
                             </td>
                             <td style={{ textAlign: "right", fontWeight: 700, color: "var(--green)" }}>
                               {Math.round(w.netSettlement).toLocaleString()} ETB
@@ -615,7 +612,7 @@ export function SettlementPage() {
                               <button
                                 type="button"
                                 className="btn-sm"
-                                onClick={() => setExpandedWeaverId(isExpanded ? null : w.weaverId)}
+                                onClick={() => setExpandedWeaverId(isExpanded ? null : weaverId)}
                               >
                                 {isExpanded ? "Hide Lines ▲" : "View Lines ▼"}
                               </button>
@@ -624,7 +621,7 @@ export function SettlementPage() {
 
                           {/* Expanded Lines View: Fabric Lines and Yarn Lines */}
                           {isExpanded && (
-                            <tr key={`${w.weaverId}-expanded`}>
+                            <tr key={`${weaverId}-expanded`}>
                               <td colSpan={7} style={{ background: "var(--bg-subtle)", padding: "1rem" }}>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}>
                                   {/* Fabric Lines */}
@@ -646,7 +643,7 @@ export function SettlementPage() {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {w.lineItems.map((li) => (
+                                        {w.lineItems.map((li: any) => (
                                           <tr key={li.returnId}>
                                             <td>{li.zigId}</td>
                                             <td>{li.quantityReturned ?? li.quantity}</td>
@@ -679,7 +676,7 @@ export function SettlementPage() {
                                           </tr>
                                         </thead>
                                         <tbody>
-                                          {w.yarnDebits.map((yd, idx) => (
+                                          {w.yarnDebits.map((yd: any, idx: number) => (
                                             <tr key={idx}>
                                               <td>{yd.zigId}</td>
                                               <td>Yarn Given #{yd.yarnGivenId}</td>
@@ -784,9 +781,9 @@ export function SettlementPage() {
                   <tbody>
                     {payments.map((p) => {
                       const isPaid = isBatchPaid || p.status === "PAID" || p.status === "paid";
-                      const id = p.settlementId ?? p.paymentId;
+                      const id = p.settlementId;
                       return (
-                        <tr key={p.paymentId}>
+                        <tr key={p.settlementId}>
                           <td>
                             <code style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--accent)" }}>
                               #{id}
@@ -822,7 +819,7 @@ export function SettlementPage() {
                                 CSV
                               </button>
                               <Link
-                                to={`/admin/reports/hisab/${id}?type=settlement`}
+                                to={`/admin/reports/hisab/settlement/${id}`}
                                 className="btn-sm primary"
                                 target="_blank"
                               >

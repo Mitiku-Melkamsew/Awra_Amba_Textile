@@ -26,7 +26,7 @@ interface ZigDetail {
 }
 
 interface WeaverDetail {
-  weaverId: number;
+  userId: number;
   weaverName: string;
   netSettlement: number;
   zigIds: string[];
@@ -245,10 +245,10 @@ export function SettlementPreviewPage() {
 
                   return (
                     <tr
-                      key={`${weaver.weaverId}-${zig.zigId}-${ret ? ret.returnIds[0] : `empty-${idx}`}`}
+                      key={`${weaver.userId}-${zig.zigId}-${ret ? ret.returnIds[0] : `empty-${idx}`}`}
                       style={{ borderBottom: "1px solid var(--border)" }}
                     >
-                      <td>{showWeaver ? weaver.weaverId : ""}</td>
+                      <td>{showWeaver ? weaver.userId : ""}</td>
                       <td style={{ fontWeight: showWeaver ? 600 : 400 }}>
                         {showWeaver ? weaver.weaverName : ""}
                       </td>

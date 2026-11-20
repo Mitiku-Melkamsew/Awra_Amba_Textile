@@ -86,7 +86,7 @@ describe("ABAC Service", () => {
   it("prevents modifying settled fabric returns", () => {
     const decision = AbacService.evaluateResourceState("update", {
       entityType: "fabric_return",
-      settlementLineId: 10,
+      settlementId: 10,
     });
     expect(decision.allow).toBe(false);
   });
@@ -94,7 +94,7 @@ describe("ABAC Service", () => {
   it("allows modifying unsettled fabric returns", () => {
     const decision = AbacService.evaluateResourceState("update", {
       entityType: "fabric_return",
-      settlementLineId: null,
+      settlementId: null,
     });
     expect(decision.allow).toBe(true);
   });

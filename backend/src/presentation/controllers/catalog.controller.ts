@@ -1,8 +1,18 @@
 import type { Request, Response, NextFunction } from "express";
 import { CatalogService } from "../../application/services/catalog.service.js";
+import { StockService } from "../../application/services/stock.service.js";
 import { AbacService } from "../../application/security/abac.service.js";
 
 export class CatalogController {
+  static async getPublicCatalog(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const catalog = await StockService.getAvailableFabrics(true);
+      res.json(catalog);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getLookup(_req: Request, res: Response, next: NextFunction) {
     try {
       const data = await CatalogService.getLookup();

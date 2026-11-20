@@ -5,16 +5,19 @@ import type { HisabReport } from "../../api";
 import { formatDateDDMMYY } from "../../utils/formatDate";
 
 export function HisabPrintPage() {
-  const { paymentId } = useParams<{ paymentId: string }>();
+  const { type, id } = useParams<{ type: string; id: string }>();
   const [searchParams] = useSearchParams();
   const [report, setReport] = useState<HisabReport | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!paymentId) return;
-    const typeParam = (searchParams.get("type") as "payment" | "settlement") || undefined;
+    if (!id) return;
+    if (type !== "payment" && type !== "settlement") {
+      setError("Unknown HISAB report type");
+      return;
+    }
     reportsApi
-      .getHisab(Number(paymentId), typeParam)
+      .getHisab(Number(id), type)
       .then((data) => {
         setReport(data);
         if (searchParams.get("print") === "1") {
@@ -22,7 +25,7 @@ export function HisabPrintPage() {
         }
       })
       .catch((err) => setError(err.message));
-  }, [paymentId, searchParams]);
+  }, [id, type, searchParams]);
 
   if (!report && !error)
     return (
@@ -73,10 +76,7 @@ export function HisabPrintPage() {
           type="button"
           className="btn-ghost"
           onClick={() =>
-            reportsApi.downloadHisabCsv(
-              report.settlementId ?? report.paymentId ?? 0,
-              "settlement",
-            )
+            reportsApi.downloadHisabCsv(Number(id), type === "settlement" ? "settlement" : "payment")
           }
         >
           ⬇ Download CSV Ledger

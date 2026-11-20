@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { HomeRedirect } from "./components/HomeRedirect";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -11,6 +11,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { PublicHomePage } from "./pages/PublicHomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignUpPage } from "./pages/SignUpPage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { ProductionReportPage } from "./pages/admin/ProductionReportPage";
 import { SettlementPage } from "./pages/SettlementPage";
@@ -29,8 +30,6 @@ import { WeaversPage } from "./pages/admin/WeaversPage";
 import { ZigDetailPage } from "./pages/admin/ZigDetailPage";
 import { TransactionDetailPage } from "./pages/admin/transactions/TransactionDetailPage";
 import { TransactionFormPage } from "./pages/admin/transactions/TransactionFormPage";
-import { TransactionNewPage } from "./pages/admin/transactions/TransactionNewPage";
-import { TransactionTypePage } from "./pages/admin/transactions/TransactionTypePage";
 import { TransactionsHubPage } from "./pages/admin/transactions/TransactionsHubPage";
 
 // Weaver & Merchant Pages
@@ -59,7 +58,8 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<RoleRoute role="admin" redirectTo="/weaver" />}>
               <Route element={<Layout />}>
-                <Route index element={<Navigate to="/admin/weavers" replace />} />
+                <Route index element={<DashboardPage />} />
+                <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="weavers" element={<WeaversPage />} />
                 <Route path="weavers/:userId" element={<WeaverProfilePage />} />
                 <Route path="weavers/:userId/issue-zig" element={<IssueZigPage />} />
@@ -67,22 +67,20 @@ function App() {
                 <Route path="users" element={<UsersPage />} />
                 <Route path="prices" element={<PricesPage />} />
                 <Route path="quality-rules" element={<QualityRulesPage />} />
-                <Route path="procurement" element={<Navigate to="/admin/transactions" replace />} />
                 <Route path="stock" element={<StockPage />} />
                 <Route path="transactions" element={<TransactionsHubPage />} />
-                <Route path="transactions/new" element={<TransactionNewPage />} />
-                <Route path="transactions/new/:direction" element={<TransactionTypePage />} />
+                <Route path="transactions/new" element={<TransactionFormPage />} />
+                <Route path="transactions/new/:direction" element={<TransactionFormPage />} />
                 <Route path="transactions/new/:direction/:goods" element={<TransactionFormPage />} />
                 <Route path="transactions/:transactionId" element={<TransactionDetailPage />} />
                 <Route path="catalog" element={<CatalogPage />} />
                 <Route path="settlement" element={<SettlementPage />} />
                 <Route path="settlement/history" element={<SettlementHistoryPage />} />
                 <Route path="settlement/preview/:previewId" element={<SettlementPreviewPage />} />
-                <Route path="reports/hisab/:paymentId" element={<HisabPrintPage />} />
+                <Route path="reports/hisab/:type/:id" element={<HisabPrintPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="reports/production" element={<ProductionReportPage />} />
                 <Route path="audit-logs" element={<AuditLogsPage />} />
-                <Route path="calculator" element={<Navigate to="/admin/weavers?tab=calculator" replace />} />
               </Route>
             </Route>
 

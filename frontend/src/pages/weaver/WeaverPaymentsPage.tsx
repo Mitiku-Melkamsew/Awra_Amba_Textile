@@ -120,7 +120,7 @@ export function WeaverPaymentsPage() {
                       type="button"
                       className="btn-sm primary"
                       style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)", border: "none" }}
-                      onClick={() => reportsApi.downloadHisabCsv(payment.paymentId)}
+                      onClick={() => reportsApi.downloadHisabCsv(payment.paymentId, "payment")}
                     >
                       ⬇ Download HISAB CSV
                     </button>

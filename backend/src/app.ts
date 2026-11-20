@@ -74,7 +74,6 @@ export function createApp() {
   app.use("/api/v1/work-orders", workOrdersRouter);
   app.use("/api/v1/settlements", settlementsRouter);
   app.use("/api/v1/direct-transactions", directTransactionsRouter);
-  app.use("/api/v1/transactions", directTransactionsRouter);
   app.use("/api/v1/procurement", procurementRouter);
   app.use("/api/v1/stock", stockRouter);
   app.use("/api/v1/reports", reportsRouter);

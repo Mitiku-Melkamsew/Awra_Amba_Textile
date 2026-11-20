@@ -2,8 +2,6 @@ import { request } from "../http/api-client";
 import type {
   SettlementBatch,
   SettlementBatchPreview,
-  Settlement,
-  HisabReport,
   PendingSettlementsSummary,
   ZigLedgerItem,
 } from "../../domain/models";
@@ -17,26 +15,16 @@ export const settlementService = {
   },
 
   async previewSettlements(data: {
-    periodStart?: string;
-    periodEnd?: string;
     cutoffDate?: string;
     includeZigIds?: string[];
-    weaverIds?: number[];
   }): Promise<SettlementBatchPreview> {
-    const cutoff = data.cutoffDate ?? data.periodEnd;
     return request<SettlementBatchPreview>("/settlements/preview", {
       method: "POST",
-      body: JSON.stringify({
-        ...data,
-        periodEnd: cutoff,
-        cutoffDate: cutoff,
-        includeZigIds: data.includeZigIds,
-      }),
+      body: JSON.stringify(data),
     });
   },
 
   async commitBatch(data: {
-    batchId?: number;
     cutoffDate?: string;
     includeZigIds?: string[];
     notes?: string;
@@ -83,13 +71,5 @@ export const settlementService = {
       method: "POST",
       body: JSON.stringify(data ?? {}),
     });
-  },
-
-  async getSettlement(id: string | number): Promise<Settlement> {
-    return request<Settlement>(`/settlements/${id}`);
-  },
-
-  async getHisabStatement(settlementId: string | number): Promise<HisabReport> {
-    return request<HisabReport>(`/settlements/${settlementId}/hisab-statement`);
   },
 };

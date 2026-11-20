@@ -59,10 +59,7 @@ export function WeaverZigTabs({
       .finally(() => setLoading(false));
   }, [wid]);
 
-  const displayName =
-    weaver.fullName ||
-    `${weaver.firstName ?? ""} ${weaver.lastName ?? ""}`.trim() ||
-    `Weaver #${wid}`;
+  const displayName = weaver.fullName || `Weaver #${wid}`;
   const initial = (displayName.trim()[0] || "W").toUpperCase();
 
   // Compute KPI metrics for the 3 cards (Image 3)
@@ -476,7 +473,7 @@ export function WeaverZigTabs({
                 ? fabricVariantName(order.fabricVariant).split("-").join(" · ")
                 : order.fabric?.name || "medebegna · biret · geberdin";
 
-              const issuedDate = formatDateDDMMYY(order.dateIssued ?? order.assignedDate ?? new Date());
+              const issuedDate = formatDateDDMMYY(order.dateIssued ?? new Date());
 
               return (
                 <div

@@ -67,10 +67,10 @@ export class AbacService {
   ): AbacDecision {
     // 1. Immutability of settled fabric returns and yarn given
     if (["update", "delete"].includes(action)) {
-      if (resource.settlementLineId !== null && resource.settlementLineId !== undefined) {
+      if (resource.settlementId !== null && resource.settlementId !== undefined) {
         return {
           allow: false,
-          reason: "Cannot modify or delete an item that is part of a committed settlement line",
+          reason: "Cannot modify or delete an item that belongs to a settlement",
         };
       }
       if (resource.paymentId !== null && resource.paymentId !== undefined) {

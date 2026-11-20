@@ -65,7 +65,7 @@ describe("buildHisabReport (settlement ID space)", () => {
       expect.objectContaining({ where: { settlementId: 42 } }),
     );
     expect(report.settlementId).toBe(42);
-    expect(report.paymentId).toBe(42);
+    expect(report.paymentId).toBeNull();
     expect(report.isPaid).toBe(false);
     expect(report.status).toBe("committed");
     expect(report.amount).toBe(1500);

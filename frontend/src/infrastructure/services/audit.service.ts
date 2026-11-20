@@ -12,10 +12,10 @@ export const auditService = {
     endDate?: string;
     limit?: number;
     offset?: number;
-  }): Promise<AuditLog[]> {
+  }): Promise<{ logs: AuditLog[]; total: number }> {
     const query = new URLSearchParams();
     const entityType = params?.entityType ?? params?.entityName;
-    if (entityType) {
+    if (entityType && entityType !== "All areas") {
       query.append("entityType", entityType);
       query.append("entityName", entityType);
     }
@@ -27,7 +27,10 @@ export const auditService = {
     if (params?.limit) query.append("limit", String(params.limit));
     if (params?.offset) query.append("offset", String(params.offset));
     const queryString = query.toString() ? `?${query.toString()}` : "";
-    const res = await request<AuditLog[] | { logs: AuditLog[]; total: number }>(`/audit-logs${queryString}`);
-    return Array.isArray(res) ? res : (res.logs ?? []);
+    const res = await request<any>(`/audit-logs${queryString}`);
+    if (Array.isArray(res)) {
+      return { logs: res, total: res.length };
+    }
+    return { logs: res?.logs ?? [], total: res?.total ?? (res?.logs?.length ?? 0) };
   },
 };

@@ -1,48 +1,51 @@
 import { prisma } from "../src/lib/prisma.js";
 
-async function resetSequences() {
-  console.log("Resetting PostgreSQL sequences in awra_amba_v3...");
+async function resetAllSequences() {
+  console.log("🔍 Discovering all table sequences in awra_amba_v3...");
 
-  const tables = [
-    { table: "users", id: "user_id" },
-    { table: "fabrics", id: "fabric_id" },
-    { table: "colors", id: "color_id" },
-    { table: "designs", id: "design_id" },
-    { table: "suppliers", id: "supplier_id" },
-    { table: "yarns", id: "yarn_id" },
-    { table: "yarn_variants", id: "yarn_variant_id" },
-    { table: "fabric_variants", id: "fabric_variant_id" },
-    { table: "fabric_prices", id: "fabric_price_id" },
-    { table: "yarn_prices", id: "yarn_price_id" },
-    { table: "quality_rules", id: "quality_rule_id" },
-    { table: "yarn_given", id: "yarn_given_id" },
-    { table: "fabric_returns", id: "return_id" },
-    { table: "settlement_batches", id: "batch_id" },
-    { table: "settlements", id: "settlement_id" },
-    { table: "settlement_payments", id: "settlement_payment_id" },
-    { table: "audit_logs", id: "audit_log_id" },
-  ];
+  // Query PostgreSQL catalog for all sequences tied to table columns
+  const seqList = await prisma.$queryRawUnsafe<
+    Array<{ table_name: string; column_name: string; sequence_name: string }>
+  >(`
+    SELECT
+      t.relname AS table_name,
+      a.attname AS column_name,
+      s.relname AS sequence_name
+    FROM pg_class s
+    JOIN pg_depend d ON d.objid = s.oid
+    JOIN pg_class t ON d.refobjid = t.oid
+    JOIN pg_attribute a ON (d.refobjid = a.attrelid AND d.refobjsubid = a.attnum)
+    WHERE s.relkind = 'S' AND t.relkind = 'r'
+    ORDER BY t.relname;
+  `);
 
-  for (const { table, id } of tables) {
+  console.log(`Found ${seqList.length} sequence(s) across all tables:`);
+
+  for (const { table_name, column_name, sequence_name } of seqList) {
     try {
+      const maxRes = await prisma.$queryRawUnsafe<Array<{ max_val: any }>>(
+        `SELECT COALESCE(MAX("${column_name}"), 0) AS max_val FROM "${table_name}";`
+      );
+      const maxVal = Number(maxRes[0]?.max_val ?? 0);
+      const nextVal = maxVal + 1;
+
       await prisma.$executeRawUnsafe(`
-        SELECT setval(
-          pg_get_serial_sequence('${table}', '${id}'),
-          COALESCE((SELECT MAX(${id}) FROM "${table}"), 0) + 1,
-          false
-        );
+        SELECT setval('${sequence_name}', ${nextVal}, false);
       `);
-      console.log(`  ✓ Reset sequence for ${table}.${id}`);
-    } catch (e: any) {
-      console.log(`  - Note on ${table}.${id}: ${e.message}`);
+
+      console.log(
+        `  ✓ ${table_name}.${column_name} (seq: ${sequence_name}) -> max in DB is ${maxVal}, nextval set to ${nextVal}`
+      );
+    } catch (err: any) {
+      console.warn(`  ⚠ Error on ${table_name}.${column_name}:`, err.message);
     }
   }
 
-  console.log("All sequences reset successfully!");
+  console.log("\n🎉 All PostgreSQL sequences have been dynamically synchronized!");
   await prisma.$disconnect();
 }
 
-resetSequences().catch((err) => {
-  console.error(err);
+resetAllSequences().catch((err) => {
+  console.error("❌ Failed to reset sequences:", err);
   process.exit(1);
 });

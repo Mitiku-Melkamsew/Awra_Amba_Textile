@@ -12,7 +12,6 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "admin:create": "tsx scripts/create-admin.ts",
-    "clone:v3": "tsx scripts/clone-redesign-to-v3.ts",
     "import:csv": "tsx scripts/import-csv.ts",
     "test": "vitest run",
     "test:watch": "vitest"

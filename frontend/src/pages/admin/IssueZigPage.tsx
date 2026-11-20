@@ -22,8 +22,8 @@ interface YarnLineItem {
 }
 
 export function IssueZigPage() {
-  const { userId, weaverId } = useParams<{ userId?: string; weaverId?: string }>();
-  const targetUserId = userId ?? weaverId;
+  const { userId } = useParams<{ userId: string }>();
+  const targetUserId = userId;
   const navigate = useNavigate();
 
   // Core data states
@@ -73,7 +73,6 @@ export function IssueZigPage() {
         const parts = u.fullName.split(" ");
         return {
           userId: u.userId,
-          weaverId: u.userId,
           fullName: u.fullName,
           firstName: parts[0] || u.fullName,
           lastName: parts.slice(1).join(" ") || "",
@@ -483,7 +482,6 @@ export function IssueZigPage() {
 
   const weaverDisplayName =
     weaver.fullName ||
-    `${weaver.firstName ?? ""} ${weaver.lastName ?? ""}`.trim() ||
     `Weaver #${weaver.userId}`;
 
   const isDeactivated = weaver.isActive === false || weaver.user?.isActive === false;

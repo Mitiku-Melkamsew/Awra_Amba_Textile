@@ -2,20 +2,9 @@ import type { Request, Response, NextFunction } from "express";
 import { SettlementService } from "../../application/services/settlement.service.js";
 
 export class SettlementController {
-  static async getUnsettled(req: Request, res: Response, next: NextFunction) {
-    try {
-      const cutoff = req.query.cutoffDate ? new Date(String(req.query.cutoffDate)) : null;
-      const unsettled = await SettlementService.getUnsettled(cutoff);
-      res.json(unsettled);
-    } catch (error) {
-      next(error);
-    }
-  }
-
   static async preview(req: Request, res: Response, next: NextFunction) {
     try {
-      const rawCutoff =
-        req.query.cutoffDate ?? req.query.periodEnd ?? req.body?.cutoffDate ?? req.body?.periodEnd;
+      const rawCutoff = req.query.cutoffDate ?? req.body?.cutoffDate;
       const cutoff = rawCutoff ? new Date(String(rawCutoff)) : null;
       const includeZigIds = req.body?.includeZigIds ?? (req.query.includeZigIds ? String(req.query.includeZigIds).split(",").map((s: string) => s.trim()).filter(Boolean) : []);
       const preview = await SettlementService.generatePreview(

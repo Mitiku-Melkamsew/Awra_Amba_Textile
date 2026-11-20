@@ -308,9 +308,7 @@ export class SettlementService {
 
     return {
       bundles,
-      weavers: bundles, // alias for backwards compatibility
       grandTotal: grandNet,
-      totalAmount: grandNet,
       grossFabricValue: grandGross,
       totalDeductions: grandDeductions,
       totalYarnCost: grandYarn,
@@ -321,14 +319,6 @@ export class SettlementService {
       isBlocked: allBlockReasons.length > 0,
       blockReasons: allBlockReasons,
     };
-  }
-
-  /**
-   * For backwards compatibility with /unsettled endpoint
-   */
-  static async getUnsettled(cutoffDate?: Date | null, includeZigIds: string[] = []) {
-    const preview = await this.generatePreview(cutoffDate, undefined, [], includeZigIds);
-    return preview.bundles;
   }
 
   /**
@@ -465,10 +455,8 @@ export class SettlementService {
 
       return {
         batchId: batch.batchId,
-        settlementBatchId: batch.batchId,
         status: shouldPay ? "paid" : "committed",
         grandTotal: preview.grandTotal,
-        totalAmount: preview.grandTotal,
         amountPaid: shouldPay ? preview.grandTotal : 0,
         weaverCount: preview.bundles.length,
         amharicAmountInWords: preview.amharicAmountInWords,
@@ -1017,7 +1005,7 @@ export class SettlementService {
   }
 
   /**
-   * For backwards compatibility with older single settlement commit
+   * Commit exactly the selected returns/yarn lines for one weaver.
    */
   static async commitSingleSettlement(input: {
     weaverUserId: number;
@@ -1113,18 +1101,14 @@ export class SettlementService {
 
   /**
    * Override the quality deduction of one fabric return.
-   *
-   * `deductionPerPiece` is the canonical field. `deductionAmount` is kept as a
-   * legacy alias and is also interpreted as a per-piece value (the same unit
-   * used by settlement previews).
    */
   static async overrideLine(
     returnId: number,
-    data: { deductionPerPiece?: number; deductionAmount?: number; reason: string },
+    data: { deductionPerPiece: number; reason: string },
     actorUserId: number,
   ) {
-    const perPiece = data.deductionPerPiece ?? data.deductionAmount;
-    if (perPiece === undefined || !Number.isFinite(perPiece) || perPiece < 0) {
+    const perPiece = data.deductionPerPiece;
+    if (!Number.isFinite(perPiece) || perPiece < 0) {
       throw new ValidationError("A non-negative deduction per piece is required");
     }
 
@@ -1169,7 +1153,7 @@ export class SettlementService {
           action: "fabric_return.override",
           entityType: "fabric_return",
           entityId: returnId,
-          details: { deductionPerPiece: perPiece, deductionAmount, ...data },
+          details: { deductionAmount, reason: data.reason, deductionPerPiece: perPiece },
         },
         tx,
       );

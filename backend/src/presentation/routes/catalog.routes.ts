@@ -26,6 +26,9 @@ import {
 
 export const catalogRouter = Router();
 
+// Unauthenticated public catalog endpoint for visitors & public home page
+catalogRouter.get("/public", CatalogController.getPublicCatalog);
+
 catalogRouter.use(authenticate);
 
 // Lookup bundle

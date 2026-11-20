@@ -31,12 +31,6 @@ settlementsRouter.get(
 );
 
 settlementsRouter.get(
-  "/unsettled",
-  requireCapability(Capability.SETTLEMENTS_PREVIEW),
-  SettlementController.getUnsettled,
-);
-
-settlementsRouter.get(
   "/preview",
   requireCapability(Capability.SETTLEMENTS_PREVIEW),
   SettlementController.preview,
@@ -82,7 +76,7 @@ settlementsRouter.get(
 settlementsRouter.get(
   "/:id/hisab-statement",
   requireCapability(Capability.REPORTS_READ_FINANCIAL),
-  ReportController.getHisab,
+  ReportController.getSettlementHisab,
 );
 
 settlementsRouter.post(

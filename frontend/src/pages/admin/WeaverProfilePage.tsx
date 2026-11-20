@@ -5,8 +5,8 @@ import type { Weaver } from "../../api";
 import { WeaverZigTabs } from "../../components/WeaverZigTabs";
 
 export function WeaverProfilePage() {
-  const { userId, weaverId } = useParams<{ userId?: string; weaverId?: string }>();
-  const id = Number(userId ?? weaverId);
+  const { userId } = useParams<{ userId: string }>();
+  const id = Number(userId);
   const [weaver, setWeaver] = useState<Weaver | null>(null);
   const [error, setError] = useState("");
 

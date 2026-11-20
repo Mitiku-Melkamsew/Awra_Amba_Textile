@@ -22,12 +22,8 @@ export function WeaverPortalPage() {
       .catch((err) => {
         // Fallback: construct from user if profile endpoint returns 404 or other error
         if (user) {
-          const parts = (user.fullName || user.username).split(" ");
           setWeaver({
             userId: user.userId,
-            weaverId: user.userId,
-            firstName: parts[0] || user.username,
-            lastName: parts.slice(1).join(" ") || "",
             fullName: user.fullName || user.username,
             phone: null,
             email: null,
@@ -90,7 +86,7 @@ export function WeaverPortalPage() {
             <span>🇪🇹</span> አውራ አምባ ሸማኔ / Cooperative Weaver
           </div>
           <h1 style={{ fontSize: "22px", fontWeight: 800, margin: "0 0 4px", color: "#FFFFFF" }}>
-            Welcome, {weaver.firstName} {weaver.lastName}
+            Welcome, {weaver.fullName || user?.fullName || "Weaver"}
           </h1>
           <p style={{ margin: 0, fontSize: "13.5px", color: "#A7F3D0" }}>
             Review your active work orders (Zigs), track returned fabrics, and verify your earnings.

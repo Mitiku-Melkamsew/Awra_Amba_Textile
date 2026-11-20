@@ -258,7 +258,7 @@ export async function buildHisabReport(settlementId: number) {
   const isPaid = settlement.status?.toLowerCase() === "paid" || settlement.payments.length > 0;
 
   return {
-    paymentId: settlement.payments[0]?.settlementPaymentId ?? settlement.settlementId,
+    paymentId: settlement.payments[0]?.settlementPaymentId ?? null,
     settlementId: settlement.settlementId,
     paymentDate,
     weaver: settlement.weaver,

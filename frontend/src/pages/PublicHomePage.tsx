@@ -1,164 +1,238 @@
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { catalogApi } from "../api";
+import type { AvailableFabric } from "../api";
 
-const portals = [
+interface FabricCardItem {
+  id: number;
+  category: string;
+  title: string;
+  specs: string;
+  price: string;
+  rawPrice: number;
+  patternType: "geberdin" | "zigzag" | "stripes";
+}
+
+// Authentic Awra Amba Cooperative Catalog items (with official rates and specs)
+const INITIAL_FABRICS: FabricCardItem[] = [
   {
-    role: "admin",
-    icon: "🛡️",
-    badge: "Cooperative Management",
-    amharicBadge: "የማህበር አስተዳዳሪ",
-    title: "Admin Operations Portal",
-    amharicTitle: "የአስተዳደር ፖርታል",
-    desc: "Complete production oversight, yarn inventory, work order (Zig) assignments, direct transactions, and automated batch HISAB settlement.",
-    link: "/admin",
-    loginState: "/login",
-    buttonText: "Admin Access",
-    color: "#EA580C",
-    bgGradient: "linear-gradient(135deg, rgba(234, 88, 12, 0.08) 0%, rgba(251, 146, 60, 0.04) 100%)",
-    borderColor: "rgba(234, 88, 12, 0.25)",
+    id: 1,
+    category: "medebegna",
+    title: "medebegna · biret · geberdin",
+    specs: "64 g · 240 × 150 cm",
+    price: "1,900 ETB per piece",
+    rawPrice: 1900,
+    patternType: "geberdin",
   },
   {
-    role: "weaver",
-    icon: "🪢",
-    badge: "Artisan Workspace",
-    amharicBadge: "የሸማኔዎች መድረክ",
-    title: "Weaver Portal",
-    amharicTitle: "የሸማኔ ፖርታል",
-    desc: "Personal work orders, issued yarn records, fabric delivery weight measurements, and verified payroll settlement statements.",
-    link: "/weaver",
-    loginState: "/login",
-    signupLink: "/signup",
-    buttonText: "Artisan Workspace",
-    color: "#059669",
-    bgGradient: "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.04) 100%)",
-    borderColor: "rgba(16, 185, 129, 0.25)",
+    id: 2,
+    category: "medebegna",
+    title: "medebegna · biret · zigzag",
+    specs: "64 g · 240 × 150 cm",
+    price: "1,900 ETB per piece",
+    rawPrice: 1900,
+    patternType: "zigzag",
   },
   {
-    role: "merchant",
-    icon: "🏬",
-    badge: "Commercial Catalog",
-    amharicBadge: "የነጋዴ ካታሎግ",
-    title: "Merchant Portal",
-    amharicTitle: "የነጋዴ ፖርታል",
-    desc: "Browse authentic handcrafted fabrics, review physical specifications (dimensions and weight), and check current official cooperative selling prices.",
-    link: "/merchant",
-    loginState: "/login",
-    signupLink: "/signup?role=merchant",
-    buttonText: "Browse Catalog & Prices",
-    color: "#0284C7",
-    bgGradient: "linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(3, 105, 161, 0.04) 100%)",
-    borderColor: "rgba(2, 132, 199, 0.25)",
+    id: 3,
+    category: "medebegna",
+    title: "medebegna · red/white · geberdin",
+    specs: "64 g · 240 × 150 cm",
+    price: "1,900 ETB per piece",
+    rawPrice: 1900,
+    patternType: "geberdin",
+  },
+  {
+    id: 4,
+    category: "gabi",
+    title: "gabi · white/indigo · stripes",
+    specs: "520 g · 240 × 150 cm",
+    price: "1,400 ETB per piece",
+    rawPrice: 1400,
+    patternType: "stripes",
+  },
+  {
+    id: 5,
+    category: "gabi",
+    title: "gabi · natural white · tibeb",
+    specs: "520 g · 240 × 150 cm",
+    price: "1,400 ETB per piece",
+    rawPrice: 1400,
+    patternType: "stripes",
+  },
+  {
+    id: 6,
+    category: "netela",
+    title: "netela · white/gold · tibeb",
+    specs: "150 g · 200 × 100 cm",
+    price: "1,050 ETB per piece",
+    rawPrice: 1050,
+    patternType: "stripes",
   },
 ];
 
-const highlights = [
-  {
-    icon: "🧵",
-    title: "Work Order (Zig) Lifecycle",
-    text: "From yarn disbursement to multi-variant fabric returns with clamped quality weight deductions.",
-  },
-  {
-    icon: "📦",
-    title: "Multi-Role Transparency",
-    text: "Role-specific capabilities strictly separating internal cost data from public commercial prices.",
-  },
-  {
-    icon: "💳",
-    title: "Automated Batch HISAB",
-    text: "Atomic settlement runs, floored deduction formulas, and official receipts with Amharic currency words.",
-  },
-  {
-    icon: "⚖️",
-    title: "Community Owned",
-    text: "Equitable cooperative model empowering both master artisans and trusted commercial buyers.",
-  },
-];
+function derivePattern(design: string): "geberdin" | "zigzag" | "stripes" {
+  const d = design.toLowerCase();
+  if (d.includes("zigzag")) return "zigzag";
+  if (d.includes("stripe") || d.includes("tibeb") || d.includes("line")) return "stripes";
+  return "geberdin";
+}
+
+function mapVariantToCard(v: AvailableFabric): FabricCardItem {
+  const warp = v.warpColor || "Natural";
+  const weft = v.weftColor || "Natural";
+  const colorStr = weft && weft !== warp ? `${warp}/${weft}` : warp;
+  const designStr = v.design || "geberdin";
+  const priceNum = Number(v.sellingPrice) || 0;
+
+  return {
+    id: v.fabricVariantId,
+    category: (v.fabricName || "medebegna").toLowerCase(),
+    title: `${(v.fabricName || "fabric").toLowerCase()} · ${colorStr.toLowerCase()} · ${designStr.toLowerCase()}`,
+    specs: `${v.standardWeightG ?? 500} g · ${v.standardLengthCm ?? 240} × ${v.standardWidthCm ?? 150} cm`,
+    price: priceNum > 0 ? `${priceNum.toLocaleString()} ETB per piece` : "Official price on request",
+    rawPrice: priceNum,
+    patternType: derivePattern(designStr),
+  };
+}
 
 export function PublicHomePage() {
   const { user } = useAuth();
+  const [fabrics, setFabrics] = useState<FabricCardItem[]>(INITIAL_FABRICS);
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [lang, setLang] = useState<"am" | "en">("en");
+
+  // Fetch actual catalog data from backend
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCatalog() {
+      try {
+        const liveVariants = await catalogApi.publicCatalog();
+        if (isMounted && Array.isArray(liveVariants) && liveVariants.length > 0) {
+          const mapped = liveVariants.map(mapVariantToCard);
+          setFabrics(mapped);
+          return;
+        }
+      } catch {
+        // Fallback to checking fabric prices if public catalog is unavailable
+      }
+
+      try {
+        const prices = await catalogApi.fabricPrices();
+        if (isMounted && Array.isArray(prices) && prices.length > 0) {
+          // Update prices of the initial fabrics using live selling prices from DB
+          setFabrics((prev) =>
+            prev.map((item) => {
+              const matched = prices.find(
+                (p) =>
+                  p.isActive !== false &&
+                  p.fabric?.name?.toLowerCase() === item.category.toLowerCase()
+              );
+              if (matched && Number(matched.sellingPrice) > 0) {
+                const sp = Number(matched.sellingPrice);
+                return {
+                  ...item,
+                  price: `${sp.toLocaleString()} ETB per piece`,
+                  rawPrice: sp,
+                };
+              }
+              return item;
+            })
+          );
+        }
+      } catch {
+        // Graceful fallback: stays with authentic cooperative items
+      }
+    }
+
+    loadCatalog();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Compute category pills dynamically from active fabrics
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    fabrics.forEach((f) => set.add(f.category));
+    return ["All", ...Array.from(set)];
+  }, [fabrics]);
+
+  // Filtered fabrics for the grid
+  const filteredFabrics = useMemo(() => {
+    if (selectedCategory === "All") return fabrics;
+    return fabrics.filter((f) => f.category === selectedCategory);
+  }, [fabrics, selectedCategory]);
+
+  // Top fabrics for hero preview cards
+  const heroCard1 = useMemo(
+    () => fabrics.find((f) => f.category === "medebegna") || fabrics[0] || INITIAL_FABRICS[0],
+    [fabrics]
+  );
+  const heroCard2 = useMemo(
+    () => fabrics.find((f) => f.category === "gabi") || fabrics[3] || INITIAL_FABRICS[3],
+    [fabrics]
+  );
+  const heroCard3 = useMemo(
+    () => fabrics.find((f) => f.category === "netela") || fabrics[5] || INITIAL_FABRICS[5],
+    [fabrics]
+  );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0F172A", color: "#F8FAFC", fontFamily: "var(--font-sans)" }}>
-      {/* ── Top Navigation Bar ── */}
-      <header
-        style={{
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          background: "rgba(15, 23, 42, 0.8)",
-          backdropFilter: "blur(12px)",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          padding: "0.85rem 2rem",
-        }}
-      >
-        <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: "10px",
-                background: "var(--brand-gradient)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "20px",
-                boxShadow: "0 4px 12px rgba(234, 88, 12, 0.3)",
-              }}
-            >
-              🪡
+    <div className="public-home-container">
+      {/* ── Top Navbar ── */}
+      <header className="public-navbar">
+        <div className="public-navbar-inner">
+          {/* Brand */}
+          <div className="public-brand">
+            <div className="public-brand-mark">
+              <span>አ</span>
             </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: "16px", letterSpacing: "-0.01em", color: "#FFFFFF" }}>
-                Awra Amba Textile
-              </div>
-              <div style={{ fontSize: "11px", color: "#94A3B8", fontWeight: 500 }}>
-                አውራ አምባ ቴክስታይል ማህበር
-              </div>
+            <div className="public-brand-titles">
+              <span className="public-brand-name">Awra Amba Textile</span>
+              <span className="public-brand-sub">አውራ አምባ ቴክስታይል ማህበር</span>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+          {/* Center Links */}
+          <nav className="public-nav-links">
+            <a href="#fabrics">{lang === "en" ? "Fabrics" : "ጨርቆች"}</a>
+            <a href="#how-to-order">{lang === "en" ? "How to order" : "እንዴት ማዘዝ እንደሚቻል"}</a>
+            <a href="#contact">{lang === "en" ? "Contact" : "አድራሻ"}</a>
+          </nav>
+
+          {/* Right Actions */}
+          <div className="public-nav-actions">
+            <button
+              type="button"
+              className="public-lang-pill"
+              onClick={() => setLang(lang === "en" ? "am" : "en")}
+            >
+              {lang === "en" ? "አማ · EN" : "EN · አማ"}
+            </button>
+
             {user ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <span style={{ fontSize: "13px", color: "#CBD5E1" }}>
-                  Signed in as <strong>{user.username}</strong> ({user.role})
-                </span>
-                <Link
-                  to={
-                    user.roles?.includes("admin") || user.role === "admin"
-                      ? "/admin/weavers"
-                      : user.roles?.includes("weaver") || user.role === "weaver"
-                      ? "/weaver"
-                      : "/merchant"
-                  }
-                  className="btn-primary"
-                  style={{ fontSize: "13px", padding: "0.45rem 0.95rem" }}
-                >
-                  Go to Dashboard →
-                </Link>
-              </div>
+              <Link
+                to={
+                  user.roles?.includes("admin") || user.role === "admin"
+                    ? "/admin"
+                    : user.roles?.includes("weaver") || user.role === "weaver"
+                    ? "/weaver"
+                    : "/merchant"
+                }
+                className="btn-primary-rust btn-sm"
+              >
+                {lang === "en" ? "Go to Dashboard →" : "ወደ ዳሽቦርድ ሂድ →"}
+              </Link>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  style={{
-                    fontSize: "13.5px",
-                    fontWeight: 600,
-                    color: "#F8FAFC",
-                    padding: "0.45rem 0.9rem",
-                    borderRadius: "8px",
-                    textDecoration: "none",
-                  }}
-                >
-                  Sign In / ግባ
+                <Link to="/login" className="public-staff-link">
+                  {lang === "en" ? "Weaver or staff" : "ሸማኔ ወይም ሰራተኛ"}
                 </Link>
-                <Link
-                  to="/signup"
-                  className="btn-primary"
-                  style={{ fontSize: "13px", padding: "0.45rem 1rem" }}
-                >
-                  Join as Weaver / ተመዝገብ
+                <Link to="/login" className="btn-primary-rust btn-sm">
+                  {lang === "en" ? "Merchant sign in" : "የነጋዴ መግቢያ"}
                 </Link>
               </>
             )}
@@ -167,213 +241,221 @@ export function PublicHomePage() {
       </header>
 
       {/* ── Hero Section ── */}
-      <section style={{ maxWidth: "1280px", margin: "0 auto", padding: "4rem 2rem 3rem", textAlign: "center" }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            background: "rgba(234, 88, 12, 0.15)",
-            border: "1px solid rgba(234, 88, 12, 0.35)",
-            borderRadius: "999px",
-            padding: "0.35rem 1rem",
-            marginBottom: "1.5rem",
-          }}
-        >
-          <span style={{ fontSize: "14px" }}>🇪🇹</span>
-          <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em", color: "#FDBA74", textTransform: "uppercase" }}>
-            Official Cooperative Production & Trading Platform
-          </span>
-        </div>
+      <section className="public-hero-section">
+        <div className="public-hero-inner">
+          {/* Left Text */}
+          <div className="public-hero-left">
+            <span className="public-badge-pill">
+              {lang === "en" ? "For merchants and wholesalers" : "ለንግድ ነጋዴዎች እና ጅምላ ሻጮች"}
+            </span>
 
-        <h1
-          style={{
-            fontSize: "clamp(2.2rem, 5vw, 3.75rem)",
-            fontWeight: 800,
-            lineHeight: 1.15,
-            letterSpacing: "-0.02em",
-            maxWidth: "850px",
-            margin: "0 auto 1.25rem",
-            background: "linear-gradient(180deg, #FFFFFF 0%, #CBD5E1 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          Artisan Weaving Excellence. Complete Operational Integrity.
-        </h1>
+            <h1 className="public-hero-heading">
+              {lang === "en"
+                ? "Fabric from the weavers' cooperative, at official prices."
+                : "የአውራ አምባ ሸማኔዎች ማህበር ጨርቅ፣ በይፋዊ ዋጋ።"}
+            </h1>
 
-        <p
-          style={{
-            fontSize: "clamp(1rem, 2vw, 1.18rem)",
-            color: "#94A3B8",
-            maxWidth: "700px",
-            margin: "0 auto 2.5rem",
-            lineHeight: 1.6,
-          }}
-        >
-          A unified cooperative workspace serving administrators, independent weavers, and commercial wholesale merchants with real-time stock, production tracking, and transparent HISAB payroll.
-        </p>
-      </section>
+            <p className="public-hero-sub">
+              {lang === "en"
+                ? "See what is available, compare patterns and colors, and check the price list before you order."
+                : "ያሉትን ጨርቆች ይመልከቱ፣ ቅጦችና ቀለሞችን ያነጻጽሩ፣ ከማዘዝዎ በፊት የዋጋ ዝርዝሩን ይመርምሩ።"}
+            </p>
 
-      {/* ── Role Portals Section ── */}
-      <section style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 2rem 4rem" }}>
-        <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <h2 style={{ fontSize: "24px", fontWeight: 800, color: "#FFFFFF", margin: "0 0 8px" }}>
-            Access By Role / እንደ ሚናዎ ይግቡ
-          </h2>
-          <p style={{ fontSize: "14px", color: "#94A3B8", margin: 0 }}>
-            Select your dedicated portal to access your authorized cooperative capabilities.
-          </p>
-        </div>
+            <div className="public-hero-cta">
+              <a href="#fabrics" className="btn-primary-rust">
+                {lang === "en" ? "Browse fabrics →" : "ጨርቆችን ይመልከቱ →"}
+              </a>
+              <Link to="/signup?role=merchant" className="btn-secondary-white">
+                {lang === "en" ? "Create a merchant account" : "የነጋዴ መለያ ይፍጠሩ"}
+              </Link>
+            </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.75rem" }}>
-          {portals.map((p) => (
-            <div
-              key={p.role}
-              style={{
-                background: "rgba(30, 41, 59, 0.7)",
-                backdropFilter: "blur(12px)",
-                border: `1px solid ${p.borderColor}`,
-                borderRadius: "16px",
-                padding: "2rem 1.75rem",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                position: "relative",
-                overflow: "hidden",
-                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
-              }}
-            >
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "12px",
-                      background: p.bgGradient,
-                      border: `1px solid ${p.borderColor}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "22px",
-                    }}
-                  >
-                    {p.icon}
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        color: p.color,
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      {p.badge}
-                    </span>
-                    <span style={{ fontSize: "11px", color: "#64748B" }}>{p.amharicBadge}</span>
+            {/* Checkmark Bullets */}
+            <div className="public-hero-checks">
+              <span className="hero-check-item">
+                <span className="check-icon">✓</span>{" "}
+                {lang === "en" ? "Official price list" : "ይፋዊ የዋጋ ዝርዝር"}
+              </span>
+              <span className="hero-check-item">
+                <span className="check-icon">✓</span>{" "}
+                {lang === "en" ? "Filter by fabric and color" : "በጨርቅና ቀለም ያጣሩ"}
+              </span>
+              <span className="hero-check-item">
+                <span className="check-icon">✓</span>{" "}
+                {lang === "en" ? "Print the list" : "ዝርዝሩን ያትሙ"}
+              </span>
+            </div>
+          </div>
+
+          {/* Right Stacked Preview Cards */}
+          <div className="public-hero-right">
+            <div className="stacked-cards-container">
+              {/* Card 1 */}
+              <div className="stacked-preview-card card-top">
+                <div className={`woven-swatch-banner swatch-${heroCard1.patternType}`}></div>
+                <div className="stacked-card-body">
+                  <div className="stacked-card-title">{heroCard1.title}</div>
+                  <div className="stacked-card-specs">{heroCard1.specs}</div>
+                  <div className="stacked-card-price">{heroCard1.rawPrice.toLocaleString()}</div>
+                </div>
+              </div>
+
+              {/* Card 2 */}
+              <div className="stacked-preview-card card-mid">
+                <div className={`woven-swatch-banner swatch-${heroCard2.patternType}`}></div>
+                <div className="stacked-card-body">
+                  <div className="stacked-card-title">{heroCard2.title}</div>
+                  <div className="stacked-card-specs">{heroCard2.specs}</div>
+                  <div className="stacked-card-price">{heroCard2.rawPrice.toLocaleString()}</div>
+                </div>
+              </div>
+
+              {/* Card 3 */}
+              <div className="stacked-preview-card card-bot">
+                <div className={`woven-swatch-banner swatch-${heroCard3.patternType}`}></div>
+                <div className="stacked-card-body">
+                  <div className="stacked-card-title">{heroCard3.title}</div>
+                  <div className="stacked-card-specs">{heroCard3.specs}</div>
+                  <div className="stacked-card-price">
+                    {heroCard3.rawPrice.toLocaleString()}{" "}
+                    <span className="price-unit">ETB per piece</span>
                   </div>
                 </div>
-
-                <h3 style={{ fontSize: "20px", fontWeight: 700, color: "#FFFFFF", margin: "0 0 4px" }}>
-                  {p.title}
-                </h3>
-                <p style={{ fontSize: "12.5px", color: "#94A3B8", margin: "0 0 1rem", fontWeight: 500 }}>
-                  {p.amharicTitle}
-                </p>
-
-                <p style={{ fontSize: "13.5px", color: "#CBD5E1", lineHeight: 1.5, marginBottom: "1.75rem" }}>
-                  {p.desc}
-                </p>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              <div style={{ display: "grid", gap: "0.65rem", paddingTop: "1.25rem", borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                <Link
-                  to={user ? p.link : p.loginState}
-                  className="big-btn"
-                  style={{
-                    background: p.color,
-                    color: "#FFFFFF",
-                    width: "100%",
-                    justifyContent: "center",
-                    fontWeight: 700,
-                    fontSize: "13.5px",
-                    borderRadius: "10px",
-                    textDecoration: "none",
-                  }}
-                >
-                  {p.buttonText} →
-                </Link>
+      {/* ── Available Fabrics Section ── */}
+      <section id="fabrics" className="public-fabrics-section">
+        <div className="public-section-header">
+          <div>
+            <h2 className="public-section-title">
+              {lang === "en" ? "Available fabrics" : "የሚገኙ ጨርቆች"}
+            </h2>
+            <p className="public-section-sub">
+              {lang === "en"
+                ? "A selection from the current price list."
+                : "ከአሁኑ ይፋዊ የዋጋ ዝርዝር የተመረጡ።"}
+            </p>
+          </div>
 
-                {p.signupLink && !user && (
-                  <Link
-                    to={p.signupLink}
-                    style={{
-                      fontSize: "12px",
-                      textAlign: "center",
-                      color: "#94A3B8",
-                      textDecoration: "underline",
-                      paddingTop: "0.25rem",
-                    }}
-                  >
-                    {p.role === "merchant"
-                      ? "New Merchant? Register business account"
-                      : "New Weaver? Register for an account"}
-                  </Link>
-                )}
+          {/* Category Filter Pills */}
+          <div className="category-filter-chips">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`category-pill ${selectedCategory === cat ? "active" : ""}`}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3x2 Grid */}
+        <div className="fabrics-grid">
+          {filteredFabrics.map((fabric) => (
+            <div key={fabric.id} className="card fabric-item-card">
+              <div className={`fabric-swatch-header swatch-${fabric.patternType}`}></div>
+              <div className="fabric-card-content">
+                <h3 className="fabric-card-title">{fabric.title}</h3>
+                <p className="fabric-card-specs">{fabric.specs}</p>
+                <div className="fabric-card-price">{fabric.price}</div>
               </div>
             </div>
           ))}
         </div>
-      </section>
 
-      {/* ── Operational Features Section ── */}
-      <section style={{ maxWidth: "1280px", margin: "0 auto", padding: "1rem 2rem 5rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.25rem" }}>
-          {highlights.map((h) => (
-            <div
-              key={h.title}
-              style={{
-                background: "rgba(255, 255, 255, 0.03)",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                borderRadius: "14px",
-                padding: "1.25rem",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.45rem" }}>
-                <span style={{ fontSize: "1.25rem" }}>{h.icon}</span>
-                <span style={{ fontWeight: 700, fontSize: "14px", color: "#FFFFFF" }}>{h.title}</span>
-              </div>
-              <p style={{ margin: 0, fontSize: "12.5px", color: "#94A3B8", lineHeight: 1.5 }}>
-                {h.text}
-              </p>
-            </div>
-          ))}
+        {/* Button to browse all */}
+        <div className="fabrics-section-footer">
+          <Link to="/merchant" className="btn-secondary-white btn-browse-warp">
+            {lang === "en"
+              ? "See all fabrics, filter by warp and weft →"
+              : "ሁሉንም ጨርቆች ይመልከቱ፣ በድርና ማግ ያጣሩ →"}
+          </Link>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer
-        style={{
-          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-          padding: "2rem",
-          textAlign: "center",
-          fontSize: "12.5px",
-          color: "#64748B",
-        }}
-      >
-        <p style={{ margin: "0 0 0.5rem" }}>
-          © {new Date().getFullYear()} Awra Amba Textile Cooperative Society (አውራ አምባ ቴክስታይል ማህበር). All rights reserved.
-        </p>
-        <div style={{ display: "flex", gap: "1.5rem", justifyContent: "center" }}>
-          <span>Cooperative Administration</span>
-          <span>·</span>
-          <span>Weaver Artisans</span>
-          <span>·</span>
-          <span>Wholesale Merchant Distribution</span>
+      {/* ── How to order Section ── */}
+      <section id="how-to-order" className="public-steps-section">
+        <h2 className="public-section-title">
+          {lang === "en" ? "How to order" : "እንዴት ማዘዝ እንደሚቻል"}
+        </h2>
+
+        <div className="steps-three-grid">
+          {/* Step 1 */}
+          <div className="step-card">
+            <div className="step-number-badge">1</div>
+            <h3 className="step-title">
+              {lang === "en" ? "Create your merchant account" : "የነጋዴ መለያዎን ይፍጠሩ"}
+            </h3>
+            <p className="step-desc">
+              {lang === "en"
+                ? "It takes a minute. You only need a name, phone number and password."
+                : "አንድ ደቂቃ ብቻ ይወስዳል። ስም፣ ስልክ ቁጥር እና የይለፍ ቃል ብቻ ያስፈልግዎታል።"}
+            </p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="step-card">
+            <div className="step-number-badge">2</div>
+            <h3 className="step-title">
+              {lang === "en" ? "Browse fabrics and prices" : "ጨርቆችንና ዋጋዎችን ይመልከቱ"}
+            </h3>
+            <p className="step-desc">
+              {lang === "en"
+                ? "Filter by fabric, warp and weft, then print the price list for your records."
+                : "በጨርቅ፣ ድርና ማግ ያጣሩ፣ ከዚያም ለሰነድዎ የዋጋ ዝርዝሩን ያትሙ።"}
+            </p>
+          </div>
+
+          {/* Step 3 */}
+          <div className="step-card">
+            <div className="step-number-badge">3</div>
+            <h3 className="step-title">
+              {lang === "en" ? "Contact the office to order" : "ለማዘዝ ቢሮውን ያግኙ"}
+            </h3>
+            <p className="step-desc">
+              {lang === "en"
+                ? "Call or visit the cooperative office: +251 91 800 0000."
+                : "የማህበሩን ቢሮ ይደውሉ ወይም ይጎብኙ፡ +251 91 800 0000።"}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── About & Contact Footer Section ── */}
+      <footer id="contact" className="public-footer-section">
+        <div className="footer-cards-grid">
+          {/* Card 1: About */}
+          <div className="card footer-info-card">
+            <h3 className="footer-info-title">
+              {lang === "en" ? "About the cooperative" : "ስለ ማህበሩ"}
+            </h3>
+            <p className="footer-info-text">
+              {lang === "en"
+                ? "Founded in 1972 on principles of equality, social justice, and collective labor, Awra Amba is an intentional community in the Amhara region of Ethiopia renowned for producing premium handwoven textiles."
+                : "በ1972 ዓ.ም በእኩልነት፣ ማህበራዊ ፍትህ እና የጋራ የስራ ባህል መርሆዎች የተመሰረተው አውራ አምባ ማህበረሰብ፣ በኢትዮጵያ አማራ ክልል ከፍተኛ ጥራት ያላቸውን የእጅ ሸማ ጨርቆች በማምረት የታወቀ ነው።"}
+            </p>
+          </div>
+
+          {/* Card 2: Visit or call */}
+          <div className="card footer-info-card">
+            <h3 className="footer-info-title">
+              {lang === "en" ? "Visit or call" : "ይጎብኙ ወይም ይደውሉ"}
+            </h3>
+            <span className="footer-phone-label">{lang === "en" ? "Phone" : "ስልክ"}</span>
+            <p className="footer-phone-val">+251 91 800 0000</p>
+            <p className="footer-info-text" style={{ marginTop: "0.5rem" }}>
+              {lang === "en"
+                ? "Awra Amba Cooperative Office · Fogera Woreda, South Gondar, Amhara, Ethiopia"
+                : "የአውራ አምባ ማህበር ቢሮ · ፎገራ ወረዳ፣ ደቡብ ጎንደር፣ አማራ ክልል፣ ኢትዮጵያ"}
+            </p>
+          </div>
         </div>
       </footer>
     </div>

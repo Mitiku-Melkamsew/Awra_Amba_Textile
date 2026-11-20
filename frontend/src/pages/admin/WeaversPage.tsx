@@ -423,7 +423,6 @@ export function WeaversPage() {
               weavers.map((weaver, index) => {
                 const displayName =
                   weaver.fullName ||
-                  `${weaver.firstName ?? ""} ${weaver.lastName ?? ""}`.trim() ||
                   `Weaver #${weaver.userId}`;
                 const isDeactivated = weaver.isActive === false || weaver.user?.isActive === false;
 

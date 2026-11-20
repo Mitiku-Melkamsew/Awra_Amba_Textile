@@ -7,10 +7,6 @@ export interface AuthUser {
   role: UserRole;
   roles: UserRole[];
   isActive?: boolean;
-  /** @deprecated use userId; no separate weaverId in schema */
-  weaverId?: number | null;
-  /** @deprecated use userId; no separate merchantId in schema */
-  merchantId?: number | null;
 }
 
 export interface UserSummary {
@@ -44,11 +40,6 @@ export interface Weaver {
     workOrders?: number;
     settlements?: number;
   };
-  // Transition helpers for UI that still splits names
-  firstName?: string;
-  lastName?: string;
-  /** @deprecated use userId; no separate weaverId in schema */
-  weaverId?: number;
 }
 
 export interface Merchant {
@@ -58,6 +49,4 @@ export interface Merchant {
   fullName?: string;
   isActive?: boolean;
   createdAt?: string;
-  /** @deprecated use userId; no separate merchantId in schema */
-  merchantId?: number;
 }

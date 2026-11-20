@@ -2,7 +2,6 @@ import { z } from "zod";
 
 export const SettlementPreviewQuerySchema = z.object({
   cutoffDate: z.string().datetime().optional().or(z.string().optional()),
-  periodEnd: z.string().datetime().optional().or(z.string().optional()),
   includeZigIds: z.array(z.string()).optional(),
   overrides: z.array(
     z.object({
@@ -14,7 +13,6 @@ export const SettlementPreviewQuerySchema = z.object({
 });
 
 export const CommitBatchSettlementSchema = z.object({
-  batchId: z.number().int().positive().optional(),
   cutoffDate: z.string().datetime().optional().or(z.string().optional()),
   includeZigIds: z.array(z.string()).optional(),
   overrides: z.array(
@@ -50,14 +48,7 @@ export const CancelSettlementSchema = z.object({
   reason: z.string().min(1, "Cancellation reason is required"),
 });
 
-export const OverrideSettlementLineSchema = z
-  .object({
-    deductionPerPiece: z.number().nonnegative().optional(),
-    /** Legacy alias for deductionPerPiece (not a line total). */
-    deductionAmount: z.number().nonnegative().optional(),
-    reason: z.string().min(1, "Reason is required for quality override"),
-  })
-  .refine(
-    (data) => data.deductionPerPiece !== undefined || data.deductionAmount !== undefined,
-    { message: "deductionPerPiece is required" },
-  );
+export const OverrideSettlementLineSchema = z.object({
+  deductionPerPiece: z.number().nonnegative(),
+  reason: z.string().min(1, "Reason is required for quality override"),
+});

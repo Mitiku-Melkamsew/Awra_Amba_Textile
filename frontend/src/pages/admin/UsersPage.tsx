@@ -422,20 +422,8 @@ export function UsersPage() {
                   return (
                     <tr
                       key={u.userId}
+                      className={`price-row ${isSelected ? "price-row-selected" : ""}`}
                       onClick={() => handleSelectUser(u)}
-                      style={{
-                        borderBottom: "1px solid #f1f5f9",
-                        cursor: "pointer",
-                        background: isSelected ? "#fffdf5" : "transparent",
-                        borderLeft: isSelected ? "3px solid #c2410c" : "3px solid transparent",
-                        transition: "background 0.12s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) e.currentTarget.style.background = "#f8fafc";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) e.currentTarget.style.background = "transparent";
-                      }}
                     >
                       {/* User Avatar + Name + Username */}
                       <td style={{ padding: "0.85rem 1rem" }}>
@@ -497,7 +485,7 @@ export function UsersPage() {
 
                       {/* Phone */}
                       <td style={{ padding: "0.85rem 1rem", color: "#64748b", whiteSpace: "nowrap" }}>
-                        {u.phone ? `[${u.phone}]` : "—"}
+                        {u.phone || "—"}
                       </td>
 
                       {/* Status */}
@@ -515,29 +503,27 @@ export function UsersPage() {
 
                       {/* Created */}
                       <td style={{ padding: "0.85rem 1rem", color: "#64748b", whiteSpace: "nowrap", fontSize: "13px" }}>
-                        [date]
+                        {u.createdAt
+                          ? new Date(u.createdAt).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "—"}
                       </td>
 
                       {/* Action */}
                       <td style={{ padding: "0.85rem 1rem", textAlign: "right" }}>
                         <button
                           type="button"
+                          className="btn-secondary-white btn-sm"
+                          style={{ padding: "0.35rem 0.75rem", fontSize: "12.5px" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSelectUser(u);
                           }}
-                          style={{
-                            background: "#ffffff",
-                            border: "1px solid #cbd5e1",
-                            padding: "0.35rem 0.85rem",
-                            borderRadius: "6px",
-                            fontSize: "13px",
-                            fontWeight: 600,
-                            color: "#334155",
-                            cursor: "pointer",
-                          }}
                         >
-                          Manage
+                          <span style={{ fontSize: "12px", opacity: 0.8 }}>✏️</span> Edit
                         </button>
                       </td>
                     </tr>

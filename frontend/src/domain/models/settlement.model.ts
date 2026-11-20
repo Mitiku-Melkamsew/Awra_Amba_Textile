@@ -82,7 +82,6 @@ export interface SettlementFabricLinePreview {
   avgWeight: number;
   unitPrice: number;
   grossFabricValue: number;
-  deductions?: Array<{ factor: string; perPiece: number; remark?: string }>;
   deductionAmount: number;
   netFabricValue: number;
   remark?: string | null;
@@ -99,7 +98,7 @@ export interface SettlementYarnLinePreview {
   remark?: string | null;
 }
 
-export interface WeaverSettlementBundle {
+export interface WeaverSettlementBundlePreview {
   weaverUserId: number;
   weaverName: string;
   weaverPhone?: string | null;
@@ -112,6 +111,15 @@ export interface WeaverSettlementBundle {
   netSettlement: number;
   isBlocked: boolean;
   blockReasons: string[];
+}
+
+export interface SettlementBatchPreview {
+  cutoffDate?: string | null;
+  weaverCount: number;
+  grandTotal: number;
+  amharicAmountInWords?: string;
+  outOfCutoffZigs?: OutOfCutoffZig[];
+  bundles: WeaverSettlementBundlePreview[];
 }
 
 export interface ZigLedgerItem {
@@ -149,75 +157,6 @@ export interface ZigLedgerItem {
     amount: number | null;
   } | null;
   isSettled: boolean;
-}
-
-export interface SettlementBatchPreview {
-  periodStart?: string;
-  periodEnd?: string;
-  cutoffDate?: string | null;
-  previewId?: string;
-  totalWeavers?: number;
-  weaverCount?: number;
-  totalZigsCount?: number;
-  totalFabricPieces?: number;
-  grandTotal?: number;
-  estimatedGrossFabricCredit?: number;
-  estimatedYarnDebits?: number;
-  estimatedQualityDeductions?: number;
-  estimatedNetPayout?: number;
-  amharicAmountInWords?: string;
-  outOfCutoffZigs?: OutOfCutoffZig[];
-  weavers: Array<{
-    weaverId: number;
-    weaverUserId?: number;
-    fullName?: string;
-    weaverName?: string;
-    phone?: string | null;
-    workOrdersCount?: number;
-    fabricPieces?: number;
-    grossFabricCredit?: number;
-    yarnDebits?: number;
-    qualityDeductions?: number;
-    netPayout?: number;
-    netSettlement?: number;
-    workOrders?: WorkOrder[];
-    zigIds?: string[];
-    returnCount?: number;
-    yarnCount?: number;
-    isBlocked?: boolean;
-    blockReasons?: string[];
-    lineItems?: any[];
-    zigDetails?: any[];
-  }>;
-}
-
-export interface DeductionResult {
-  threshold: number;
-  deductionPerPiece: number;
-  adjustedUnitPrice: number;
-  lineCredit: number;
-  ruleApplied: string;
-  remark: string;
-}
-
-export interface BonusResult {
-  bonusPerPiece: number;
-  totalBonus: number;
-  ruleApplied: string;
-  remark: string;
-}
-
-export interface GroupedFabricLine {
-  returnIds: number[];
-  returnCount: number;
-  fabricType: string;
-  quantityReturned: number;
-  avgWeight: number;
-  unitPrice: number;
-  deductionPerPiece: number;
-  adjustedPrice: number;
-  lineSubtotal: number;
-  netCredit: number;
 }
 
 export interface CommittedSettlementSummary {

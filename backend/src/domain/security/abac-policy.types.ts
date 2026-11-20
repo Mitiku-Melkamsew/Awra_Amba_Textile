@@ -13,7 +13,7 @@ export interface AbacResource {
   weaverUserId?: number | null;
   merchantUserId?: number | null;
   status?: string;
-  settlementLineId?: number | null;
+  settlementId?: number | null;
   paymentId?: number | null;
   amountPaid?: number;
   [key: string]: unknown;

@@ -1,35 +1,55 @@
 import { useEffect, useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
 import { catalogApi, type QualityRuleRow } from "../../api";
 
+const DEFAULT_QUALITY_RULES: QualityRuleRow[] = [
+  {
+    qualityRuleId: 1,
+    factor: "weight",
+    unit: "g",
+    deductionPerUnit: 10,
+    isActive: true,
+  },
+];
+
 export function QualityRulesPage() {
-  const [rules, setRules] = useState<QualityRuleRow[]>([]);
+  const [rules, setRules] = useState<QualityRuleRow[]>(DEFAULT_QUALITY_RULES);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
-  const [showInactive, setShowInactive] = useState(false);
+  const [selectedRuleId, setSelectedRuleId] = useState<number | null>(1);
+  const [showClosed, setShowClosed] = useState(false);
 
-  // Add rule state
-  const [factor, setFactor] = useState("weight");
-  const [unit, setUnit] = useState("g");
-  const [deduction, setDeduction] = useState("");
+  // Edit panel state
+  const [editDeduction, setEditDeduction] = useState<string>("12");
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Inline edit state
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editUnit, setEditUnit] = useState("");
-  const [editDeduction, setEditDeduction] = useState("");
+  // Modal for + Add rule
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newFactor, setNewFactor] = useState("weight");
+  const [newUnit, setNewUnit] = useState("g");
+  const [newDeduction, setNewDeduction] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
 
   async function loadRules() {
     setLoading(true);
-    setError("");
     try {
       const data = await catalogApi.qualityRules();
-      setRules(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to load quality rules");
+      if (Array.isArray(data) && data.length > 0) {
+        setRules(data);
+        const active = data.find((r) => r.isActive !== false) || data[0];
+        setSelectedRuleId(active.qualityRuleId);
+        setEditDeduction(String(active.deductionPerUnit));
+      } else {
+        setRules(DEFAULT_QUALITY_RULES);
+        setSelectedRuleId(1);
+        setEditDeduction("10");
+      }
+    } catch {
+      // Graceful fallback to default rules
+      setRules(DEFAULT_QUALITY_RULES);
+      setSelectedRuleId(1);
+      setEditDeduction("10");
     } finally {
       setLoading(false);
     }
@@ -39,280 +59,249 @@ export function QualityRulesPage() {
     loadRules();
   }, []);
 
+  const selectedRule = useMemo(() => {
+    return rules.find((r) => r.qualityRuleId === selectedRuleId) || rules[0] || null;
+  }, [rules, selectedRuleId]);
+
+  function handleSelectRule(rule: QualityRuleRow) {
+    setSelectedRuleId(rule.qualityRuleId);
+    setEditDeduction(String(rule.deductionPerUnit));
+    setStatusMessage("");
+    setErrorMessage("");
+  }
+
+  async function handleSaveChanges(e: FormEvent) {
+    e.preventDefault();
+    if (!selectedRule) return;
+    const rateNum = parseFloat(editDeduction);
+    if (isNaN(rateNum) || rateNum < 0) {
+      setErrorMessage("Please enter a valid deduction rate.");
+      return;
+    }
+
+    setIsSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      await catalogApi.updateQualityRule(selectedRule.qualityRuleId, {
+        unit: selectedRule.unit,
+        deductionPerUnit: rateNum,
+      });
+
+      setStatusMessage("Quality rule changes saved successfully.");
+      setRules((prev) =>
+        prev.map((r) =>
+          r.qualityRuleId === selectedRule.qualityRuleId
+            ? { ...r, deductionPerUnit: rateNum }
+            : r
+        )
+      );
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to update quality rule");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function handleAddRule(e: FormEvent) {
     e.preventDefault();
-    if (!factor || !unit || !deduction) return;
-    setSaving(true);
-    setError("");
-    setMessage("");
-    try {
-      await catalogApi.createQualityRule({
-        factor,
-        unit,
-        deductionPerUnit: Number(deduction),
-      });
-      setDeduction("");
-      setMessage("Quality rule added successfully.");
-      await loadRules();
-    } catch (err: any) {
-      setError(err.message || "Failed to create quality rule");
-    } finally {
-      setSaving(false);
+    const rateNum = parseFloat(newDeduction);
+    if (isNaN(rateNum) || rateNum <= 0) {
+      setErrorMessage("Please enter a valid positive deduction rate.");
+      return;
     }
-  }
 
-  async function handleSaveInlineEdit(id: number) {
-    setError("");
-    setMessage("");
+    setIsCreating(true);
+    setErrorMessage("");
+
     try {
-      await catalogApi.updateQualityRule(id, {
-        unit: editUnit,
-        deductionPerUnit: Number(editDeduction),
+      const created = await catalogApi.createQualityRule({
+        factor: newFactor,
+        unit: newUnit,
+        deductionPerUnit: rateNum,
       });
-      setEditingId(null);
-      setMessage("Quality rule updated successfully.");
-      await loadRules();
-    } catch (err: any) {
-      setError(err.message || "Failed to update quality rule");
-    }
-  }
 
-  async function handleToggleStatus(r: QualityRuleRow) {
-    setError("");
-    setMessage("");
-    try {
-      if (r.isActive) {
-        await catalogApi.deactivateQualityRule(r.qualityRuleId);
-        setMessage(`Quality rule deactivated.`);
-      } else {
-        await (catalogApi.updateQualityRule as any)(r.qualityRuleId, { isActive: true });
-        setMessage(`Quality rule reactivated.`);
+      setShowAddModal(false);
+      setNewDeduction("");
+      setStatusMessage("New quality rule added.");
+      await loadRules();
+      if (created && (created as any).qualityRuleId) {
+        setSelectedRuleId((created as any).qualityRuleId);
+        setEditDeduction(String(rateNum));
       }
-      await loadRules();
     } catch (err: any) {
-      setError(err.message || "Failed to update rule status");
+      setErrorMessage(err.message || "Failed to create quality rule");
+    } finally {
+      setIsCreating(false);
     }
   }
 
-  const q = search.toLowerCase().trim();
+  const displayedRules = useMemo(() => {
+    if (showClosed) return rules;
+    return rules.filter((r) => r.isActive !== false);
+  }, [rules, showClosed]);
 
-  const filteredRules = useMemo(() => {
-    return rules.filter((r) => {
-      if (!showInactive && !r.isActive) return false;
-      if (!q) return true;
-      return (
-        r.factor.toLowerCase().includes(q) ||
-        r.unit.toLowerCase().includes(q)
-      );
-    });
-  }, [rules, showInactive, q]);
+  const calcRate = parseFloat(editDeduction) || 0;
+  const exampleDeduction = (1 * calcRate * 42).toLocaleString();
 
   return (
-    <div className="page">
-      <div className="page-header">
+    <div className="page" style={{ maxWidth: "100%", width: "100%" }}>
+      {/* ── Page Header ── */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "1.5rem",
+          flexWrap: "wrap",
+          gap: "1rem",
+        }}
+      >
         <div>
-          <p className="eyebrow">የጥራት ህጎች / Quality Standards & Penalties</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <h1 className="page-title">Quality Deduction Rules</h1>
-            <span className="badge badge-gray">{rules.length} Active Rules</span>
-          </div>
-          <p className="page-subtitle">
-            Configure automatic deduction factors (e.g. weight deficit, length shortfall) applied during payroll settlement calculations.
+          <h1
+            style={{
+              fontSize: "26px",
+              fontWeight: 800,
+              color: "#111827",
+              margin: "0 0 4px",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "0.5rem",
+            }}
+          >
+            Quality deduction rules <span style={{ color: "#6B7280", fontWeight: 400, fontSize: "20px" }}>· ጥራት</span>
+          </h1>
+          <p style={{ margin: 0, fontSize: "14px", color: "#64748B" }}>
+            Deducted when a fabric's average weight is below its standard
           </p>
         </div>
-      </div>
 
-      {message && (
-        <div className="success-msg">
-          <span>✅</span> {message}
-        </div>
-      )}
-      {error && (
-        <div className="error-msg">
-          <span>⚠️</span> {error}
-        </div>
-      )}
-
-      {/* Add Rule Card */}
-      <form className="card form inline-add-form" onSubmit={handleAddRule}>
-        <p className="section-title">
-          <span>⚖️</span> Add New Quality Rule / አዲስ የጥራት ህግ መዝግብ
-        </p>
-        <div className="form-row">
-          <label>
-            <span>Quality Factor / ሁኔታ</span>
-            <select
-              value={factor}
-              onChange={(e) => {
-                const val = e.target.value;
-                setFactor(val);
-                if (val === "weight") setUnit("g");
-                else if (val === "length" || val === "width") setUnit("cm");
-                else setUnit("piece");
+        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontSize: "13.5px",
+              fontWeight: 500,
+              color: "#374151",
+              cursor: "pointer",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showClosed}
+              onChange={(e) => setShowClosed(e.target.checked)}
+              style={{
+                width: 16,
+                height: 16,
+                accentColor: "#C2410C",
+                cursor: "pointer",
               }}
-              required
-            >
-              <option value="weight">Weight Deficit / የክብደት ጉድለት (g)</option>
-              <option value="length">Length Shortfall / የቁመት ጉድለት (cm)</option>
-              <option value="width">Width Shortfall / የስፋት ጉድለት (cm)</option>
-              <option value="defect">Flaw / Defect Penalty (piece)</option>
-            </select>
-          </label>
-          <label>
-            <span>Measurement Unit / መለኪያ</span>
-            <input
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              placeholder="e.g. g or cm"
-              required
             />
+            Show closed rules
           </label>
-          <label>
-            <span>Deduction Rate (ETB / unit) / ቅጣት</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={deduction}
-              onChange={(e) => setDeduction(e.target.value)}
-              placeholder="e.g. 1.50"
-              required
-            />
-          </label>
-        </div>
-        <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? "Saving…" : "+ Record Quality Rule / መዝግብ"}
+
+          <button
+            type="button"
+            className="btn-primary-rust"
+            onClick={() => {
+              setShowAddModal(true);
+              setNewDeduction("");
+              setErrorMessage("");
+            }}
+          >
+            + Add rule
           </button>
         </div>
-      </form>
-
-      {/* Toolbar */}
-      <div className="toolbar" style={{ marginTop: "1rem" }}>
-        <input
-          className="search-input"
-          placeholder="🔍 Filter quality rules by factor or unit…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <label className="checkbox-label" style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: 13, cursor: "pointer" }}>
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-          />
-          Show Inactive Rules / የተዘጉ ህጎችን አሳይ
-        </label>
       </div>
 
-      {/* Table */}
-      <div className="card table-card" style={{ padding: 0 }}>
-        {loading ? (
-          <div className="loading"><span>⏳</span> Loading quality rules…</div>
-        ) : (
-          <div className="table-wrap">
-            <table>
+      {statusMessage && (
+        <div className="success-msg" style={{ marginBottom: "1rem" }}>
+          <span>✅</span> {statusMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div className="error-msg" style={{ marginBottom: "1rem" }}>
+          <span>⚠️</span> {errorMessage}
+        </div>
+      )}
+
+      {/* ── Master-Detail Grid ── */}
+      <div className="rules-master-detail-grid">
+        {/* Left Table */}
+        <div className="prices-table-container">
+          <div className="prices-table-card">
+            <table className="prices-table">
               <thead>
                 <tr>
-                  <th>Factor / Dimension</th>
-                  <th>Unit</th>
-                  <th>Deduction Rate (ETB / unit)</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
+                  <th style={{ width: "32%" }}>Factor</th>
+                  <th style={{ width: "30%" }}>Deduction</th>
+                  <th style={{ width: "12%" }}>Unit</th>
+                  <th style={{ width: "14%" }}>Status</th>
+                  <th style={{ width: "12%", textAlign: "right" }}></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRules.length === 0 ? (
+                {loading && rules.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
-                      <div className="empty-state">
-                        <span className="empty-icon">⚖️</span>
-                        No quality rules matching criteria.
-                      </div>
+                    <td colSpan={5} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                      Loading quality rules…
+                    </td>
+                  </tr>
+                ) : displayedRules.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                      No quality rules found.
                     </td>
                   </tr>
                 ) : (
-                  filteredRules.map((r) => {
-                    const isEditing = editingId === r.qualityRuleId;
+                  displayedRules.map((rule) => {
+                    const isSelected = selectedRule?.qualityRuleId === rule.qualityRuleId;
+                    const factorLabel =
+                      rule.factor.toLowerCase() === "weight"
+                        ? "Weight · ክብደት"
+                        : rule.factor.toLowerCase() === "length"
+                        ? "Length · ርዝመት"
+                        : rule.factor.toLowerCase() === "width"
+                        ? "Width · ስፋት"
+                        : rule.factor;
+
                     return (
-                      <tr key={r.qualityRuleId}>
-                        <td style={{ fontWeight: 700, textTransform: "capitalize" }}>
-                          {r.factor}
+                      <tr
+                        key={rule.qualityRuleId}
+                        className={`price-row ${isSelected ? "price-row-selected" : ""}`}
+                        onClick={() => handleSelectRule(rule)}
+                      >
+                        <td>
+                          <span className="price-item-name">{factorLabel}</span>
+                        </td>
+                        <td style={{ fontSize: "13.5px", color: "#111827", fontWeight: 500 }}>
+                          <strong>{Number(rule.deductionPerUnit)} ETB</strong> per {rule.unit === "g" ? "gram short" : `${rule.unit} short`}
+                        </td>
+                        <td style={{ fontSize: "13.5px", color: "#64748B" }}>
+                          {rule.unit}
                         </td>
                         <td>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editUnit}
-                              onChange={(e) => setEditUnit(e.target.value)}
-                              style={{ width: 70, height: 32, fontSize: 13 }}
-                            />
+                          {rule.isActive !== false ? (
+                            <span className="status-pill-green">✓ Active</span>
                           ) : (
-                            r.unit
+                            <span className="status-pill-gray">Closed</span>
                           )}
-                        </td>
-                        <td style={{ fontWeight: 700, color: "var(--red)" }}>
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editDeduction}
-                              onChange={(e) => setEditDeduction(e.target.value)}
-                              style={{ width: 100, height: 32, fontSize: 13 }}
-                            />
-                          ) : (
-                            `${Number(r.deductionPerUnit).toFixed(2)} ETB / ${r.unit}`
-                          )}
-                        </td>
-                        <td>
-                          <span className={`badge ${r.isActive ? "badge-green" : "badge-gray"}`}>
-                            {r.isActive ? "Active" : "Deactivated"}
-                          </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          {isEditing ? (
-                            <div style={{ display: "inline-flex", gap: "0.4rem" }}>
-                              <button
-                                type="button"
-                                className="btn-sm primary"
-                                onClick={() => handleSaveInlineEdit(r.qualityRuleId)}
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-sm ghost"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div style={{ display: "inline-flex", gap: "0.5rem" }}>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                onClick={() => {
-                                  setEditingId(r.qualityRuleId);
-                                  setEditUnit(r.unit);
-                                  setEditDeduction(String(r.deductionPerUnit));
-                                }}
-                              >
-                                Edit Rate
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                style={{
-                                  color: r.isActive ? "var(--red)" : "var(--green)",
-                                  cursor: "pointer",
-                                }}
-                                onClick={() => handleToggleStatus(r)}
-                              >
-                                {r.isActive ? "Deactivate" : "Activate"}
-                              </button>
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            className="btn-secondary-white btn-sm"
+                            style={{ padding: "0.35rem 0.65rem", fontSize: "12.5px" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectRule(rule);
+                            }}
+                          >
+                            <span style={{ fontSize: "12px", opacity: 0.8 }}>✏️</span> Edit
+                          </button>
                         </td>
                       </tr>
                     );
@@ -321,15 +310,184 @@ export function QualityRulesPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Right Edit Panel */}
+        {selectedRule && (
+          <div className="edit-detail-panel">
+            <div className="detail-panel-header">
+              <div>
+                <h3 className="detail-panel-title">
+                  Edit rule · {selectedRule.factor.charAt(0).toUpperCase() + selectedRule.factor.slice(1)}
+                </h3>
+                <p className="detail-panel-sub">
+                  Deduction per piece, for each gram below the fabric's standard
+                </p>
+              </div>
+              <button
+                type="button"
+                className="detail-close-btn"
+                title="Close"
+                onClick={() => setSelectedRuleId(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveChanges}>
+              <div className="field-label">
+                Factor
+                <input
+                  type="text"
+                  value={selectedRule.factor.charAt(0).toUpperCase() + selectedRule.factor.slice(1)}
+                  readOnly
+                  disabled
+                  className="input-field input-read-only"
+                />
+              </div>
+
+              <div className="field-label">
+                Unit
+                <input
+                  type="text"
+                  value={selectedRule.unit}
+                  readOnly
+                  disabled
+                  className="input-field input-read-only"
+                />
+              </div>
+
+              <div className="field-label">
+                Deduction per gram (ETB)
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={editDeduction}
+                  onChange={(e) => setEditDeduction(e.target.value)}
+                  className="input-field"
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  style={{ flex: 1 }}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving…" : "Save changes"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setEditDeduction(String(selectedRule.deductionPerUnit))}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {/* Example calculation box */}
+              <div className="example-calc-box">
+                <strong>Example:</strong> 42 pieces, 1 g short → 1 × {calcRate} × 42 = <strong>{exampleDeduction} ETB</strong> deducted.
+              </div>
+
+              <p style={{ margin: 0, fontSize: "12px", color: "#64748B", lineHeight: 1.45 }}>
+                Applies to settlements calculated from now on. Confirmed settlements keep their saved deductions.
+              </p>
+            </form>
+          </div>
         )}
       </div>
 
-      <p className="muted" style={{ fontSize: "12.5px", marginTop: "1rem" }}>
-        Need to configure piece rate pricing for fabrics or yarns? Go to{" "}
-        <Link to="/admin/prices" style={{ color: "var(--brand)", fontWeight: 600 }}>
-          Price Management →
-        </Link>
-      </p>
+      {/* ── Add Quality Rule Modal ── */}
+      {showAddModal && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal-dialog"
+            style={{ maxWidth: 440 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add quality rule</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddRule}>
+              <div className="field-label">
+                Factor
+                <select
+                  value={newFactor}
+                  onChange={(e) => setNewFactor(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="weight">Weight</option>
+                </select>
+                <span className="field-label-sub">
+                  Length and width are not used in settlements yet.
+                </span>
+              </div>
+
+              <div className="field-label">
+                Unit
+                <input
+                  type="text"
+                  value={newUnit}
+                  onChange={(e) => setNewUnit(e.target.value)}
+                  className="input-field input-read-only"
+                  readOnly
+                />
+              </div>
+
+              <div className="field-label">
+                Deduction per gram (ETB)
+                <input
+                  type="number"
+                  step="any"
+                  min="0.01"
+                  placeholder="e.g. 10"
+                  value={newDeduction}
+                  onChange={(e) => setNewDeduction(e.target.value)}
+                  className="input-field"
+                  required
+                />
+              </div>
+
+              {/* Warning note */}
+              <div className="warning-callout-box">
+                <span style={{ fontSize: "14px" }}>ⓘ</span>
+                <div>
+                  Only one weight rule can be active. Adding one replaces the current rate.
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={isCreating}
+                >
+                  {isCreating ? "Adding…" : "Add rule"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

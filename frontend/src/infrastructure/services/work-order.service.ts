@@ -22,13 +22,11 @@ export const workOrderService = {
   async listWorkOrders(params?: {
     status?: WorkOrderStatus;
     weaverUserId?: number;
-    weaverId?: number;
   }): Promise<WorkOrder[]> {
     const query = new URLSearchParams();
     if (params?.status) query.append("status", params.status);
-    const wid = params?.weaverUserId ?? params?.weaverId;
-    if (wid != null && !isNaN(Number(wid))) {
-      query.append("weaverUserId", wid.toString());
+    if (params?.weaverUserId != null && !isNaN(Number(params.weaverUserId))) {
+      query.append("weaverUserId", params.weaverUserId.toString());
     }
     const queryString = query.toString() ? `?${query.toString()}` : "";
     const res = await request<any>(`/work-orders${queryString}`);

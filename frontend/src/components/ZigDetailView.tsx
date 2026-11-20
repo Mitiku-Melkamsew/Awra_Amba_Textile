@@ -243,7 +243,6 @@ export function ZigDetailView({
 
   const weaverDisplayName =
     order.weaver.fullName ||
-    `${order.weaver.firstName ?? ""} ${order.weaver.lastName ?? ""}`.trim() ||
     `Weaver #${order.weaverUserId}`;
 
   // Stepper calculations

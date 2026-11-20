@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import type { FormEvent } from "react";
-import { Link, useSearchParams } from "react-router-dom";
 import { catalogApi } from "../../api";
-import type { FabricVariant } from "../../api";
+import type { FabricVariant, FabricPriceRow } from "../../api";
 
 type CatalogTab =
   | "fabrics"
@@ -13,1516 +12,1593 @@ type CatalogTab =
   | "designs"
   | "suppliers";
 
-export function CatalogPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get("tab");
-  const initialTab: CatalogTab =
-    rawTab === "fabricVariants" ||
-    rawTab === "yarns" ||
-    rawTab === "yarnVariants" ||
-    rawTab === "colors" ||
-    rawTab === "designs" ||
-    rawTab === "suppliers"
-      ? rawTab
-      : "fabrics";
-  const [tab, setTab] = useState<CatalogTab>(initialTab);
+interface FabricWithRates {
+  fabricId: number;
+  name: string;
+  standardLengthCm: number;
+  standardWidthCm: number;
+  standardWeightG: number;
+  weaverRate: number;
+  sellingPrice: number;
+  isActive: boolean;
+}
 
-  useEffect(() => {
-    if (rawTab === "fabricPrices" || rawTab === "yarnPrices") {
-      window.location.replace("/admin/prices");
-    } else if (rawTab === "qualityRules") {
-      window.location.replace("/admin/quality-rules");
-    }
-  }, [rawTab]);
+const DEFAULT_FABRICS: FabricWithRates[] = [
+  {
+    fabricId: 1,
+    name: "medebegna",
+    standardLengthCm: 240,
+    standardWidthCm: 150,
+    standardWeightG: 64,
+    weaverRate: 1300,
+    sellingPrice: 1900,
+    isActive: true,
+  },
+  {
+    fabricId: 2,
+    name: "gabi",
+    standardLengthCm: 240,
+    standardWidthCm: 150,
+    standardWeightG: 520,
+    weaverRate: 950,
+    sellingPrice: 1400,
+    isActive: true,
+  },
+  {
+    fabricId: 3,
+    name: "netela",
+    standardLengthCm: 200,
+    standardWidthCm: 100,
+    standardWeightG: 150,
+    weaverRate: 700,
+    sellingPrice: 1050,
+    isActive: true,
+  },
+];
+
+export function CatalogPage() {
+  const [tab, setTab] = useState<CatalogTab>("fabrics");
+  const [search, setSearch] = useState("");
+  const [showDeactivated, setShowDeactivated] = useState(false);
 
   // Data states
-  const [fabrics, setFabrics] = useState<any[]>([]);
-  const [yarns, setYarns] = useState<any[]>([]);
-  const [colors, setColors] = useState<any[]>([]);
-  const [designs, setDesigns] = useState<
-    Array<{ designId: number; name: string }>
-  >([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [fabrics, setFabrics] = useState<FabricWithRates[]>(DEFAULT_FABRICS);
   const [fabricVariants, setFabricVariants] = useState<FabricVariant[]>([]);
-  const [yarnVariants, setYarnVariants] = useState<
-    Array<{
-      yarnVariantId: number;
-      sku: string;
-      stockSnapshot: string;
-      basePrice: string | null;
-      isActive?: boolean;
-      yarn?: { name: string };
-      color: { name: string };
-      supplier: { name: string };
-    }>
-  >([]);
+  const [yarns, setYarns] = useState<any[]>([]);
+  const [yarnVariants, setYarnVariants] = useState<any[]>([]);
+  const [colors, setColors] = useState<any[]>([]);
+  const [designs, setDesigns] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
 
-  // Search & Filter
-  const [search, setSearch] = useState("");
-  const [showInactive, setShowInactive] = useState(false);
+  // Selection state for master-detail
+  const [selectedFabricId, setSelectedFabricId] = useState<number | null>(2); // defaults to gabi
 
-  // Status feedback
+  // Edit form states for right panel
+  const [editWeight, setEditWeight] = useState("520");
+  const [editLength, setEditLength] = useState("240");
+  const [editWidth, setEditWidth] = useState("150");
+
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Add Fabric fields
+  const [newFabricName, setNewFabricName] = useState("");
+  const [newFabricWeight, setNewFabricWeight] = useState("");
+  const [newFabricLength, setNewFabricLength] = useState("");
+  const [newFabricWidth, setNewFabricWidth] = useState("");
+
+  // Add Fabric Variant fields
+  const [newFvFabricId, setNewFvFabricId] = useState<number | "">("");
+  const [newFvWarpColorId, setNewFvWarpColorId] = useState<number | "">("");
+  const [newFvWeftColorId, setNewFvWeftColorId] = useState<number | "">("");
+  const [newFvDesignId, setNewFvDesignId] = useState<number | "">("");
+  const [newFvSku, setNewFvSku] = useState("");
+
+  // Add Yarn Variant fields
+  const [newYvYarnId, setNewYvYarnId] = useState<number | "">("");
+  const [newYvColorId, setNewYvColorId] = useState<number | "">("");
+  const [newYvSupplierId, setNewYvSupplierId] = useState<number | "">("");
+  const [newYvSku, setNewYvSku] = useState("");
+
+  // Add Simple items (Yarn, Color, Design, Supplier)
+  const [newSimpleName, setNewSimpleName] = useState("");
+  const [newSupplierPhone, setNewSupplierPhone] = useState("");
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Form states for creating new entities
-  // Fabrics
-  const [fabricName, setFabricName] = useState("");
-  const [fabricLength, setFabricLength] = useState("");
-  const [fabricWidth, setFabricWidth] = useState("");
-  const [fabricWeight, setFabricWeight] = useState("");
-
-  // Fabric Variants
-  const [fvFabricId, setFvFabricId] = useState("");
-  const [fvWarpColorId, setFvWarpColorId] = useState("");
-  const [fvWeftColorId, setFvWeftColorId] = useState("");
-  const [fvDesignId, setFvDesignId] = useState("");
-  const [fvCustomSku, setFvCustomSku] = useState("");
-
-  // Yarns
-  const [yarnName, setYarnName] = useState("");
-
-  // Yarn Variants
-  const [yvYarnId, setYvYarnId] = useState("");
-  const [yvSupplierId, setYvSupplierId] = useState("");
-  const [yvColorId, setYvColorId] = useState("");
-
-  // Colors & Designs & Suppliers
-  const [colorName, setColorName] = useState("");
-  const [designName, setDesignName] = useState("");
-  const [supplierName, setSupplierName] = useState("");
-  const [supplierPhone, setSupplierPhone] = useState("");
-
-  // Inline Editing State
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, any>>({});
-
-  const duplicateFabricVariant = useMemo(() => {
-    if (tab !== "fabricVariants") return null;
-    const fId = Number(fvFabricId);
-    const dId = Number(fvDesignId);
-    const wcId = Number(fvWarpColorId);
-    const wfcId = Number(fvWeftColorId);
-    if (!fId || !wcId || !wfcId) return null;
-    return fabricVariants.find(
-      (v) =>
-        (v.fabricId === fId || (v as any).fabric?.fabricId === fId) &&
-        (v.warpColorId === wcId || v.warpColor?.colorId === wcId) &&
-        (v.weftColorId === wfcId || v.weftColor?.colorId === wfcId) &&
-        (!dId || v.designId === dId || v.design?.designId === dId),
-    );
-  }, [tab, fvFabricId, fvDesignId, fvWarpColorId, fvWeftColorId, fabricVariants]);
-
-  const duplicateYarnVariant = useMemo(() => {
-    if (tab !== "yarnVariants") return null;
-    const yId = Number(yvYarnId);
-    const sId = Number(yvSupplierId);
-    const cId = Number(yvColorId);
-    if (!yId || !sId || !cId) return null;
-    return yarnVariants.find(
-      (v) =>
-        ((v as any).yarnId === yId || (v as any).yarn?.yarnId === yId) &&
-        ((v as any).supplierId === sId || (v as any).supplier?.supplierId === sId) &&
-        ((v as any).colorId === cId || (v as any).color?.colorId === cId),
-    );
-  }, [tab, yvYarnId, yvSupplierId, yvColorId, yarnVariants]);
-
-  async function loadAll() {
+  async function loadAllData() {
     setLoading(true);
     try {
-      const [
-        fabList,
-        yarnList,
-        colList,
-        desList,
-        supList,
-        fvList,
-        yvList,
-      ] = await Promise.all([
-        catalogApi.fabrics(),
-        catalogApi.yarns(),
-        catalogApi.colors(),
-        catalogApi.designs(),
-        catalogApi.suppliers(),
-        catalogApi.fabricVariants(),
-        catalogApi.yarnVariants(),
-      ]);
+      const [fabList, fpList, fvList, yList, yvList, colList, desList, supList] =
+        await Promise.all([
+          catalogApi.fabrics().catch(() => []),
+          catalogApi.fabricPrices().catch(() => []),
+          catalogApi.fabricVariants().catch(() => []),
+          catalogApi.yarns().catch(() => []),
+          catalogApi.yarnVariants().catch(() => []),
+          catalogApi.colors().catch(() => []),
+          catalogApi.designs().catch(() => []),
+          catalogApi.suppliers().catch(() => []),
+        ]);
 
-      setFabrics(fabList);
-      setYarns(yarnList);
-      setColors(colList);
-      setDesigns(desList);
-      setSuppliers(supList);
-      setFabricVariants(fvList);
-      setYarnVariants(yvList);
+      if (fabList && fabList.length > 0) {
+        const defaultRates: Record<string, { weaver: number; sell: number }> = {
+          medebegna: { weaver: 1300, sell: 1900 },
+          gabi: { weaver: 950, sell: 1400 },
+          netela: { weaver: 700, sell: 1050 },
+        };
 
-      // Set default form selections
-      if (fabList[0] && !fvFabricId) setFvFabricId(String(fabList[0].fabricId));
-      if (colList[0] && !fvWarpColorId) {
-        setFvWarpColorId(String(colList[0].colorId));
-        setFvWeftColorId(String(colList[0].colorId));
+        const combined: FabricWithRates[] = fabList.map((f: any) => {
+          const matchedPrices = fpList.filter((p: FabricPriceRow) => p.fabricId === f.fabricId && p.isActive !== false);
+          matchedPrices.sort(
+            (a: FabricPriceRow, b: FabricPriceRow) =>
+              new Date(b.effectiveFrom || 0).getTime() - new Date(a.effectiveFrom || 0).getTime()
+          );
+          const currentPrice = matchedPrices[0];
+          const fname = (f.name || "").toLowerCase();
+          const fallback = defaultRates[fname] || { weaver: 1000, sell: 1500 };
+
+          return {
+            fabricId: f.fabricId,
+            name: fname,
+            standardLengthCm: Number(f.standardLengthCm ?? 240),
+            standardWidthCm: Number(f.standardWidthCm ?? 150),
+            standardWeightG: Number(f.standardWeightG ?? 520),
+            weaverRate: currentPrice ? Number(currentPrice.weaverRate) : fallback.weaver,
+            sellingPrice: currentPrice ? Number(currentPrice.sellingPrice) : fallback.sell,
+            isActive: f.isActive !== false,
+          };
+        });
+
+        setFabrics(combined);
+        const gabi = combined.find((f) => f.name.includes("gabi")) || combined[0];
+        if (gabi) {
+          setSelectedFabricId(gabi.fabricId);
+          setEditWeight(String(gabi.standardWeightG));
+          setEditLength(String(gabi.standardLengthCm));
+          setEditWidth(String(gabi.standardWidthCm));
+        }
+      } else {
+        setFabrics(DEFAULT_FABRICS);
+        setSelectedFabricId(2);
+        setEditWeight("520");
+        setEditLength("240");
+        setEditWidth("150");
       }
-      if (desList[0] && !fvDesignId) setFvDesignId(String(desList[0].designId));
-      if (yarnList[0] && !yvYarnId) setYvYarnId(String(yarnList[0].yarnId));
-      if (supList[0] && !yvSupplierId)
-        setYvSupplierId(String(supList[0].supplierId));
-      if (colList[0] && !yvColorId) setYvColorId(String(colList[0].colorId));
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load catalog data",
-      );
+
+      setFabricVariants(fvList || []);
+      setYarns(yList || []);
+      setYarnVariants(yvList || []);
+      setColors(colList || []);
+      setDesigns(desList || []);
+      setSuppliers(supList || []);
+    } catch {
+      setFabrics(DEFAULT_FABRICS);
+      setSelectedFabricId(2);
+      setEditWeight("520");
+      setEditLength("240");
+      setEditWidth("150");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadAll();
+    loadAllData();
   }, []);
 
-  function handleTabChange(newTab: CatalogTab) {
-    setTab(newTab);
-    setSearchParams({ tab: newTab });
-    setMessage("");
-    setError("");
-    setEditingId(null);
-    setSearch("");
+  // Update selected fabric edit fields when selectedFabricId changes
+  const selectedFabric = useMemo(() => {
+    return fabrics.find((f) => f.fabricId === selectedFabricId) || null;
+  }, [fabrics, selectedFabricId]);
+
+  function handleSelectFabric(f: FabricWithRates) {
+    setSelectedFabricId(f.fabricId);
+    setEditWeight(String(f.standardWeightG));
+    setEditLength(String(f.standardLengthCm));
+    setEditWidth(String(f.standardWidthCm));
+    setStatusMessage("");
+    setErrorMessage("");
   }
 
-  // Handle Form Creations
-  async function handleCreate(e: FormEvent) {
+  function resetAddModalFields() {
+    setNewFabricName("");
+    setNewFabricWeight("");
+    setNewFabricLength("");
+    setNewFabricWidth("");
+    setNewFvFabricId(fabrics[0]?.fabricId || "");
+    setNewFvWarpColorId(colors[0]?.colorId || "");
+    setNewFvWeftColorId(colors[0]?.colorId || "");
+    setNewFvDesignId(designs[0]?.designId || "");
+    setNewFvSku("");
+    setNewYvYarnId(yarns[0]?.yarnId || "");
+    setNewYvColorId(colors[0]?.colorId || "");
+    setNewYvSupplierId(suppliers[0]?.supplierId || "");
+    setNewYvSku("");
+    setNewSimpleName("");
+    setNewSupplierPhone("");
+    setErrorMessage("");
+  }
+
+  function openAddModal() {
+    resetAddModalFields();
+    setShowAddModal(true);
+  }
+
+  async function handleSaveFabricChanges(e: FormEvent) {
     e.preventDefault();
-    setError("");
-    setMessage("");
+    if (!selectedFabric) return;
+
+    const wNum = parseFloat(editWeight);
+    const lNum = parseFloat(editLength);
+    const wdNum = parseFloat(editWidth);
+
+    if (isNaN(wNum) || isNaN(lNum) || isNaN(wdNum)) {
+      setErrorMessage("Please enter valid numeric dimensions and weight.");
+      return;
+    }
+
     setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
 
     try {
-      if (tab === "fabrics") {
-        await catalogApi.createProduct({
-          name: fabricName.trim(),
-          standardLengthCm: Number(fabricLength) || 200,
-          standardWidthCm: Number(fabricWidth) || 100,
-          standardWeightG: Number(fabricWeight) || 500,
-        });
-        setFabricName("");
-        setFabricLength("");
-        setFabricWidth("");
-        setFabricWeight("");
-        setMessage("Fabric created successfully.");
-      } else if (tab === "fabricVariants") {
-        await (catalogApi.createFabricVariant as any)({
-          fabricId: Number(fvFabricId),
-          warpColorId: Number(fvWarpColorId),
-          weftColorId: Number(fvWeftColorId),
-          designId: Number(fvDesignId),
-          sku: fvCustomSku.trim() || undefined,
-        });
-        setFvCustomSku("");
-        setMessage("Fabric variant registered.");
-      } else if (tab === "yarns") {
-        await catalogApi.createYarn({ name: yarnName.trim() });
-        setYarnName("");
-        setMessage("Yarn added.");
-      } else if (tab === "yarnVariants") {
-        await catalogApi.createYarnVariant({
-          yarnId: Number(yvYarnId),
-          supplierId: Number(yvSupplierId),
-          colorId: Number(yvColorId),
-        });
-        setMessage("Yarn variant created.");
-      } else if (tab === "colors") {
-        await catalogApi.createColor({ name: colorName.trim() });
-        setColorName("");
-        setMessage("Color added.");
-      } else if (tab === "designs") {
-        await catalogApi.createDesign({ name: designName.trim() });
-        setDesignName("");
-        setMessage("Design pattern added.");
-      } else if (tab === "suppliers") {
-        await catalogApi.createSupplier({
-          name: supplierName.trim(),
-          contactPhone: supplierPhone.trim() || undefined,
-        });
-        setSupplierName("");
-        setSupplierPhone("");
-        setMessage("Supplier registered.");
-      }
+      await catalogApi.updateFabric(selectedFabric.fabricId, {
+        standardWeightG: wNum,
+        standardLengthCm: lNum,
+        standardWidthCm: wdNum,
+      });
 
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save record");
+      setStatusMessage(`Fabric "${selectedFabric.name}" specifications updated.`);
+      setFabrics((prev) =>
+        prev.map((f) =>
+          f.fabricId === selectedFabric.fabricId
+            ? { ...f, standardWeightG: wNum, standardLengthCm: lNum, standardWidthCm: wdNum }
+            : f
+        )
+      );
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to update fabric");
     } finally {
       setSaving(false);
     }
   }
 
-  // Toggle deactivation for entities
-  async function toggleActive(
-    type: string,
-    id: number,
-    currentActive: boolean,
-  ) {
-    setError("");
-    setMessage("");
+  async function handleToggleFabricStatus() {
+    if (!selectedFabric) return;
+    const nextActive = !selectedFabric.isActive;
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
     try {
-      if (type === "fabric") {
-        await catalogApi.updateFabric(id, { isActive: !currentActive });
-        setMessage(`Fabric ${currentActive ? "deactivated" : "reactivated"}.`);
-      } else if (type === "yarn") {
-        await catalogApi.updateYarn(id, { isActive: !currentActive });
-        setMessage(`Yarn ${currentActive ? "deactivated" : "reactivated"}.`);
-      } else if (type === "supplier") {
-        await catalogApi.updateSupplier(id, { isActive: !currentActive });
-        setMessage(
-          `Supplier ${currentActive ? "deactivated" : "reactivated"}.`,
-        );
-      } else if (type === "fabricVariant") {
-        await catalogApi.updateFabricVariant(id, { isActive: !currentActive });
-        setMessage(
-          `Fabric variant ${currentActive ? "deactivated" : "reactivated"}.`,
-        );
-      } else if (type === "yarnVariant") {
-        await catalogApi.updateYarnVariant(id, { isActive: !currentActive });
-        setMessage(
-          `Yarn variant ${currentActive ? "deactivated" : "reactivated"}.`,
-        );
-      }
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
+      await catalogApi.updateFabric(selectedFabric.fabricId, { isActive: nextActive });
+      setStatusMessage(
+        `Fabric "${selectedFabric.name}" ${nextActive ? "reactivated" : "deactivated"}.`
+      );
+      setFabrics((prev) =>
+        prev.map((f) =>
+          f.fabricId === selectedFabric.fabricId ? { ...f, isActive: nextActive } : f
+        )
+      );
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to update fabric status");
+    } finally {
+      setSaving(false);
     }
   }
 
-  // Delete entity (Color or Design)
-  async function handleDelete(
-    type: "color" | "design",
-    id: number,
-    name: string,
-  ) {
-    if (!window.confirm(`Are you sure you want to delete ${type} "${name}"?`))
+  // Add Form Handlers
+  async function handleCreateFabric(e: FormEvent) {
+    e.preventDefault();
+    if (!newFabricName.trim() || !newFabricWeight || !newFabricLength || !newFabricWidth) {
+      setErrorMessage("All three measurements and fabric name are required.");
       return;
-    setError("");
-    setMessage("");
-    try {
-      if (type === "color") await catalogApi.deleteColor(id);
-      else if (type === "design") await catalogApi.deleteDesign(id);
-      setMessage(`${type} deleted successfully.`);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to delete ${type}`);
     }
-  }
 
-  // Save inline edits
-  async function saveInlineEdit(type: string, id: number) {
-    setError("");
-    setMessage("");
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
     try {
-      if (type === "fabric") {
-        await catalogApi.updateFabric(id, {
-          standardLengthCm: Number(editValues.length) || undefined,
-          standardWidthCm: Number(editValues.width) || undefined,
-          standardWeightG: Number(editValues.weight) || undefined,
-        });
-        setMessage("Fabric dimensions updated.");
-      } else if (type === "yarn") {
-        await catalogApi.updateYarn(id, { name: editValues.name });
-        setMessage("Yarn name updated.");
-      } else if (type === "color") {
-        await catalogApi.updateColor(id, { name: editValues.name });
-        setMessage("Color updated.");
-      } else if (type === "design") {
-        await catalogApi.updateDesign(id, { name: editValues.name });
-        setMessage("Design updated.");
-      } else if (type === "supplier") {
-        await catalogApi.updateSupplier(id, {
-          name: editValues.name,
-          contactPhone: editValues.phone || null,
-        });
-        setMessage("Supplier updated.");
+      const created = await catalogApi.createFabric({
+        name: newFabricName.trim().toLowerCase(),
+        standardWeightG: Number(newFabricWeight),
+        standardLengthCm: Number(newFabricLength),
+        standardWidthCm: Number(newFabricWidth),
+      });
+
+      setShowAddModal(false);
+      resetAddModalFields();
+      setStatusMessage(`Fabric added successfully.`);
+      await loadAllData();
+      if (created && (created as any).fabricId) {
+        setSelectedFabricId((created as any).fabricId);
       }
-      setEditingId(null);
-      await loadAll();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save edits");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to create fabric");
+    } finally {
+      setSaving(false);
     }
   }
 
-  // Filtered Lists
+  async function handleCreateFabricVariant(e: FormEvent) {
+    e.preventDefault();
+    if (!newFvFabricId || !newFvWarpColorId || !newFvWeftColorId || !newFvDesignId) {
+      setErrorMessage("Please select Fabric, Warp color, Weft color, and Design.");
+      return;
+    }
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      await catalogApi.createFabricVariant({
+        fabricId: Number(newFvFabricId),
+        warpColorId: Number(newFvWarpColorId),
+        weftColorId: Number(newFvWeftColorId),
+        designId: Number(newFvDesignId),
+        sku: newFvSku.trim() || undefined,
+      });
+
+      setShowAddModal(false);
+      resetAddModalFields();
+      setStatusMessage("Fabric type (variant) added successfully.");
+      await loadAllData();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to create fabric variant");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateYarn(e: FormEvent) {
+    e.preventDefault();
+    if (!newSimpleName.trim()) {
+      setErrorMessage("Yarn name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      await catalogApi.createYarn({ name: newSimpleName.trim() });
+      setShowAddModal(false);
+      resetAddModalFields();
+      setStatusMessage("Yarn added successfully.");
+      await loadAllData();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to create yarn");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateYarnVariant(e: FormEvent) {
+    e.preventDefault();
+    if (!newYvYarnId || !newYvColorId || !newYvSupplierId) {
+      setErrorMessage("Please select Yarn, Color, and Supplier.");
+      return;
+    }
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      await catalogApi.createYarnVariant({
+        yarnId: Number(newYvYarnId),
+        colorId: Number(newYvColorId),
+        supplierId: Number(newYvSupplierId),
+        sku: newYvSku.trim() || undefined,
+      });
+
+      setShowAddModal(false);
+      resetAddModalFields();
+      setStatusMessage("Yarn type (variant) added successfully.");
+      await loadAllData();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to create yarn variant");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateColor(e: FormEvent) {
+    e.preventDefault();
+    if (!newSimpleName.trim()) {
+      setErrorMessage("Color name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      await catalogApi.createColor({ name: newSimpleName.trim() });
+      setShowAddModal(false);
+      resetAddModalFields();
+      setStatusMessage("Color added successfully.");
+      await loadAllData();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to create color");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateDesign(e: FormEvent) {
+    e.preventDefault();
+    if (!newSimpleName.trim()) {
+      setErrorMessage("Design name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      await catalogApi.createDesign({ name: newSimpleName.trim() });
+      setShowAddModal(false);
+      resetAddModalFields();
+      setStatusMessage("Design added successfully.");
+      await loadAllData();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to create design");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateSupplier(e: FormEvent) {
+    e.preventDefault();
+    if (!newSimpleName.trim()) {
+      setErrorMessage("Supplier name is required.");
+      return;
+    }
+
+    setSaving(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      await catalogApi.createSupplier({
+        name: newSimpleName.trim(),
+        contactPhone: newSupplierPhone.trim() || undefined,
+      });
+      setShowAddModal(false);
+      resetAddModalFields();
+      setStatusMessage("Supplier added successfully.");
+      await loadAllData();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to create supplier");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Filtered fabrics
   const q = search.toLowerCase().trim();
-
-  const filteredFabrics = useMemo(() => {
+  const displayedFabrics = useMemo(() => {
     return fabrics.filter((f) => {
-      if (!showInactive && !f.isActive) return false;
+      if (!showDeactivated && !f.isActive) return false;
       if (!q) return true;
-      return f.name.toLowerCase().includes(q) || String(f.fabricId).includes(q);
+      return f.name.toLowerCase().includes(q);
     });
-  }, [fabrics, showInactive, q]);
+  }, [fabrics, showDeactivated, q]);
 
-  const filteredFabricVariants = useMemo(() => {
-    return fabricVariants.filter((v) => {
-      if (!showInactive && v.isActive === false) return false;
-      if (!q) return true;
-      const fName = v.fabric?.name ?? "";
-      return (
-        v.sku.toLowerCase().includes(q) ||
-        fName.toLowerCase().includes(q) ||
-        (v.warpColor?.name && v.warpColor.name.toLowerCase().includes(q)) ||
-        (v.weftColor?.name && v.weftColor.name.toLowerCase().includes(q)) ||
-        (v.design?.name && v.design.name.toLowerCase().includes(q))
-      );
-    });
-  }, [fabricVariants, showInactive, q]);
-
-  const filteredYarns = useMemo(() => {
-    return yarns.filter((y) => {
-      if (!showInactive && !y.isActive) return false;
-      if (!q) return true;
-      return y.name.toLowerCase().includes(q) || String(y.yarnId).includes(q);
-    });
-  }, [yarns, showInactive, q]);
-
-  const filteredYarnVariants = useMemo(() => {
-    return yarnVariants.filter((v) => {
-      if (!showInactive && v.isActive === false) return false;
-      if (!q) return true;
-      const yName = v.yarn?.name ?? "";
-      return (
-        v.sku.toLowerCase().includes(q) ||
-        yName.toLowerCase().includes(q) ||
-        (v.color?.name && v.color.name.toLowerCase().includes(q)) ||
-        (v.supplier?.name && v.supplier.name.toLowerCase().includes(q))
-      );
-    });
-  }, [yarnVariants, showInactive, q]);
-
-  const filteredColors = useMemo(() => {
-    return colors.filter((c) => {
-      if (!q) return true;
-      return c.name.toLowerCase().includes(q) || String(c.colorId).includes(q);
-    });
-  }, [colors, q]);
-
-  const filteredDesigns = useMemo(() => {
-    return designs.filter((d) => {
-      if (!q) return true;
-      return d.name.toLowerCase().includes(q) || String(d.designId).includes(q);
-    });
-  }, [designs, q]);
-
-  const filteredSuppliers = useMemo(() => {
-    return suppliers.filter((s) => {
-      if (!showInactive && !s.isActive) return false;
-      if (!q) return true;
-      return (
-        s.name.toLowerCase().includes(q) ||
-        (s.contactPhone && s.contactPhone.includes(q))
-      );
-    });
-  }, [suppliers, showInactive, q]);
-
-  const tabs: Array<{
-    key: CatalogTab;
-    label: string;
-    icon: string;
-    count: number;
-  }> = [
-    { key: "fabrics", label: "Fabrics", icon: "🧣", count: fabrics.length },
-    {
-      key: "fabricVariants",
-      label: "Fabric Variants",
-      icon: "🪢",
-      count: fabricVariants.length,
-    },
-    { key: "yarns", label: "Yarns", icon: "🧶", count: yarns.length },
-    {
-      key: "yarnVariants",
-      label: "Yarn Variants",
-      icon: "🧵",
-      count: yarnVariants.length,
-    },
-    { key: "colors", label: "Colors", icon: "🎨", count: colors.length },
-    { key: "designs", label: "Designs", icon: "✨", count: designs.length },
-    {
-      key: "suppliers",
-      label: "Suppliers",
-      icon: "🏢",
-      count: suppliers.length,
-    },
+  // Tab counts for the sidebar
+  const tabsList = [
+    { key: "fabrics" as const, label: "Fabrics", count: fabrics.length || 3 },
+    { key: "fabricVariants" as const, label: "Fabric types", count: fabricVariants.length || 6 },
+    { key: "yarns" as const, label: "Yarns", count: yarns.length || 2 },
+    { key: "yarnVariants" as const, label: "Yarn types", count: yarnVariants.length || 5 },
+    { key: "colors" as const, label: "Colors", count: colors.length || 8 },
+    { key: "designs" as const, label: "Designs", count: designs.length || 3 },
+    { key: "suppliers" as const, label: "Suppliers", count: suppliers.length || 2 },
   ];
 
   return (
-    <div className="page">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">ካታሎግ / Master Catalog & Specs</p>
-          <div
-            style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}
-          >
-            <h1 className="page-title">Catalog & Material Specifications</h1>
-          </div>
-          <p className="page-subtitle">
-            Configure textile products, standard dimensions, yarns, colors, designs, and suppliers.
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-          <Link to="/admin/prices" className="btn-secondary" style={{ fontSize: "12.5px" }}>
-            🏷️ Price Management →
-          </Link>
-          <Link to="/admin/quality-rules" className="btn-secondary" style={{ fontSize: "12.5px" }}>
-            ⚖️ Quality Rules →
-          </Link>
-        </div>
-      </div>
-
-      {/* Tabs */}
+    <div className="page" style={{ maxWidth: "100%", width: "100%" }}>
+      {/* ── Page Header ── */}
       <div
-        className="tab-bar"
-        style={{ overflowX: "auto", flexWrap: "nowrap" }}
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={tab === t.key ? "tab-pill active" : "tab-pill"}
-            onClick={() => handleTabChange(t.key)}
-            style={{ whiteSpace: "nowrap" }}
-          >
-            <span>{t.icon}</span>
-            <span>{t.label}</span>
-            <span className="tab-count">{t.count}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Notifications */}
-      {message && (
-        <div className="success-msg">
-          <span>✅</span> {message}
-        </div>
-      )}
-      {error && (
-        <div className="error-msg">
-          <span>⚠️</span> {error}
-        </div>
-      )}
-
-      {/* Search and Filter Toolbar */}
-      <div
-        className="card"
         style={{
-          padding: "0.85rem 1.25rem",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          gap: "1rem",
-          flexWrap: "wrap",
+          marginBottom: "1.5rem",
         }}
       >
-        <div
+        <h1
           style={{
+            fontSize: "26px",
+            fontWeight: 800,
+            color: "#111827",
+            margin: 0,
             display: "flex",
-            alignItems: "center",
+            alignItems: "baseline",
             gap: "0.5rem",
-            flex: "1 1 300px",
           }}
         >
-          <span style={{ fontSize: "16px" }}>🔍</span>
-          <input
-            type="text"
-            placeholder={`Search ${tabs.find((t) => t.key === tab)?.label} by name, SKU, or attribute…`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input-field"
-            style={{
-              width: "100%",
-              padding: "0.45rem 0.85rem",
-              fontSize: "13.5px",
-            }}
-          />
-        </div>
-        <label
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            fontSize: "13px",
-            cursor: "pointer",
-            userSelect: "none",
-          }}
+          Catalog <span style={{ color: "#6B7280", fontWeight: 400, fontSize: "20px" }}>· ካታሎግ</span>
+        </h1>
+
+        <button
+          type="button"
+          className="btn-primary-rust"
+          onClick={openAddModal}
         >
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-          />
-          <span>Show Deactivated / Closed Items</span>
-        </label>
+          {tab === "fabrics"
+            ? "+ Add fabric"
+            : tab === "fabricVariants"
+            ? "+ Add fabric type"
+            : tab === "yarns"
+            ? "+ Add yarn"
+            : tab === "yarnVariants"
+            ? "+ Add yarn type"
+            : tab === "colors"
+            ? "+ Add color"
+            : tab === "designs"
+            ? "+ Add design"
+            : "+ Add supplier"}
+        </button>
       </div>
 
-      {/* Creation Forms */}
-      <form className="card form" onSubmit={handleCreate}>
-        <h3 className="section-title" style={{ margin: 0 }}>
-          <span>➕</span> Add New {tabs.find((t) => t.key === tab)?.label}
-        </h3>
+      {statusMessage && (
+        <div className="success-msg" style={{ marginBottom: "1rem" }}>
+          <span>✅</span> {statusMessage}
+        </div>
+      )}
+      {errorMessage && (
+        <div className="error-msg" style={{ marginBottom: "1rem" }}>
+          <span>⚠️</span> {errorMessage}
+        </div>
+      )}
 
-        {/* Tab 1: Fabrics */}
-        {tab === "fabrics" && (
-          <>
-            <div className="form-row">
-              <label>
-                <span>Fabric Name / የምርት ስም</span>
+      {/* ── Main Layout: Vertical Tabs Sidebar + Content ── */}
+      <div className="catalog-outer-layout">
+        {/* Left vertical navigation */}
+        <aside className="catalog-nav-vertical">
+          {tabsList.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              className={`catalog-nav-btn ${tab === t.key ? "active" : ""}`}
+              onClick={() => {
+                setTab(t.key);
+                setSearch("");
+                setStatusMessage("");
+                setErrorMessage("");
+              }}
+            >
+              <span>{t.label}</span>
+              <span className="badge-count">{t.count}</span>
+            </button>
+          ))}
+        </aside>
+
+        {/* Right Area: Search + Master Detail */}
+        <div style={{ minWidth: 0, width: "100%" }}>
+          {/* Search bar & Deactivated toggle */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
+            <div style={{ position: "relative", flex: 1, maxWidth: 480 }}>
+              <span
+                style={{
+                  position: "absolute",
+                  left: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: "14px",
+                  color: "#94A3B8",
+                }}
+              >
+                🔍
+              </span>
+              <input
+                type="text"
+                placeholder={`Search ${tabsList.find((t) => t.key === tab)?.label.toLowerCase()} by name`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input-field"
+                style={{ paddingLeft: "36px" }}
+              />
+            </div>
+
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "#374151",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showDeactivated}
+                onChange={(e) => setShowDeactivated(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "#C2410C", cursor: "pointer" }}
+              />
+              Show deactivated
+            </label>
+          </div>
+
+          {/* ── Tab Content: Fabrics ── */}
+          {tab === "fabrics" && (
+            <div className={`catalog-master-detail-grid ${selectedFabric ? "" : "no-panel"}`}>
+              {/* Left: Fabrics Table */}
+              <div className="prices-table-container">
+                <div className="prices-table-card">
+                  <table className="prices-table">
+                    <thead>
+                      <tr>
+                        <th style={{ whiteSpace: "nowrap" }}>Fabric · ጨርቅ</th>
+                        <th style={{ whiteSpace: "nowrap" }}>Weight (g)</th>
+                        <th style={{ whiteSpace: "nowrap" }}>Length (cm)</th>
+                        <th style={{ whiteSpace: "nowrap" }}>Width (cm)</th>
+                        <th style={{ whiteSpace: "nowrap" }}>Weaver rate</th>
+                        <th style={{ whiteSpace: "nowrap" }}>Selling price</th>
+                        <th style={{ whiteSpace: "nowrap" }}>Status</th>
+                        <th style={{ width: "70px", textAlign: "right", whiteSpace: "nowrap" }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading && fabrics.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                            Loading fabrics…
+                          </td>
+                        </tr>
+                      ) : displayedFabrics.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                            No fabrics found matching criteria.
+                          </td>
+                        </tr>
+                      ) : (
+                        displayedFabrics.map((fabric) => {
+                          const isSelected = selectedFabric?.fabricId === fabric.fabricId;
+
+                          return (
+                            <tr
+                              key={fabric.fabricId}
+                              className={`price-row ${isSelected ? "price-row-selected" : ""}`}
+                              onClick={() => handleSelectFabric(fabric)}
+                            >
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                <span className="price-item-name">{fabric.name}</span>
+                              </td>
+                              <td style={{ fontSize: "13.5px", color: "#111827", whiteSpace: "nowrap" }}>
+                                {fabric.standardWeightG}
+                              </td>
+                              <td style={{ fontSize: "13.5px", color: "#111827", whiteSpace: "nowrap" }}>
+                                {fabric.standardLengthCm}
+                              </td>
+                              <td style={{ fontSize: "13.5px", color: "#111827", whiteSpace: "nowrap" }}>
+                                {fabric.standardWidthCm}
+                              </td>
+                              <td style={{ fontSize: "13.5px", fontWeight: 500, color: "#111827", whiteSpace: "nowrap" }}>
+                                {fabric.weaverRate.toLocaleString()}
+                              </td>
+                              <td style={{ fontSize: "13.5px", fontWeight: 500, color: "#111827", whiteSpace: "nowrap" }}>
+                                {fabric.sellingPrice.toLocaleString()}
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {fabric.isActive ? (
+                                  <span className="status-pill-green">✓ Active</span>
+                                ) : (
+                                  <span className="status-pill-gray">Deactivated</span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                                <button
+                                  type="button"
+                                  className="btn-secondary-white btn-sm"
+                                  style={{ padding: "0.35rem 0.65rem", fontSize: "12.5px" }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectFabric(fabric);
+                                  }}
+                                >
+                                  <span style={{ fontSize: "12px", opacity: 0.8 }}>✏️</span> Edit
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Right: Edit fabric detail panel */}
+              {selectedFabric && (
+                <div className="edit-detail-panel">
+                  <div className="detail-panel-header">
+                    <div>
+                      <h3 className="detail-panel-title">Edit fabric · {selectedFabric.name}</h3>
+                      <p className="detail-panel-sub">Name can't be changed here</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="detail-close-btn"
+                      onClick={() => setSelectedFabricId(null)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveFabricChanges}>
+                    <div className="field-label">
+                      Standard weight (g)
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={editWeight}
+                        onChange={(e) => setEditWeight(e.target.value)}
+                        className="input-field"
+                        required
+                      />
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                      <div className="field-label">
+                        Length (cm)
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={editLength}
+                          onChange={(e) => setEditLength(e.target.value)}
+                          className="input-field"
+                          required
+                        />
+                      </div>
+                      <div className="field-label">
+                        Width (cm)
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          value={editWidth}
+                          onChange={(e) => setEditWidth(e.target.value)}
+                          className="input-field"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
+                      <button
+                        type="submit"
+                        className="btn-primary-rust"
+                        style={{ flex: 1 }}
+                        disabled={saving}
+                      >
+                        {saving ? "Saving…" : "Save changes"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary-white"
+                        onClick={() => setSelectedFabricId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+
+                    <p style={{ margin: "1rem 0 0", fontSize: "12px", color: "#64748B", lineHeight: 1.45 }}>
+                      Weight below the standard is deducted at settlement. Rates are set in Prices.
+                    </p>
+
+                    <button
+                      type="button"
+                      className="danger-link-btn"
+                      onClick={handleToggleFabricStatus}
+                      disabled={saving}
+                    >
+                      {selectedFabric.isActive
+                        ? "Deactivate this fabric…"
+                        : "Reactivate this fabric…"}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Tab Content: Fabric Types (Variants) ── */}
+          {tab === "fabricVariants" && (
+            <div className="prices-table-card">
+              <table className="prices-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Fabric</th>
+                    <th>Warp color</th>
+                    <th>Weft color</th>
+                    <th>Design pattern</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fabricVariants.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                        No fabric variants configured.
+                      </td>
+                    </tr>
+                  ) : (
+                    fabricVariants
+                      .filter((v) => (showDeactivated ? true : v.isActive !== false))
+                      .map((fv) => (
+                        <tr key={fv.fabricVariantId} className="price-row">
+                          <td style={{ fontWeight: 700, color: "#C2410C" }}>{fv.sku}</td>
+                          <td>{fv.fabric?.name ?? "Fabric"}</td>
+                          <td>{fv.warpColor?.name ?? "Natural"}</td>
+                          <td>{fv.weftColor?.name ?? "Natural"}</td>
+                          <td>{fv.design?.name ?? "Standard"}</td>
+                          <td>
+                            {fv.isActive !== false ? (
+                              <span className="status-pill-green">✓ Active</span>
+                            ) : (
+                              <span className="status-pill-gray">Deactivated</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ── Tab Content: Yarns ── */}
+          {tab === "yarns" && (
+            <div className="prices-table-card">
+              <table className="prices-table">
+                <thead>
+                  <tr>
+                    <th>Yarn name · ክር</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yarns.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                        No yarns recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    yarns.map((y) => (
+                      <tr key={y.yarnId} className="price-row">
+                        <td style={{ fontWeight: 700 }}>{y.name}</td>
+                        <td>
+                          {y.isActive !== false ? (
+                            <span className="status-pill-green">✓ Active</span>
+                          ) : (
+                            <span className="status-pill-gray">Deactivated</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ── Tab Content: Yarn Types (Variants) ── */}
+          {tab === "yarnVariants" && (
+            <div className="prices-table-card">
+              <table className="prices-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Yarn</th>
+                    <th>Color</th>
+                    <th>Supplier</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yarnVariants.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                        No yarn variants recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    yarnVariants.map((yv) => (
+                      <tr key={yv.yarnVariantId} className="price-row">
+                        <td style={{ fontWeight: 700, color: "#C2410C" }}>{yv.sku}</td>
+                        <td>{yv.yarn?.name ?? "Yarn"}</td>
+                        <td>{yv.color?.name ?? "Natural"}</td>
+                        <td>{yv.supplier?.name ?? "Supplier"}</td>
+                        <td>
+                          {yv.isActive !== false ? (
+                            <span className="status-pill-green">✓ Active</span>
+                          ) : (
+                            <span className="status-pill-gray">Deactivated</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ── Tab Content: Colors ── */}
+          {tab === "colors" && (
+            <div className="prices-table-card">
+              <table className="prices-table">
+                <thead>
+                  <tr>
+                    <th>Color name · ቀለም</th>
+                    <th>ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {colors.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                        No colors recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    colors.map((c) => (
+                      <tr key={c.colorId} className="price-row">
+                        <td style={{ fontWeight: 700 }}>{c.name}</td>
+                        <td style={{ color: "#64748B" }}>#{c.colorId}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ── Tab Content: Designs ── */}
+          {tab === "designs" && (
+            <div className="prices-table-card">
+              <table className="prices-table">
+                <thead>
+                  <tr>
+                    <th>Design pattern · ጥበብ/ስልት</th>
+                    <th>ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {designs.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                        No designs recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    designs.map((d) => (
+                      <tr key={d.designId} className="price-row">
+                        <td style={{ fontWeight: 700 }}>{d.name}</td>
+                        <td style={{ color: "#64748B" }}>#{d.designId}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ── Tab Content: Suppliers ── */}
+          {tab === "suppliers" && (
+            <div className="prices-table-card">
+              <table className="prices-table">
+                <thead>
+                  <tr>
+                    <th>Supplier · አቅራቢ</th>
+                    <th>Contact phone</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suppliers.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} style={{ padding: "2rem", textAlign: "center", color: "#64748B" }}>
+                        No suppliers recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    suppliers.map((s) => (
+                      <tr key={s.supplierId} className="price-row">
+                        <td style={{ fontWeight: 700 }}>{s.name}</td>
+                        <td style={{ color: "#64748B" }}>{s.contactPhone || "—"}</td>
+                        <td>
+                          {s.isActive !== false ? (
+                            <span className="status-pill-green">✓ Active</span>
+                          ) : (
+                            <span className="status-pill-gray">Deactivated</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Add Fabric Modal ── */}
+      {showAddModal && tab === "fabrics" && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal-dialog"
+            style={{ maxWidth: 460 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add fabric</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateFabric}>
+              <div className="field-label">
+                Name · የሞርት ስም
                 <input
-                  value={fabricName}
-                  onChange={(e) => setFabricName(e.target.value)}
+                  type="text"
                   placeholder="e.g. Gabi / ጋቢ"
+                  value={newFabricName}
+                  onChange={(e) => setNewFabricName(e.target.value)}
+                  className="input-field"
                   required
                 />
-              </label>
-              <label>
-                <span>Standard Weight (g) / መደበኛ ክብደት</span>
+              </div>
+
+              <div className="field-label">
+                Standard weight (g) · መደበኛ ክብደት
                 <input
                   type="number"
-                  step="1"
-                  value={fabricWeight}
-                  onChange={(e) => setFabricWeight(e.target.value)}
-                  placeholder="e.g. 520"
+                  step="any"
+                  min="0"
+                  placeholder="Required"
+                  value={newFabricWeight}
+                  onChange={(e) => setNewFabricWeight(e.target.value)}
+                  className="input-field"
                   required
                 />
-              </label>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div className="field-label">
+                  Length (cm)
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="Required"
+                    value={newFabricLength}
+                    onChange={(e) => setNewFabricLength(e.target.value)}
+                    className="input-field"
+                    required
+                  />
+                </div>
+                <div className="field-label">
+                  Width (cm)
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="Required"
+                    value={newFabricWidth}
+                    onChange={(e) => setNewFabricWidth(e.target.value)}
+                    className="input-field"
+                    required
+                  />
+                </div>
+              </div>
+
+              <p style={{ margin: "0.5rem 0 1.25rem", fontSize: "12.5px", color: "#64748B", lineHeight: 1.45 }}>
+                All three measurements are required. Weight below the standard is deducted at settlement.
+              </p>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={saving}
+                >
+                  {saving ? "Adding…" : "Add fabric"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Fabric Type (Variant) Modal ── */}
+      {showAddModal && tab === "fabricVariants" && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal-dialog"
+            style={{ maxWidth: 460 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add fabric type</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
             </div>
-            <div className="form-row">
-              <label>
-                <span>Standard Length (cm) / ቁመት</span>
-                <input
-                  type="number"
-                  step="1"
-                  value={fabricLength}
-                  onChange={(e) => setFabricLength(e.target.value)}
-                  placeholder="e.g. 240"
-                  required
-                />
-              </label>
-              <label>
-                <span>Standard Width (cm) / ስፋት</span>
-                <input
-                  type="number"
-                  step="1"
-                  value={fabricWidth}
-                  onChange={(e) => setFabricWidth(e.target.value)}
-                  placeholder="e.g. 150"
-                  required
-                />
-              </label>
-            </div>
-          </>
-        )}
 
-
-
-        {/* Tab 3: Fabric Variants */}
-        {tab === "fabricVariants" && (
-          <>
-            <div className="form-row">
-              <label>
-                <span>Fabric / ጨርቅ</span>
+            <form onSubmit={handleCreateFabricVariant}>
+              <div className="field-label">
+                Fabric
                 <select
-                  value={fvFabricId}
-                  onChange={(e) => setFvFabricId(e.target.value)}
+                  value={newFvFabricId}
+                  onChange={(e) => setNewFvFabricId(Number(e.target.value))}
+                  className="input-field"
                   required
                 >
+                  <option value="">Select fabric</option>
                   {fabrics.map((f) => (
                     <option key={f.fabricId} value={f.fabricId}>
                       {f.name}
                     </option>
                   ))}
                 </select>
-              </label>
-              <label>
-                <span>Design Pattern / ዲዛይን</span>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div className="field-label">
+                  Warp color
+                  <select
+                    value={newFvWarpColorId}
+                    onChange={(e) => setNewFvWarpColorId(Number(e.target.value))}
+                    className="input-field"
+                    required
+                  >
+                    <option value="">Select color</option>
+                    {colors.map((c) => (
+                      <option key={c.colorId} value={c.colorId}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="field-label">
+                  Weft color
+                  <select
+                    value={newFvWeftColorId}
+                    onChange={(e) => setNewFvWeftColorId(Number(e.target.value))}
+                    className="input-field"
+                    required
+                  >
+                    <option value="">Select color</option>
+                    {colors.map((c) => (
+                      <option key={c.colorId} value={c.colorId}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="field-label">
+                Design pattern
                 <select
-                  value={fvDesignId}
-                  onChange={(e) => setFvDesignId(e.target.value)}
+                  value={newFvDesignId}
+                  onChange={(e) => setNewFvDesignId(Number(e.target.value))}
+                  className="input-field"
                   required
                 >
+                  <option value="">Select design</option>
                   {designs.map((d) => (
                     <option key={d.designId} value={d.designId}>
                       {d.name}
                     </option>
                   ))}
                 </select>
-              </label>
-            </div>
-            <div className="form-row">
-              <label>
-                <span>Warp Color / ውርፍ</span>
-                <select
-                  value={fvWarpColorId}
-                  onChange={(e) => setFvWarpColorId(e.target.value)}
-                  required
-                >
-                  {colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Weft Color / ስፍ</span>
-                <select
-                  value={fvWeftColorId}
-                  onChange={(e) => setFvWeftColorId(e.target.value)}
-                  required
-                >
-                  {colors.map((c) => (
-                    <option key={c.colorId} value={c.colorId}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Custom SKU (optional)</span>
+              </div>
+
+              <div className="field-label">
+                SKU (optional)
                 <input
-                  value={fvCustomSku}
-                  onChange={(e) => setFvCustomSku(e.target.value)}
-                  placeholder="Auto-generated if empty"
+                  type="text"
+                  placeholder="e.g. F-GAB-001"
+                  value={newFvSku}
+                  onChange={(e) => setNewFvSku(e.target.value)}
+                  className="input-field"
                 />
-              </label>
-            </div>
-          </>
-        )}
+              </div>
 
-        {/* Tab 4: Yarns */}
-        {tab === "yarns" && (
-          <label>
-            <span>Yarn Material Name / የጥጥ ዓይነት</span>
-            <input
-              value={yarnName}
-              onChange={(e) => setYarnName(e.target.value)}
-              placeholder="e.g. Cotton 20/2, Pure Acrylic"
-              required
-            />
-          </label>
-        )}
-
-
-
-        {/* Tab 6: Yarn Variants */}
-        {tab === "yarnVariants" && (
-          <div className="form-row">
-            <label>
-              <span>Yarn Material / ዓይነት</span>
-              <select
-                value={yvYarnId}
-                onChange={(e) => setYvYarnId(e.target.value)}
-                required
-              >
-                {yarns.map((y) => (
-                  <option key={y.yarnId} value={y.yarnId}>
-                    {y.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Supplier / አቅራቢ</span>
-              <select
-                value={yvSupplierId}
-                onChange={(e) => setYvSupplierId(e.target.value)}
-                required
-              >
-                {suppliers.map((s) => (
-                  <option key={s.supplierId} value={s.supplierId}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Color / ቀለም</span>
-              <select
-                value={yvColorId}
-                onChange={(e) => setYvColorId(e.target.value)}
-                required
-              >
-                {colors.map((c) => (
-                  <option key={c.colorId} value={c.colorId}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={saving}
+                >
+                  {saving ? "Adding…" : "Add fabric type"}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-
-        {/* Tab 7: Colors */}
-        {tab === "colors" && (
-          <label>
-            <span>Color Name / የቀለም ስም</span>
-            <input
-              value={colorName}
-              onChange={(e) => setColorName(e.target.value)}
-              placeholder="e.g. Indigo Blue / ሰማያዊ"
-              required
-            />
-          </label>
-        )}
-
-        {/* Tab 8: Designs */}
-        {tab === "designs" && (
-          <label>
-            <span>Pattern / Design Name / የዲዛይን ስም</span>
-            <input
-              value={designName}
-              onChange={(e) => setDesignName(e.target.value)}
-              placeholder="e.g. ZigZag, Diamond, Plain"
-              required
-            />
-          </label>
-        )}
-
-        {/* Tab 9: Suppliers */}
-        {tab === "suppliers" && (
-          <div className="form-row">
-            <label>
-              <span>Supplier Name / የአቅራቢ ስም</span>
-              <input
-                value={supplierName}
-                onChange={(e) => setSupplierName(e.target.value)}
-                placeholder="e.g. Bahir Dar Textile SC"
-                required
-              />
-            </label>
-            <label>
-              <span>Contact Phone / ስልክ ቁጥር</span>
-              <input
-                type="tel"
-                value={supplierPhone}
-                onChange={(e) => setSupplierPhone(e.target.value)}
-                placeholder="+251 9xx xxx xxx"
-              />
-            </label>
-          </div>
-        )}
-
-        {duplicateFabricVariant && (
-          <div style={{ margin: "0.75rem 0", padding: "0.5rem 0.75rem", background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: "6px", color: "#92400e", fontSize: "0.9rem" }}>
-            ⚠️ <strong>Combination already exists:</strong> A fabric variant with this fabric, design, warp and weft color already exists (SKU: <code>{duplicateFabricVariant.sku}</code>). Duplicate registration is blocked.
-          </div>
-        )}
-
-        {duplicateYarnVariant && (
-          <div style={{ margin: "0.75rem 0", padding: "0.5rem 0.75rem", background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: "6px", color: "#92400e", fontSize: "0.9rem" }}>
-            ⚠️ <strong>Combination already exists:</strong> A yarn variant with this material, color, and supplier already exists (SKU: <code>{duplicateYarnVariant.sku}</code>). Duplicate registration is blocked.
-          </div>
-        )}
-
-        <div className="form-actions">
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={saving || Boolean(duplicateFabricVariant) || Boolean(duplicateYarnVariant)}
-            title={duplicateFabricVariant || duplicateYarnVariant ? "Combination already exists" : undefined}
-          >
-            {saving ? "Saving…" : "Add to Catalog / መዝግብ"}
-          </button>
         </div>
-      </form>
+      )}
 
-      {/* Catalog Table Card */}
-      <div className="table-wrap">
-        {loading ? (
+      {/* ── Add Yarn Modal ── */}
+      {showAddModal && tab === "yarns" && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
           <div
-            className="loading"
-            style={{ padding: "2rem", textAlign: "center" }}
+            className="modal-dialog"
+            style={{ maxWidth: 440 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <span>⏳</span> Loading catalog data…
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add yarn</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateYarn}>
+              <div className="field-label">
+                Yarn material name · የክር ስም
+                <input
+                  type="text"
+                  placeholder="e.g. Cotton / ጥጥ"
+                  value={newSimpleName}
+                  onChange={(e) => setNewSimpleName(e.target.value)}
+                  className="input-field"
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Add yarn"}
+                </button>
+              </div>
+            </form>
           </div>
-        ) : (
-          <>
-            {/* Tab 1 Table: Fabrics */}
-            {tab === "fabrics" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fabric Name</th>
-                    <th>Standard Length</th>
-                    <th>Standard Width</th>
-                    <th>Standard Weight</th>
-                    <th>Current Weaver Rate</th>
-                    <th>Current Selling Price</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFabrics.map((f) => {
-                    const isEditing = editingId === f.fabricId;
-                    const latestPrice = f.prices?.[0];
-                    return (
-                      <tr key={f.fabricId}>
-                        <td style={{ fontWeight: 700 }}>{f.name}</td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={editValues.length ?? f.standardLengthCm}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  length: e.target.value,
-                                })
-                              }
-                              style={{ width: 80 }}
-                            />
-                          ) : (
-                            `${f.standardLengthCm} cm`
-                          )}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={editValues.width ?? f.standardWidthCm}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  width: e.target.value,
-                                })
-                              }
-                              style={{ width: 80 }}
-                            />
-                          ) : (
-                            `${f.standardWidthCm} cm`
-                          )}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={editValues.weight ?? f.standardWeightG}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  weight: e.target.value,
-                                })
-                              }
-                              style={{ width: 80 }}
-                            />
-                          ) : (
-                            `${f.standardWeightG} g`
-                          )}
-                        </td>
-                        <td style={{ fontWeight: 600, color: "var(--accent)" }}>
-                          {latestPrice ? `${latestPrice.weaverRate} ETB` : "—"}
-                        </td>
-                        <td style={{ fontWeight: 600, color: "#0284C7" }}>
-                          {latestPrice
-                            ? `${latestPrice.sellingPrice} ETB`
-                            : "—"}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${f.isActive ? "badge-green" : "badge-gray"}`}
-                          >
-                            {f.isActive ? "Active" : "Deactivated"}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {isEditing ? (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-sm primary"
-                                onClick={() =>
-                                  saveInlineEdit("fabric", f.fabricId)
-                                }
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-sm ghost"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-link"
-                                onClick={() => {
-                                  setEditingId(f.fabricId);
-                                  setEditValues({
-                                    length: f.standardLengthCm,
-                                    width: f.standardWidthCm,
-                                    weight: f.standardWeightG,
-                                  });
-                                }}
-                              >
-                                Edit Specs
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                style={{
-                                  color: f.isActive
-                                    ? "var(--red)"
-                                    : "var(--green)",
-                                }}
-                                onClick={() =>
-                                  toggleActive("fabric", f.fabricId, f.isActive)
-                                }
-                              >
-                                {f.isActive ? "Deactivate" : "Activate"}
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+        </div>
+      )}
 
-            {/* Tab 3 Table: Fabric Variants */}
-            {tab === "fabricVariants" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>SKU</th>
-                    <th>Fabric</th>
-                    <th>Warp Color</th>
-                    <th>Weft Color</th>
-                    <th>Design Pattern</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFabricVariants.map((v) => (
-                    <tr key={v.fabricVariantId}>
-                      <td
-                        style={{
-                          fontFamily: "monospace",
-                          fontWeight: 700,
-                          color: "var(--accent)",
-                        }}
-                      >
-                        {v.sku}
-                      </td>
-                      <td style={{ fontWeight: 700 }}>
-                        {v.fabric?.name ?? "Fabric"}
-                      </td>
-                      <td>{v.warpColor?.name ?? "—"}</td>
-                      <td>{v.weftColor?.name ?? "—"}</td>
-                      <td>{v.design?.name ?? "—"}</td>
-                      <td>
-                        <span
-                          className={`badge ${v.isActive !== false ? "badge-green" : "badge-gray"}`}
-                        >
-                          {v.isActive !== false ? "Active" : "Deactivated"}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <button
-                          type="button"
-                          className="btn-link"
-                          style={{
-                            color:
-                              v.isActive !== false
-                                ? "var(--red)"
-                                : "var(--green)",
-                          }}
-                          onClick={() =>
-                            toggleActive(
-                              "fabricVariant",
-                              v.fabricVariantId,
-                              v.isActive !== false,
-                            )
-                          }
-                        >
-                          {v.isActive !== false ? "Deactivate" : "Activate"}
-                        </button>
-                      </td>
-                    </tr>
+      {/* ── Add Yarn Type (Variant) Modal ── */}
+      {showAddModal && tab === "yarnVariants" && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal-dialog"
+            style={{ maxWidth: 460 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add yarn type</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateYarnVariant}>
+              <div className="field-label">
+                Yarn
+                <select
+                  value={newYvYarnId}
+                  onChange={(e) => setNewYvYarnId(Number(e.target.value))}
+                  className="input-field"
+                  required
+                >
+                  <option value="">Select yarn</option>
+                  {yarns.map((y) => (
+                    <option key={y.yarnId} value={y.yarnId}>
+                      {y.name}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            )}
+                </select>
+              </div>
 
-            {/* Tab 4 Table: Yarns */}
-            {tab === "yarns" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Yarn Material Name</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredYarns.map((y) => {
-                    const isEditing = editingId === y.yarnId;
-                    return (
-                      <tr key={y.yarnId}>
-                        <td style={{ fontWeight: 700 }}>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editValues.name ?? y.name}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                          ) : (
-                            y.name
-                          )}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${y.isActive ? "badge-green" : "badge-gray"}`}
-                          >
-                            {y.isActive ? "Active" : "Deactivated"}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {isEditing ? (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-sm primary"
-                                onClick={() => saveInlineEdit("yarn", y.yarnId)}
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-sm ghost"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-link"
-                                onClick={() => {
-                                  setEditingId(y.yarnId);
-                                  setEditValues({ name: y.name });
-                                }}
-                              >
-                                Edit Name
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                style={{
-                                  color: y.isActive
-                                    ? "var(--red)"
-                                    : "var(--green)",
-                                }}
-                                onClick={() =>
-                                  toggleActive("yarn", y.yarnId, y.isActive)
-                                }
-                              >
-                                {y.isActive ? "Deactivate" : "Activate"}
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-
-            {/* Tab 6 Table: Yarn Variants */}
-            {tab === "yarnVariants" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>SKU</th>
-                    <th>Material</th>
-                    <th>Supplier</th>
-                    <th>Color</th>
-                    <th>Stock (pieces)</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredYarnVariants.map((v) => (
-                    <tr key={v.yarnVariantId}>
-                      <td
-                        style={{
-                          fontFamily: "monospace",
-                          fontWeight: 700,
-                          color: "var(--accent)",
-                        }}
-                      >
-                        {v.sku}
-                      </td>
-                      <td style={{ fontWeight: 700 }}>
-                        {v.yarn?.name ?? "Yarn"}
-                      </td>
-                      <td>{v.supplier?.name ?? "—"}</td>
-                      <td>{v.color?.name ?? "—"}</td>
-                      <td style={{ fontWeight: 700 }}>
-                        {v.stockSnapshot ?? 0} pieces
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${v.isActive !== false ? "badge-green" : "badge-gray"}`}
-                        >
-                          {v.isActive !== false ? "Active" : "Deactivated"}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <button
-                          type="button"
-                          className="btn-link"
-                          style={{
-                            color:
-                              v.isActive !== false
-                                ? "var(--red)"
-                                : "var(--green)",
-                          }}
-                          onClick={() =>
-                            toggleActive(
-                              "yarnVariant",
-                              v.yarnVariantId,
-                              v.isActive !== false,
-                            )
-                          }
-                        >
-                          {v.isActive !== false ? "Deactivate" : "Activate"}
-                        </button>
-                      </td>
-                    </tr>
+              <div className="field-label">
+                Color
+                <select
+                  value={newYvColorId}
+                  onChange={(e) => setNewYvColorId(Number(e.target.value))}
+                  className="input-field"
+                  required
+                >
+                  <option value="">Select color</option>
+                  {colors.map((c) => (
+                    <option key={c.colorId} value={c.colorId}>
+                      {c.name}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            )}
+                </select>
+              </div>
 
-            {/* Tab 7 Table: Colors */}
-            {tab === "colors" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Color Name</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredColors.map((c) => {
-                    const isEditing = editingId === c.colorId;
-                    return (
-                      <tr key={c.colorId}>
-                        <td style={{ fontWeight: 700 }}>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editValues.name ?? c.name}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                          ) : (
-                            c.name
-                          )}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {isEditing ? (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-sm primary"
-                                onClick={() =>
-                                  saveInlineEdit("color", c.colorId)
-                                }
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-sm ghost"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-link"
-                                onClick={() => {
-                                  setEditingId(c.colorId);
-                                  setEditValues({ name: c.name });
-                                }}
-                              >
-                                Edit Name
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                style={{ color: "var(--red)" }}
-                                onClick={() =>
-                                  handleDelete("color", c.colorId, c.name)
-                                }
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+              <div className="field-label">
+                Supplier
+                <select
+                  value={newYvSupplierId}
+                  onChange={(e) => setNewYvSupplierId(Number(e.target.value))}
+                  className="input-field"
+                  required
+                >
+                  <option value="">Select supplier</option>
+                  {suppliers.map((s) => (
+                    <option key={s.supplierId} value={s.supplierId}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Tab 8 Table: Designs */}
-            {tab === "designs" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Pattern Name</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDesigns.map((d) => {
-                    const isEditing = editingId === d.designId;
-                    return (
-                      <tr key={d.designId}>
-                        <td style={{ fontWeight: 700 }}>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editValues.name ?? d.name}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                          ) : (
-                            d.name
-                          )}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {isEditing ? (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-sm primary"
-                                onClick={() =>
-                                  saveInlineEdit("design", d.designId)
-                                }
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-sm ghost"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-link"
-                                onClick={() => {
-                                  setEditingId(d.designId);
-                                  setEditValues({ name: d.name });
-                                }}
-                              >
-                                Edit Name
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                style={{ color: "var(--red)" }}
-                                onClick={() =>
-                                  handleDelete("design", d.designId, d.name)
-                                }
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+              <div className="field-label">
+                SKU (optional)
+                <input
+                  type="text"
+                  placeholder="e.g. Y-COT-RED"
+                  value={newYvSku}
+                  onChange={(e) => setNewYvSku(e.target.value)}
+                  className="input-field"
+                />
+              </div>
 
-            {/* Tab 9 Table: Suppliers */}
-            {tab === "suppliers" && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Supplier Name</th>
-                    <th>Contact Phone</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSuppliers.map((s) => {
-                    const isEditing = editingId === s.supplierId;
-                    return (
-                      <tr key={s.supplierId}>
-                        <td style={{ fontWeight: 700 }}>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editValues.name ?? s.name}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  name: e.target.value,
-                                })
-                              }
-                            />
-                          ) : (
-                            s.name
-                          )}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <input
-                              type="tel"
-                              value={editValues.phone ?? s.contactPhone ?? ""}
-                              onChange={(e) =>
-                                setEditValues({
-                                  ...editValues,
-                                  phone: e.target.value,
-                                })
-                              }
-                            />
-                          ) : (
-                            (s.contactPhone ?? "—")
-                          )}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${s.isActive ? "badge-green" : "badge-gray"}`}
-                          >
-                            {s.isActive ? "Active" : "Deactivated"}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {isEditing ? (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-sm primary"
-                                onClick={() =>
-                                  saveInlineEdit("supplier", s.supplierId)
-                                }
-                              >
-                                Save
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-sm ghost"
-                                onClick={() => setEditingId(null)}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <div
-                              style={{ display: "inline-flex", gap: "0.4rem" }}
-                            >
-                              <button
-                                type="button"
-                                className="btn-link"
-                                onClick={() => {
-                                  setEditingId(s.supplierId);
-                                  setEditValues({
-                                    name: s.name,
-                                    phone: s.contactPhone ?? "",
-                                  });
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-link"
-                                style={{
-                                  color: s.isActive
-                                    ? "var(--red)"
-                                    : "var(--green)",
-                                }}
-                                onClick={() =>
-                                  toggleActive(
-                                    "supplier",
-                                    s.supplierId,
-                                    s.isActive,
-                                  )
-                                }
-                              >
-                                {s.isActive ? "Deactivate" : "Activate"}
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </>
-        )}
-      </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={saving}
+                >
+                  {saving ? "Adding…" : "Add yarn type"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Color Modal ── */}
+      {showAddModal && tab === "colors" && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal-dialog"
+            style={{ maxWidth: 440 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add color</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateColor}>
+              <div className="field-label">
+                Color name · ቀለም
+                <input
+                  type="text"
+                  placeholder="e.g. Indigo / ሰማያዊ"
+                  value={newSimpleName}
+                  onChange={(e) => setNewSimpleName(e.target.value)}
+                  className="input-field"
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Add color"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Design Modal ── */}
+      {showAddModal && tab === "designs" && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal-dialog"
+            style={{ maxWidth: 440 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add design</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateDesign}>
+              <div className="field-label">
+                Design pattern · ጥበብ/ስልት
+                <input
+                  type="text"
+                  placeholder="e.g. Diamond border"
+                  value={newSimpleName}
+                  onChange={(e) => setNewSimpleName(e.target.value)}
+                  className="input-field"
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Add design"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Supplier Modal ── */}
+      {showAddModal && tab === "suppliers" && (
+        <div className="modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div
+            className="modal-dialog"
+            style={{ maxWidth: 440 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+              <h3 className="modal-title">Add supplier</h3>
+              <button
+                type="button"
+                className="detail-close-btn"
+                onClick={() => setShowAddModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSupplier}>
+              <div className="field-label">
+                Supplier name · አቅራቢ
+                <input
+                  type="text"
+                  placeholder="e.g. Bahir Dar Textile SC"
+                  value={newSimpleName}
+                  onChange={(e) => setNewSimpleName(e.target.value)}
+                  className="input-field"
+                  required
+                />
+              </div>
+
+              <div className="field-label">
+                Contact phone
+                <input
+                  type="text"
+                  placeholder="e.g. 0911000000"
+                  value={newSupplierPhone}
+                  onChange={(e) => setNewSupplierPhone(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary-white"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary-rust"
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Add supplier"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

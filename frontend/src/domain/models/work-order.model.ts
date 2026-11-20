@@ -19,7 +19,6 @@ export interface YarnGiven {
   recordedByUserId?: number;
   yarnVariant?: YarnVariant | any;
   yarn?: Yarn;
-  settled?: boolean;
 }
 
 export interface DeductionEntry {
@@ -44,29 +43,6 @@ export interface FabricReturn {
   recordedByUserId?: number;
   remark?: string | null;
   fabricVariant?: FabricVariant;
-  settled?: boolean;
-}
-
-export interface YarnReturn {
-  yarnReturnId: number;
-  zigId: string;
-  yarnVariantId: number;
-  quantity: number | string;
-  dateReturned?: string;
-  recordedByUserId?: number;
-  remark?: string | null;
-  yarnVariant?: YarnVariant | any;
-}
-
-export interface FabricReturnToWeaver {
-  fabricReturnToWeaverId: number;
-  zigId: string;
-  fabricVariantId: number;
-  quantity: number;
-  dateReturned?: string;
-  recordedByUserId?: number;
-  remark?: string | null;
-  fabricVariant?: FabricVariant;
 }
 
 export interface WorkOrder {
@@ -85,8 +61,6 @@ export interface WorkOrder {
   fabric?: Fabric;
   yarnGiven?: YarnGiven[];
   fabricReturns?: FabricReturn[];
-  yarnReturns?: YarnReturn[];
-  fabricReturnsToWeaver?: FabricReturnToWeaver[];
   _count?: {
     yarnGiven?: number;
     fabricReturns?: number;
@@ -98,6 +72,4 @@ export interface WorkOrderDetail extends WorkOrder {
   fabricVariant: FabricVariant;
   fabricReturns: FabricReturn[];
   yarnGiven: YarnGiven[];
-  yarnReturns: YarnReturn[];
-  fabricReturnsToWeaver: FabricReturnToWeaver[];
 }

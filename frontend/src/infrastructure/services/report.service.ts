@@ -10,6 +10,10 @@ export const reportService = {
     return request<WeaverBalanceSummary[]>("/reports/weavers-balance");
   },
 
+  async getMerchantsBalance(): Promise<any[]> {
+    return request<any[]>("/reports/merchants-balance");
+  },
+
   async getCommercialSummary(params?: {
     startDate?: string;
     endDate?: string;

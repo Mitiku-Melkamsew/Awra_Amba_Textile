@@ -23,13 +23,7 @@ reportsRouter.get(
 reportsRouter.get(
   "/hisab/settlement/:id",
   requireCapability(Capability.REPORTS_READ_FINANCIAL),
-  ReportController.getPaymentHisab,
-);
-
-reportsRouter.get(
-  "/hisab/:id",
-  requireCapability(Capability.REPORTS_READ_FINANCIAL),
-  ReportController.getPaymentHisab,
+  ReportController.getSettlementHisab,
 );
 
 reportsRouter.get(
