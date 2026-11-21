@@ -62,10 +62,10 @@
 
   .attention-card-label {
     font-size: var(--text-xs, 12px);
-    color: var(--text-muted, #64748B);
-    font-weight: var(--font-bold, 700);
+    color: #334155;
+    font-weight: var(--font-extrabold, 800);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   .attention-card-stat {
@@ -111,10 +111,10 @@
 
   .zig-stat-label {
     font-size: var(--text-xs, 12px);
-    color: var(--text-muted, #64748B);
-    font-weight: var(--font-bold, 700);
+    color: #334155;
+    font-weight: var(--font-extrabold, 800);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   .zig-stat-num {

@@ -6,6 +6,8 @@ export interface FabricsTabProps {
   fabrics: FabricWithRates[];
   selectedFabric: FabricWithRates | null;
   onSelectFabric: (f: FabricWithRates) => void;
+  editName: string;
+  onEditNameChange: (val: string) => void;
   editWeight: string;
   onEditWeightChange: (val: string) => void;
   editLength: string;
@@ -21,6 +23,8 @@ export function FabricsTab({
   fabrics,
   selectedFabric,
   onSelectFabric,
+  editName,
+  onEditNameChange,
   editWeight,
   onEditWeightChange,
   editLength,
@@ -103,6 +107,15 @@ export function FabricsTab({
           </div>
 
           <form onSubmit={onSaveSpecs} className="stack">
+            <FormField label="Fabric name · ስም" required>
+              <input
+                type="text"
+                className="input"
+                value={editName}
+                onChange={(e) => onEditNameChange(e.target.value)}
+                required
+              />
+            </FormField>
             <FormField label="Standard weight (ግራም)" hint="Gram threshold for defect calculations">
               <input
                 type="number"
@@ -134,7 +147,7 @@ export function FabricsTab({
             </FormField>
 
             <Button type="submit" variant="primary" isLoading={saving} style={{ width: "100%" }}>
-              Save specifications
+              Save changes
             </Button>
           </form>
 

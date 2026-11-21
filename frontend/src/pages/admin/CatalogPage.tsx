@@ -37,6 +37,8 @@ export function CatalogPage() {
     suppliers,
     selectedFabric,
     handleSelectFabric,
+    editName,
+    setEditName,
     editWeight,
     setEditWeight,
     editLength,
@@ -146,6 +148,8 @@ export function CatalogPage() {
           fabrics={displayedFabrics}
           selectedFabric={selectedFabric}
           onSelectFabric={handleSelectFabric}
+          editName={editName}
+          onEditNameChange={setEditName}
           editWeight={editWeight}
           onEditWeightChange={setEditWeight}
           editLength={editLength}

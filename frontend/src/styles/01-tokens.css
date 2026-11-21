@@ -148,6 +148,16 @@
     --wsidebar-active-fg:     #6EE7B7;
     --wsidebar-active-border: #10B981;
 
+    /* Merchant Sidebar - Deep Ocean Navy */
+    --msidebar-bg:            #082F49;
+    --msidebar-fg:            #F0F9FF;
+    --msidebar-muted:         #7DD3FC;
+    --msidebar-border:        rgba(255, 255, 255, 0.08);
+    --msidebar-hover:         rgba(255, 255, 255, 0.06);
+    --msidebar-active-bg:     rgba(2, 132, 199, 0.2);
+    --msidebar-active-fg:     #38BDF8;
+    --msidebar-active-border: #0284C7;
+
     /* ── 8. Spacing Scale (4 / 8-pt Grid) ───────────────────── */
     --space-1:                0.25rem;  /* 4px  - tags, compact pills, hairline gaps */
     --space-2:                0.5rem;   /* 8px  - button padding-y, form item spacing */

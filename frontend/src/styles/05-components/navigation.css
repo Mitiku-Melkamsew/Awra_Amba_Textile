@@ -1,9 +1,63 @@
 /* ─────────────────────────────────────────────────────────────
-   AWRA AMBA TEXTILE - NAVIGATION & TABS
-   Sidebar links, icon styling, horizontal tabs, and tab pills.
+   AWRA AMBA TEXTILE - NAVIGATION, SIDEBARS & TABS
+   Sidebar brand, nav links, section labels, user footer, tabs & stepper.
    ───────────────────────────────────────────────────────────── */
 
 @layer components {
+  /* ─────────────────────────────────────────────────────────────
+     1. Sidebar Brand & Header
+     ───────────────────────────────────────────────────────────── */
+  .sidebar-brand {
+    padding: 1.35rem 1.25rem 1.15rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    border-bottom: 1px solid var(--sidebar-border, rgba(255, 255, 255, 0.08));
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  .sidebar-brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm, 6px);
+    background: var(--brand-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+    flex-shrink: 0;
+  }
+
+  .sidebar-brand-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .sidebar-brand-eyebrow {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sidebar-muted, #94A3B8);
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .sidebar-brand-name {
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #FFFFFF;
+    margin: 0;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     2. Sidebar Navigation Items & Section Labels
+     ───────────────────────────────────────────────────────────── */
   .sidebar-nav {
     flex: 1;
     padding: 1rem 0.75rem;
@@ -13,13 +67,14 @@
   }
 
   .sidebar-nav-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--sidebar-muted, #94A3B8);
-    padding: 0.75rem 0.75rem 0.35rem;
+    padding: 0.85rem 0.75rem 0.35rem;
     margin: 0;
+    display: block;
   }
 
   .nav-item {
@@ -34,7 +89,7 @@
     font-weight: 500;
     white-space: nowrap;
     transition: all 0.15s ease;
-    opacity: 0.8;
+    opacity: 0.85;
     position: relative;
     border-left: 3px solid transparent;
   }
@@ -47,7 +102,7 @@
   }
 
   .nav-item.active {
-    background: var(--sidebar-active-bg);
+    background: var(--sidebar-active-bg, rgba(234, 88, 12, 0.2));
     color: var(--sidebar-active-fg, #FDBA74);
     opacity: 1;
     font-weight: 700;
@@ -69,23 +124,364 @@
     transition: transform 0.15s ease;
   }
 
-  /* Weaver sidebar link overrides */
-  .sidebar.weaver-sidebar .nav-item {
-    color: var(--wsidebar-fg, #ECFDF5);
+  /* ─────────────────────────────────────────────────────────────
+     3. Sidebar Footer & User Profile
+     ───────────────────────────────────────────────────────────── */
+  .sidebar-footer {
+    padding: 1rem 0.85rem;
+    border-top: 1px solid var(--sidebar-border, rgba(255, 255, 255, 0.08));
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    background: rgba(0, 0, 0, 0.15);
   }
 
-  .sidebar.weaver-sidebar .nav-item:hover {
-    background: var(--wsidebar-hover, rgba(255, 255, 255, 0.06));
+  .sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius-sm, 6px);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.25rem;
+  }
+
+  .sidebar-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm, 6px);
+    background: var(--brand-gradient);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .sidebar-user-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .sidebar-user-name {
+    font-size: 13px;
+    color: #FFFFFF;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-user-role {
+    font-size: 11px;
+    color: var(--sidebar-muted, #94A3B8);
+    text-transform: capitalize;
+  }
+
+  .sidebar-signout-btn {
+    background: transparent;
+    border: none;
+    color: var(--sidebar-muted, #94A3B8);
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: left;
+    padding: 0;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .sidebar-signout-btn:hover {
+    color: #FFFFFF;
+    text-decoration: underline;
+  }
+
+  /* Live status pill */
+  .sidebar-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 11px;
+    font-weight: 600;
+    color: #34D399;
+    padding: 0.2rem 0.55rem;
+    margin-bottom: 0.4rem;
+    border-radius: var(--radius-full, 9999px);
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    width: fit-content;
+  }
+
+  .sidebar-status-pill .status-indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .sidebar-status-pill.weaver {
+    color: #6EE7B7;
+    background: rgba(110, 231, 183, 0.12);
+    border-color: rgba(110, 231, 183, 0.25);
+  }
+
+  .sidebar-status-pill.merchant {
+    color: #38BDF8;
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.25);
+  }
+
+  .sidebar-status-pill.merchant .status-indicator-dot {
+    background: #0284C7;
+    box-shadow: 0 0 8px rgba(2, 132, 199, 0.8);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     4. Admin Sidebar Theme (Light Clean White Theme)
+     ───────────────────────────────────────────────────────────── */
+  .sidebar.admin-sidebar {
+    background: #FFFFFF;
+    color: #0F172A;
+    border-right: 1px solid var(--border, #E2E8F0);
+  }
+
+  .sidebar.admin-sidebar .sidebar-brand {
+    border-bottom: 1px solid #F1F5F9;
+    background: #FFFFFF;
+  }
+
+  .sidebar.admin-sidebar .sidebar-brand-mark {
+    background: var(--brand-gradient);
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.25);
+  }
+
+  .sidebar.admin-sidebar .sidebar-brand-name {
+    color: #0F172A;
+    font-weight: 800;
+  }
+
+  .sidebar.admin-sidebar .sidebar-brand-eyebrow {
+    color: #64748B;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .sidebar.admin-sidebar .sidebar-nav {
+    padding: 0.75rem 0.65rem;
+    gap: 2px;
+  }
+
+  .sidebar.admin-sidebar .sidebar-nav-label {
+    color: #334155; /* Slate-700, 8.5:1 high contrast on white */
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 1.15rem 0.75rem 0.35rem;
+    margin: 0;
+  }
+
+  .sidebar.admin-sidebar .nav-item {
+    color: #334155; /* Slate-700, crisp high-contrast */
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    opacity: 1;
+    border-left: none;
+    box-shadow: none;
+    gap: 0.65rem;
+    transition: all 0.15s ease;
+  }
+
+  .sidebar.admin-sidebar .nav-item:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+    transform: none;
+    opacity: 1;
+  }
+
+  .sidebar.admin-sidebar .nav-item.active {
+    background: #FEEAD8;
+    color: #C2410C;
+    font-weight: 700;
+    opacity: 1;
+    border-left: none;
+    box-shadow: none;
+  }
+
+  .sidebar.admin-sidebar .nav-item .nav-icon {
+    color: #64748B;
+    font-size: 16px;
+  }
+
+  .sidebar.admin-sidebar .nav-item.active .nav-icon {
+    color: #C2410C;
+    transform: none;
+  }
+
+  .sidebar.admin-sidebar .sidebar-footer {
+    background: #FFFFFF;
+    border-top: 1px solid #F1F5F9;
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  .sidebar.admin-sidebar .sidebar-user {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.75rem;
+  }
+
+  .sidebar.admin-sidebar .sidebar-user-avatar {
+    background: #FEEAD8;
+    color: #C2410C;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 800;
+    width: 34px;
+    height: 34px;
+    box-shadow: none;
+  }
+
+  .sidebar.admin-sidebar .sidebar-user-name {
+    color: #0F172A;
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .sidebar.admin-sidebar .sidebar-signout-btn {
+    color: #64748B;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .sidebar.admin-sidebar .sidebar-signout-btn:hover {
+    color: var(--red, #DC2626);
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     5. Weaver Sidebar Theme (Dark Emerald)
+     ───────────────────────────────────────────────────────────── */
+  .sidebar.weaver-sidebar {
+    background: var(--wsidebar-bg, #062E22);
+    color: var(--wsidebar-fg, #ECFDF5);
+    border-right: 1px solid var(--wsidebar-border, rgba(255, 255, 255, 0.08));
+  }
+
+  .sidebar.weaver-sidebar .sidebar-brand {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar.weaver-sidebar .sidebar-brand-name {
     color: #FFFFFF;
   }
 
-  .sidebar.weaver-sidebar .nav-item.active {
-    background: var(--wsidebar-active-bg);
-    border-left-color: var(--wsidebar-active-border, #10B981);
-    color: var(--wsidebar-active-fg, #6EE7B7);
+  .sidebar.weaver-sidebar .sidebar-brand-eyebrow,
+  .sidebar.weaver-sidebar .sidebar-nav-label {
+    color: #6EE7B7;
+    font-weight: 700;
   }
 
-  /* ── Horizontal Navigation Tabs & Pills ───────────────────── */
+  .sidebar.weaver-sidebar .nav-item {
+    color: var(--wsidebar-fg, #ECFDF5);
+    opacity: 0.85;
+  }
+
+  .sidebar.weaver-sidebar .nav-item:hover {
+    background: var(--wsidebar-hover, rgba(255, 255, 255, 0.08));
+    color: #FFFFFF;
+    opacity: 1;
+  }
+
+  .sidebar.weaver-sidebar .nav-item.active {
+    background: var(--wsidebar-active-bg, linear-gradient(90deg, rgba(16, 185, 129, 0.24) 0%, rgba(16, 185, 129, 0.08) 100%));
+    border-left-color: var(--wsidebar-active-border, #10B981);
+    color: var(--wsidebar-active-fg, #6EE7B7);
+    opacity: 1;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     6. Merchant Sidebar Theme (Dark Ocean Navy)
+     ───────────────────────────────────────────────────────────── */
+  .sidebar.merchant-sidebar {
+    background: #082F49;
+    color: #F0F9FF;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar.merchant-sidebar .sidebar-brand {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar.merchant-sidebar .sidebar-brand-name {
+    color: #FFFFFF;
+  }
+
+  .sidebar.merchant-sidebar .sidebar-brand-eyebrow,
+  .sidebar.merchant-sidebar .sidebar-nav-label {
+    color: #7DD3FC;
+    font-weight: 700;
+  }
+
+  .sidebar.merchant-sidebar .nav-item {
+    color: #F0F9FF;
+    opacity: 0.85;
+  }
+
+  .sidebar.merchant-sidebar .nav-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #FFFFFF;
+    opacity: 1;
+  }
+
+  .sidebar.merchant-sidebar .nav-item.active {
+    background: rgba(2, 132, 199, 0.2);
+    border-left-color: #0284C7;
+    color: #38BDF8;
+    opacity: 1;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     7. Responsive Sidebar Navigation
+     ───────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .sidebar-brand-info,
+    .sidebar-footer,
+    .sidebar-nav-label {
+      display: none;
+    }
+
+    .sidebar-nav {
+      flex-direction: row;
+      padding: 0.5rem 0.75rem;
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .nav-item {
+      padding: 0.5rem 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .nav-item.active {
+      border-left: none;
+      border-bottom: 3px solid var(--sidebar-active-border, #EA580C);
+    }
+  }
+
+  /* ── 8. Horizontal Navigation Tabs & Pills ─────────────────── */
   .tab-bar,
   .tabs-nav {
     display: flex;
@@ -125,7 +521,7 @@
     border-color: #FED7AA;
   }
 
-  /* ── Settlement Process Stepper ────────────────────────────── */
+  /* ── 9. Settlement Process Stepper ─────────────────────────── */
   .settlement-steps {
     display: flex;
     align-items: center;

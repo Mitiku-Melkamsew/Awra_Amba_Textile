@@ -70,6 +70,7 @@ export function useCatalogData() {
 
   // Selection & edit state for fabrics tab
   const [selectedFabricId, setSelectedFabricId] = useState<number | null>(2);
+  const [editName, setEditName] = useState("gabi");
   const [editWeight, setEditWeight] = useState("520");
   const [editLength, setEditLength] = useState("240");
   const [editWidth, setEditWidth] = useState("150");
@@ -128,6 +129,7 @@ export function useCatalogData() {
         const gabi = combined.find((f) => f.name.toLowerCase() === "gabi") || combined[0];
         if (gabi) {
           setSelectedFabricId(gabi.fabricId);
+          setEditName(gabi.name);
           setEditWeight(String(gabi.standardWeightG));
           setEditLength(String(gabi.standardLengthCm));
           setEditWidth(String(gabi.standardWidthCm));
@@ -135,6 +137,7 @@ export function useCatalogData() {
       } else {
         setFabrics(DEFAULT_FABRICS);
         setSelectedFabricId(2);
+        setEditName("gabi");
         setEditWeight("520");
         setEditLength("240");
         setEditWidth("150");
@@ -149,6 +152,7 @@ export function useCatalogData() {
     } catch {
       setFabrics(DEFAULT_FABRICS);
       setSelectedFabricId(2);
+      setEditName("gabi");
       setEditWeight("520");
       setEditLength("240");
       setEditWidth("150");
@@ -167,6 +171,7 @@ export function useCatalogData() {
 
   const handleSelectFabric = (f: FabricWithRates) => {
     setSelectedFabricId(f.fabricId);
+    setEditName(f.name);
     setEditWeight(String(f.standardWeightG));
     setEditLength(String(f.standardLengthCm));
     setEditWidth(String(f.standardWidthCm));
@@ -182,6 +187,11 @@ export function useCatalogData() {
     const lNum = parseFloat(editLength);
     const wdNum = parseFloat(editWidth);
 
+    const name = editName.trim();
+    if (!name) {
+      setErrorMessage("Fabric name is required.");
+      return;
+    }
     if (isNaN(wNum) || isNaN(lNum) || isNaN(wdNum)) {
       setErrorMessage("Please enter valid numeric dimensions and weight.");
       return;
@@ -193,16 +203,17 @@ export function useCatalogData() {
 
     try {
       await catalogApi.updateFabric(selectedFabric.fabricId, {
+        name,
         standardWeightG: wNum,
         standardLengthCm: lNum,
         standardWidthCm: wdNum,
       });
 
-      setStatusMessage(`Fabric "${selectedFabric.name}" specifications updated.`);
+      setStatusMessage(`Fabric "${name}" updated.`);
       setFabrics((prev) =>
         prev.map((f) =>
           f.fabricId === selectedFabric.fabricId
-            ? { ...f, standardWeightG: wNum, standardLengthCm: lNum, standardWidthCm: wdNum }
+            ? { ...f, name, standardWeightG: wNum, standardLengthCm: lNum, standardWidthCm: wdNum }
             : f
         )
       );
@@ -256,6 +267,8 @@ export function useCatalogData() {
     selectedFabricId,
     selectedFabric,
     handleSelectFabric,
+    editName,
+    setEditName,
     editWeight,
     setEditWeight,
     editLength,
