@@ -30,7 +30,61 @@
     /* Semantic aliases */
     --color-canvas:           var(--bg);
     --color-surface:          var(--surface);
+    --color-surface-hover:    var(--surface-hover);
+    --color-surface-active:   var(--surface-active);
     --color-surface-subtle:   var(--bg-subtle);
+
+    --color-text:             var(--text);
+    --color-text-muted:       var(--text-muted);
+    --color-text-secondary:   var(--text-muted);
+    --color-text-subtle:      var(--text-subtle);
+    --color-text-inverse:     var(--text-inverse);
+
+    --color-border:           var(--border);
+    --color-border-subtle:    var(--border-subtle);
+    --color-border-strong:    var(--border-strong);
+    --color-border-focus:     var(--border-focus);
+
+    --color-primary:          var(--brand);
+    --color-primary-hover:    var(--accent-hover);
+    --color-primary-subtle:   var(--brand-subtle);
+
+    --color-danger:           var(--red);
+    --color-danger-subtle:    var(--red-bg);
+    --color-danger-border:    var(--red-border);
+    --color-danger-dark:      var(--red-fg);
+
+    --color-success:          var(--green);
+    --color-success-subtle:   var(--green-bg);
+    --color-success-border:   var(--green-border);
+    --color-success-dark:     var(--green-fg);
+
+    --color-warning:          var(--amber);
+    --color-warning-subtle:   var(--amber-bg);
+    --color-warning-border:   var(--amber-border);
+    --color-warning-dark:     var(--amber-fg);
+
+    --color-info:             var(--blue);
+    --color-info-subtle:      var(--blue-bg);
+    --color-info-border:      var(--blue-border);
+    --color-info-dark:        var(--blue-fg);
+
+    /* Palette shade compatibility */
+    --color-amber-50:         #FFFBEB;
+    --color-amber-100:        #FEF3C7;
+    --color-amber-200:        #FDE68A;
+    --color-amber-300:        #FCD34D;
+    --color-amber-400:        #FBBF24;
+    --color-amber-800:        #92400E;
+    --color-orange-50:        #FFF7ED;
+    --color-orange-100:       #FFEDD5;
+    --color-orange-200:       #FED7AA;
+    --color-orange-800:       #9A3412;
+    --color-blue-50:          #EFF6FF;
+    --color-blue-100:         #DBEAFE;
+    --color-blue-200:         #BFDBFE;
+    --color-blue-800:         #1E40AF;
+    --color-blue-900:         #1E3A8A;
 
     /* ── 4. Borders & Dividers ──────────────────────────────── */
     --border:                 #E2E8F0;

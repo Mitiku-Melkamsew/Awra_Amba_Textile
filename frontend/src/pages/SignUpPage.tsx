@@ -184,9 +184,9 @@ export function SignUpPage() {
 
         <button
           type="submit"
-          className="btn-primary"
+          className="btn btn-primary btn-full-width"
           disabled={loading}
-          style={{ width: "100%", justifyContent: "center", minHeight: 44, fontSize: 14.5, marginTop: "0.5rem" }}
+          style={{ minHeight: 44, fontSize: "14.5px", marginTop: "0.5rem" }}
         >
           {loading ? "Creating account…" : `Create ${role === "merchant" ? "Merchant" : "Weaver"} Account →`}
         </button>

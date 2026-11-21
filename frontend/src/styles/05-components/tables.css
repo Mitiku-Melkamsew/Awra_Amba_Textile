@@ -19,6 +19,18 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  @media (max-width: 960px) {
+    .master-detail {
+      grid-template-columns: 1fr;
+    }
+
+    .edit-detail-panel,
+    .price-edit-panel {
+      position: static;
+      width: 100%;
+    }
+  }
+
   /* ── Canonical Data Table ─────────────────────────────────── */
   .data-table-container {
     min-width: 0;
@@ -66,10 +78,49 @@
     background: var(--surface-hover, #F8FAFC);
   }
 
+  /* ── Interactive & Selectable Rows ────────────────────────── */
+  .selectable-row,
+  .price-row {
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+  }
+
+  .selectable-row.selected td,
+  .selectable-row.is-selected td,
+  .selectable-row.row-selected td,
+  .price-row.price-row-selected td {
+    background: var(--brand-light, #FFF7ED) !important;
+  }
+
+  .selectable-row.selected,
+  .selectable-row.is-selected,
+  .selectable-row.row-selected,
+  .price-row.price-row-selected {
+    border-left: 3px solid var(--brand, #EA580C);
+  }
+
   .data-table .numeric,
   .data-table td.numeric,
   .data-table th.numeric {
     text-align: right;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Responsive Table Wrappers ────────────────────────────── */
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+  }
+
+  .prices-table-card {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: var(--shadow-xs);
+    overflow-x: auto;
+    width: 100%;
+    box-sizing: border-box;
   }
 }

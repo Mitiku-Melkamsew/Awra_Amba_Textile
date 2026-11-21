@@ -118,7 +118,7 @@ export function WeaverPaymentsPage() {
                   <td style={{ textAlign: "right" }}>
                     <button
                       type="button"
-                      className="btn-sm primary"
+                      className="btn btn-sm btn-primary"
                       style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)", border: "none" }}
                       onClick={() => reportsApi.downloadHisabCsv(payment.paymentId, "payment")}
                     >

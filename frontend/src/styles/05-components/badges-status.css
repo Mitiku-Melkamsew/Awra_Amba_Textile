@@ -136,4 +136,59 @@
     background: #ECFDF5;
     color: #065F46;
   }
+
+  /* ── Legacy Color Badge Classes ───────────────────────────── */
+  .badge-green {
+    background: var(--green-bg, #DCFCE7);
+    color: var(--green-fg, #15803D);
+    border: 1px solid var(--green-border, #BBF7D0);
+  }
+
+  .badge-gray {
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text-muted, #475569);
+    border: 1px solid var(--border, #E2E8F0);
+  }
+
+  .badge-blue {
+    background: var(--blue-bg, #EFF6FF);
+    color: var(--blue-fg, #1D4ED8);
+    border: 1px solid var(--blue-border, #BFDBFE);
+  }
+
+  .badge-yellow {
+    background: var(--amber-bg, #FEF9C3);
+    color: var(--amber-fg, #A16207);
+    border: 1px solid var(--amber-border, #FEF08A);
+  }
+
+  .badge-red {
+    background: var(--red-bg, #FEF2F2);
+    color: var(--red-fg, #DC2626);
+    border: 1px solid var(--red-border, #FECACA);
+  }
+
+  /* ── Sidebar Status Indicator Pill ────────────────────────── */
+  .sidebar-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-full, 9999px);
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .sidebar-status-pill.merchant {
+    background: rgba(2, 132, 199, 0.2);
+    color: #7DD3FC;
+    border: 1px solid rgba(2, 132, 199, 0.35);
+  }
+
+  .sidebar-status-pill.weaver {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6EE7B7;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
 }

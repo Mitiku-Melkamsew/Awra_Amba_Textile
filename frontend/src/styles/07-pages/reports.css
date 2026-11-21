@@ -1,5 +1,6 @@
 /* ─────────────────────────────────────────────────────────────
    AWRA AMBA TEXTILE - REPORTS PAGE
+   Canonical reports page styles with design tokens and responsive grid layouts.
    ───────────────────────────────────────────────────────────── */
 
 @layer pages {
@@ -12,172 +13,180 @@
   .reports-period-row {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: var(--space-4, 1rem);
+    margin-bottom: var(--space-6, 1.5rem);
+    flex-wrap: wrap;
   }
 
   .reports-period-label {
-    font-size: 13.5px;
-    font-weight: 600;
-    color: #374151;
+    font-size: var(--text-sm, 13.5px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text, #0F172A);
   }
 
   .reports-chips-group {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2, 8px);
     flex-wrap: wrap;
   }
 
   .period-chip {
-    border: 1px solid #E2E8F0;
-    background: #FFFFFF;
-    color: #374151;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: 9999px;
+    border: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
+    color: var(--text, #334155);
+    font-size: var(--text-xs, 13px);
+    font-weight: var(--font-medium, 500);
+    border-radius: var(--radius-full, 9999px);
     padding: 6px 14px;
     cursor: pointer;
     transition: all 0.15s ease;
   }
 
   .period-chip.active {
-    background: #ECFDF5;
-    border-color: #10B981;
-    color: #047857;
-    font-weight: 600;
+    background: var(--green-bg, #ECFDF5);
+    border-color: var(--green, #10B981);
+    color: var(--green-fg, #065F46);
+    font-weight: var(--font-semibold, 600);
   }
 
   .reports-kpi-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
-    margin-bottom: 1.5rem;
+    gap: var(--space-5, 1.25rem);
+    margin-bottom: var(--space-6, 1.5rem);
   }
 
   .reports-kpi-card {
-    padding: 1.25rem 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    background: #FFFFFF;
+    padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
+    box-shadow: var(--shadow-xs);
   }
 
   .reports-kpi-label {
-    font-size: 13px;
-    color: #6B7280;
-    font-weight: 500;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    font-weight: var(--font-bold, 700);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .reports-kpi-num {
-    font-size: 32px;
-    font-weight: 800;
-    color: #111827;
-    margin: 0.25rem 0 0.2rem;
+    font-size: 30px;
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
+    margin: var(--space-1, 4px) 0;
+    font-variant-numeric: tabular-nums;
   }
 
   .reports-kpi-sub {
-    font-size: 13px;
-    color: #6B7280;
+    font-size: var(--text-xs, 12.5px);
+    color: var(--text-muted, #64748B);
   }
 
   .text-profit-rust {
-    color: #B43B06;
+    color: var(--brand, #C2410C);
   }
 
   .reports-main-layout {
     display: grid;
     grid-template-columns: 1.7fr 1.1fr;
-    gap: 1.5rem;
+    gap: var(--space-6, 1.5rem);
     align-items: start;
   }
 
   .reports-left-col {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--space-5, 1.25rem);
   }
 
   .reports-right-col {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--space-5, 1.25rem);
   }
 
   .reports-breakdown-card {
-    padding: 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    background: #FFFFFF;
+    padding: var(--space-6, 1.5rem);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
+    box-shadow: var(--shadow-xs);
   }
 
   .breakdown-columns-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-bottom: 1.5rem;
+    gap: var(--space-8, 2rem);
+    margin-bottom: var(--space-6, 1.5rem);
   }
 
   .breakdown-col-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0 0 1rem;
+    font-size: var(--text-base, 15px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+    margin: 0 0 var(--space-4, 1rem);
   }
 
   .breakdown-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 0.85rem;
+    margin-bottom: var(--space-3, 0.75rem);
   }
 
   .breakdown-row-label {
-    font-size: 13.5px;
-    color: #374151;
-    font-weight: 500;
+    font-size: var(--text-sm, 13.5px);
+    color: var(--text, #334155);
+    font-weight: var(--font-medium, 500);
   }
 
   .breakdown-row-sub {
-    font-size: 12px;
-    color: #64748B;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
     display: block;
     margin-top: 1px;
   }
 
   .breakdown-row-val {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
+    font-size: var(--text-base, 15px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+    font-variant-numeric: tabular-nums;
   }
 
   .reports-callout-warning {
-    background: #FEF9E7;
-    border: 1px solid #FEF08A;
-    border-radius: 8px;
-    padding: 12px 14px;
+    background: var(--amber-bg, #FFFBEB);
+    border: 1px solid var(--amber-border, #FDE68A);
+    border-radius: var(--radius-sm, 8px);
+    padding: var(--space-3, 10px) var(--space-4, 14px);
     display: flex;
     gap: 10px;
     align-items: flex-start;
   }
 
   .callout-icon {
-    color: #B45309;
+    color: var(--amber-fg, #92400E);
     font-size: 16px;
     flex-shrink: 0;
     margin-top: 1px;
   }
 
   .callout-text {
-    font-size: 12.5px;
-    color: #92400E;
+    font-size: var(--text-xs, 12.5px);
+    color: var(--amber-fg, #92400E);
     margin: 0;
-    line-height: 1.45;
+    line-height: var(--leading-normal, 1.5);
   }
 
   .hisab-statements-card {
-    padding: 1.25rem 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    background: #FFFFFF;
+    padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
+    box-shadow: var(--shadow-xs);
   }
 
   .hisab-statements-header {
@@ -187,48 +196,51 @@
   }
 
   .hisab-statements-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
+    font-size: var(--text-base, 15px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
     margin: 0;
   }
 
   .hisab-statements-sub {
-    font-size: 13px;
-    color: #64748B;
+    font-size: var(--text-xs, 13px);
+    color: var(--text-muted, #64748B);
     margin: 2px 0 0;
   }
 
   .hisab-records-table-wrap {
-    margin-top: 1rem;
-    border-top: 1px solid #F1F5F9;
-    padding-top: 1rem;
+    margin-top: var(--space-4, 1rem);
+    border-top: 1px solid var(--border-subtle, #F1F5F9);
+    padding-top: var(--space-4, 1rem);
+    overflow-x: auto;
   }
 
   .hisab-records-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: var(--text-sm, 13px);
   }
 
   .hisab-records-table th {
-    font-size: 12px;
-    color: #64748B;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
     padding: 6px 8px;
-    border-bottom: 1px solid #F1F5F9;
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
     text-align: left;
+    font-weight: var(--font-semibold, 600);
   }
 
   .hisab-records-table td {
-    font-size: 13px;
-    padding: 8px;
-    border-bottom: 1px solid #F1F5F9;
+    padding: var(--space-2, 8px);
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
   }
 
   .reports-owed-card {
-    padding: 1.25rem 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    background: #FFFFFF;
+    padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
+    box-shadow: var(--shadow-xs);
     display: flex;
     flex-direction: column;
   }
@@ -240,23 +252,23 @@
   }
 
   .owed-card-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
+    font-size: var(--text-base, 15px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
     margin: 0;
   }
 
   .owed-card-sub {
-    font-size: 12.5px;
-    color: #64748B;
-    margin: 4px 0 1rem;
+    font-size: var(--text-xs, 12.5px);
+    color: var(--text-muted, #64748B);
+    margin: 4px 0 var(--space-4, 1rem);
   }
 
   .owed-list {
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
-    margin-bottom: 1.25rem;
+    gap: var(--space-3, 0.75rem);
+    margin-bottom: var(--space-5, 1.25rem);
   }
 
   .owed-item {
@@ -266,20 +278,36 @@
   }
 
   .owed-item-name {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #111827;
+    font-size: var(--text-sm, 13.5px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
   }
 
   .owed-item-meta {
-    font-size: 12px;
-    color: #64748B;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
     display: block;
   }
 
   .owed-item-amount {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #111827;
+    font-size: var(--text-sm, 13.5px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 960px) {
+    .reports-kpi-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .reports-main-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .breakdown-columns-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-4, 1rem);
+    }
   }
 }

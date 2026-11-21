@@ -135,4 +135,27 @@
   a.btn-primary:active {
     color: #FFFFFF;
   }
+
+  /* ── Legacy Aliases ───────────────────────────────────────── */
+  .btn-sm:not(.btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm, 6px);
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    font-weight: var(--font-semibold, 600);
+  }
+
+  .primary {
+    background: var(--brand, #C2410C);
+    color: #FFFFFF;
+    border-color: transparent;
+  }
+
+  .primary:hover:not(:disabled) {
+    background: var(--accent-hover, #9A3412);
+    color: #FFFFFF;
+  }
 }

@@ -48,4 +48,34 @@
     border-collapse: collapse;
     width: 100%;
   }
+
+  /* Form control element defaults */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.55rem 0.85rem;
+    font: inherit;
+    font-size: var(--text-sm, 14px);
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    min-height: 40px;
+    box-sizing: border-box;
+    box-shadow: var(--shadow-xs);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--brand-subtle);
+  }
 }

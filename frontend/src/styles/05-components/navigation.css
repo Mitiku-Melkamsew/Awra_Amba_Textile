@@ -124,4 +124,74 @@
     background: var(--brand-light, #FFEDD5);
     border-color: #FED7AA;
   }
+
+  /* ── Settlement Process Stepper ────────────────────────────── */
+  .settlement-steps {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+    margin-bottom: var(--space-6, 1.5rem);
+    overflow-x: auto;
+    padding-bottom: var(--space-2, 0.5rem);
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+    border-radius: var(--radius-full, 9999px);
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text-muted, #64748B);
+    font-size: var(--text-sm, 13.5px);
+    font-weight: var(--font-medium, 500);
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+
+  .step-item.active {
+    background: var(--brand-light, #FFEDD5);
+    color: var(--brand, #C2410C);
+    font-weight: var(--font-bold, 700);
+    box-shadow: 0 0 0 1px var(--brand, #C2410C);
+  }
+
+  .step-item.completed,
+  .step-item.done {
+    background: var(--green-bg, #ECFDF5);
+    color: var(--green-fg, #065F46);
+  }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-full, 9999px);
+    background: currentColor;
+    color: var(--surface, #FFFFFF);
+    font-size: 11px;
+    font-weight: var(--font-bold, 700);
+  }
+
+  .step-item.active .step-number {
+    background: var(--brand, #EA580C);
+    color: #FFFFFF;
+  }
+
+  .step-item.completed .step-number,
+  .step-item.done .step-number {
+    background: var(--green, #10B981);
+    color: #FFFFFF;
+  }
+
+  .step-label {
+    font-size: var(--text-sm, 13.5px);
+  }
+
+  .step-divider {
+    color: var(--border, #CBD5E1);
+    font-size: 14px;
+  }
 }

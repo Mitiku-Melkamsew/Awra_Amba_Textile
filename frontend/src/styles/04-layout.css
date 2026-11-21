@@ -136,16 +136,17 @@
     background: transparent;
     border: none;
     color: var(--sidebar-muted, #94A3B8);
-    font-size: 11px;
+    font-size: 12px;
+    line-height: 1.2;
     text-align: left;
     padding: 0;
     cursor: pointer;
-    text-decoration: underline;
     transition: color 0.15s ease;
   }
 
   .sidebar-signout-btn:hover {
     color: #FFFFFF;
+    text-decoration: underline;
   }
 
   /* Weaver portal sidebar theme */
@@ -227,9 +228,9 @@
 
   /* ── Admin Light Sidebar ─────────────────────────────────── */
   .sidebar.admin-sidebar {
-    background: #FFFFFF !important;
-    color: #111827 !important;
-    border-right: 1px solid #E5E7EB !important;
+    background: var(--surface);
+    color: var(--text);
+    border-right: 1px solid var(--border);
   }
 
   .sidebar.admin-sidebar .sidebar-brand {
@@ -267,10 +268,10 @@
   }
 
   .sidebar.admin-sidebar .sidebar-nav-label {
-    color: #9CA3AF;
+    color: var(--text-muted, #64748B);
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: 1.1rem 0.75rem 0.35rem;
   }
@@ -342,19 +343,161 @@
     line-height: 1.2;
   }
 
-  .sidebar-signout-btn {
-    background: none;
-    border: none;
-    color: #6B7280;
+  .sidebar.admin-sidebar .sidebar-signout-btn {
+    color: var(--text-muted);
     font-size: 12px;
-    cursor: pointer;
-    padding: 0;
-    text-align: left;
     line-height: 1.2;
   }
 
-  .sidebar-signout-btn:hover {
-    color: #DC2626;
-    text-decoration: underline;
+  .sidebar.admin-sidebar .sidebar-signout-btn:hover {
+    color: var(--red);
+  }
+
+  /* ── Page Shell & Page-Level Typography ──────────────────── */
+  .page {
+    flex: 1 0 auto;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+    padding: var(--space-6, 1.5rem) var(--space-8, 2rem) var(--space-12, 3rem);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-title {
+    margin: 0 0 0.25rem;
+    font-size: var(--text-2xl, 24px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
+    line-height: var(--leading-tight, 1.25);
+    letter-spacing: -0.02em;
+  }
+
+  .page-subtitle {
+    margin: 0;
+    font-size: var(--text-sm, 14px);
+    color: var(--text-muted, #64748B);
+    font-weight: var(--font-normal, 400);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-bold, 700);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent, #EA580C);
+    margin: 0 0 0.35rem;
+    background: var(--brand-light, #FFEDD5);
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--radius-full, 9999px);
+  }
+
+  .eyebrow--success {
+    background: var(--green-bg, #ECFDF5);
+    color: var(--green-fg, #065F46);
+  }
+
+  .section-title {
+    font-size: var(--text-base, 16px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+    margin: 0 0 0.75rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-muted, #64748B);
+    margin-bottom: var(--space-4, 1rem);
+    transition: color 0.15s ease;
+  }
+
+  .back-link:hover {
+    color: var(--brand, #C2410C);
+  }
+
+  .toolbar {
+    display: flex;
+    gap: var(--space-3, 0.75rem);
+    margin-bottom: var(--space-5, 1.25rem);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* ── Responsive Shell ────────────────────────────────────── */
+  @media (max-width: 960px) {
+    .app-shell {
+      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    .sidebar {
+      width: 100%;
+      height: auto;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      border-right: none;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .sidebar-brand-info,
+    .sidebar-footer,
+    .sidebar-nav-label {
+      display: none;
+    }
+
+    .sidebar-nav {
+      flex-direction: row;
+      padding: 0.5rem 0.75rem;
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .nav-item {
+      padding: 0.5rem 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .nav-item.active {
+      border-left: none;
+      border-bottom: 3px solid var(--sidebar-active-border);
+    }
+
+    .main-content {
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    .page {
+      padding: var(--space-5, 1.25rem) var(--space-4, 1rem) var(--space-12, 3rem);
+      min-height: auto;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .page {
+      padding: var(--space-5, 1.25rem) var(--space-4, 1rem);
+    }
+
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-4, 1rem);
+    }
   }
 }

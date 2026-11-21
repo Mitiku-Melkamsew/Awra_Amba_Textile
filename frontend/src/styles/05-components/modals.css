@@ -61,7 +61,8 @@
     gap: var(--space-2, 0.5rem);
   }
 
-  .modal-subtitle {
+  .modal-subtitle,
+  .modal-sub {
     margin: 0.2rem 0 0 0;
     font-size: var(--text-xs, 12px);
     color: var(--text-muted, #64748B);

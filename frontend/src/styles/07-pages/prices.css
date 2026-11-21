@@ -1,5 +1,6 @@
 /* ─────────────────────────────────────────────────────────────
    AWRA AMBA TEXTILE - PRICES PAGE
+   Canonical prices page styles using design tokens and layout primitives.
    ───────────────────────────────────────────────────────────── */
 
 @layer pages {
@@ -13,31 +14,54 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--space-6, 1.5rem);
+  }
+
+  .prices-title {
+    font-size: var(--text-2xl, 24px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .prices-title-amharic {
+    color: var(--text-muted, #64748B);
+    font-weight: var(--font-normal, 400);
+    font-size: var(--text-lg, 18px);
   }
 
   .prices-toolbar {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
+    gap: var(--space-4, 1rem);
+    margin-bottom: var(--space-5, 1.25rem);
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .prices-search-wrapper {
     position: relative;
     flex: 1;
+    min-width: 240px;
   }
 
   .prices-search-input {
     width: 100%;
     padding: 0.55rem 0.85rem 0.55rem 2.25rem;
-    border-radius: 8px;
-    border: 1px solid #E2E8F0;
-    font-size: 14px;
-    background: #FFFFFF;
+    border-radius: var(--radius-sm, 6px);
+    border: 1.5px solid var(--border, #E2E8F0);
+    font-size: var(--text-sm, 14px);
+    background: var(--surface, #FFFFFF);
+    color: var(--text, #0F172A);
     outline: none;
     box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .prices-search-input:focus {
+    border-color: var(--accent, #EA580C);
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14);
   }
 
   .prices-search-wrapper .search-icon {
@@ -46,7 +70,7 @@
     top: 50%;
     transform: translateY(-50%);
     font-size: 14px;
-    color: #94A3B8;
+    color: var(--text-subtle, #94A3B8);
     pointer-events: none;
   }
 
@@ -54,9 +78,9 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 13.5px;
-    color: #374151;
-    font-weight: 500;
+    font-size: var(--text-sm, 13.5px);
+    color: var(--text, #334155);
+    font-weight: var(--font-medium, 500);
     cursor: pointer;
     white-space: nowrap;
   }
@@ -64,121 +88,115 @@
   .styled-checkbox {
     width: 16px;
     height: 16px;
-    accent-color: #C2410C;
+    accent-color: var(--brand, #C2410C);
     cursor: pointer;
   }
 
   .price-row {
-    border-bottom: 1px solid #F1F5F9;
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
     cursor: pointer;
     transition: background 0.15s ease;
   }
 
   .price-row:hover td {
-    background: #FAFAFA;
+    background: var(--surface-hover, #F8FAFC);
   }
 
   .price-row-selected td {
-    background: #FFF8F1 !important;
+    background: var(--brand-light, #FFF7ED) !important;
   }
 
   .price-row-selected td:first-child {
-    border-left: 3px solid #C2410C !important;
+    border-left: 3px solid var(--brand, #EA580C) !important;
   }
 
   .price-row td {
-    padding: 14px 18px;
+    padding: var(--space-3, 12px) var(--space-4, 16px);
     vertical-align: middle;
   }
 
   .price-item-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: #111827;
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
   }
 
   .price-earlier-row {
-    background: #FAFAFA;
-    border-bottom: 1px solid #F1F5F9;
+    background: var(--bg-subtle, #F8FAFC);
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
   }
 
   .price-earlier-row td {
-    padding: 10px 18px;
-    font-size: 12.5px;
+    padding: var(--space-2, 8px) var(--space-4, 16px);
+    font-size: var(--text-xs, 12.5px);
   }
 
   .earlier-price-label {
     padding-left: 32px !important;
-    color: #64748B;
+    color: var(--text-muted, #64748B);
     font-style: italic;
   }
 
   .prices-footnote {
-    font-size: 12.5px;
-    color: #9CA3AF;
-    margin-top: 1rem;
-  }
-
-  .price-edit-panel {
-    width: 340px;
-    min-width: 340px;
-    max-width: 340px;
-    box-sizing: border-box;
-    padding: 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    background: #FFFFFF;
-    align-self: flex-start;
-    margin-top: 0;
-    position: sticky;
-    top: 1.5rem;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-subtle, #94A3B8);
+    margin-top: var(--space-4, 1rem);
   }
 
   .price-edit-header {
-    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3, 0.75rem);
+    margin-bottom: var(--space-3, 0.75rem);
+    padding-bottom: var(--space-3, 0.75rem);
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
   }
 
   .price-edit-title {
-    font-size: 18px;
-    font-weight: 800;
-    color: #111827;
+    font-size: var(--text-base, 16px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
     margin: 0;
   }
 
   .price-edit-fabric-name {
-    font-size: 13.5px;
-    color: #64748B;
-    font-weight: 500;
+    font-size: var(--text-sm, 13.5px);
+    color: var(--brand, #C2410C);
+    font-weight: var(--font-semibold, 600);
     display: block;
     margin-top: 2px;
   }
 
+  .price-now-banner,
   .price-current-infobox {
     width: 100%;
     box-sizing: border-box;
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 1.25rem;
+    background: var(--bg-subtle, #F8FAFC);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-sm, 8px);
+    padding: var(--space-3, 10px) var(--space-4, 12px);
+    margin-bottom: var(--space-4, 1rem);
   }
 
+  .price-now-line,
   .infobox-rates {
-    font-size: 13px;
-    color: #111827;
-    margin: 0 0 4px;
+    font-size: var(--text-xs, 13px);
+    color: var(--text, #0F172A);
+    margin: 0 0 2px;
   }
 
+  .price-now-sub,
   .infobox-since {
-    font-size: 12px;
-    color: #64748B;
+    font-size: var(--text-xs, 11.5px);
+    color: var(--text-muted, #64748B);
     margin: 0;
   }
 
   .price-edit-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-4, 1rem);
     width: 100%;
     box-sizing: border-box;
   }
@@ -186,62 +204,69 @@
   .price-form-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1, 4px);
     width: 100%;
     box-sizing: border-box;
   }
 
   .price-form-label {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: #374151;
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-muted, #64748B);
   }
 
   .price-form-input {
     width: 100%;
     box-sizing: border-box;
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 14px;
-    background: #FFFFFF;
-    color: #111827;
+    border: 1.5px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.5rem 0.75rem;
+    font-size: var(--text-sm, 14px);
+    background: var(--surface, #FFFFFF);
+    color: var(--text, #0F172A);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .price-form-input:focus {
+    border-color: var(--accent, #EA580C);
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14);
   }
 
   .price-form-helper {
-    font-size: 12px;
+    font-size: var(--text-xs, 12px);
     margin-top: 2px;
   }
 
   .text-helper-up {
-    color: #0369A1;
-    font-weight: 600;
+    color: var(--blue, #0284C7);
+    font-weight: var(--font-semibold, 600);
   }
 
   .text-helper-neutral {
-    color: #64748B;
+    color: var(--text-muted, #64748B);
   }
 
   .price-status-feedback {
-    background: #DCFCE7;
-    color: #15803D;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
+    background: var(--green-bg, #ECFDF5);
+    color: var(--green-fg, #065F46);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    border-radius: var(--radius-sm, 6px);
+    font-size: var(--text-sm, 13px);
+    font-weight: var(--font-medium, 500);
   }
 
   .price-edit-actions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 0.5rem;
+    gap: var(--space-2, 8px);
+    margin-top: var(--space-2, 0.5rem);
   }
 
   .price-edit-footnote {
-    font-size: 12px;
-    color: #64748B;
-    line-height: 1.4;
-    margin-top: 1rem;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    line-height: var(--leading-normal, 1.5);
+    margin-top: var(--space-4, 1rem);
   }
 }

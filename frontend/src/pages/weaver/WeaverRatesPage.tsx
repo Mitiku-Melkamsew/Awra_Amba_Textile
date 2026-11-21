@@ -10,7 +10,7 @@ export function WeaverRatesPage() {
 
       <div className="page-header">
         <div>
-          <p className="eyebrow" style={{ background: "#D1FAE5", color: "#065F46" }}>
+          <p className="eyebrow eyebrow--success">
             የዋጋና ተመን ግልጽነት / Price Transparency
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>

@@ -1,5 +1,6 @@
 /* ─────────────────────────────────────────────────────────────
    AWRA AMBA TEXTILE - DASHBOARD PAGE
+   Canonical dashboard styles using design tokens and responsive grids.
    ───────────────────────────────────────────────────────────── */
 
 @layer pages {
@@ -13,118 +14,145 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-8, 2rem);
   }
 
   .dashboard-date {
-    font-size: 13px;
-    color: #6B7280;
-    margin: 0 0 0.25rem;
-    font-weight: 500;
+    font-size: var(--text-xs, 13px);
+    color: var(--text-muted, #64748B);
+    margin: 0 0 var(--space-1, 4px);
+    font-weight: var(--font-medium, 500);
   }
 
   .dashboard-greeting {
-    font-size: 26px;
-    font-weight: 800;
-    color: #111827;
+    font-size: var(--text-2xl, 24px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
     margin: 0;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
 
   .dashboard-section-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0 0 1rem;
+    font-size: var(--text-base, 15px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+    margin: 0 0 var(--space-4, 1rem);
   }
 
   .attention-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
+    gap: var(--space-5, 1.25rem);
   }
 
   .attention-card {
-    padding: 1.35rem 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    background: #FFFFFF;
+    padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
     display: flex;
     flex-direction: column;
+    box-shadow: var(--shadow-xs);
   }
 
   .attention-card-warning {
-    background: #FEF9E7;
-    border-color: #FEF08A;
+    background: var(--amber-bg, #FFFBEB);
+    border-color: var(--amber-border, #FDE68A);
   }
 
   .attention-card-label {
-    font-size: 13px;
-    color: #6B7280;
-    font-weight: 500;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    font-weight: var(--font-bold, 700);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .attention-card-stat {
-    font-size: 26px;
-    font-weight: 800;
-    color: #111827;
-    margin: 0.45rem 0 0.25rem;
-    letter-spacing: -0.01em;
+    font-size: var(--text-2xl, 26px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
+    margin: var(--space-2, 0.5rem) 0 var(--space-1, 0.25rem);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
   }
 
   .attention-card-sub {
-    font-size: 13px;
-    color: #6B7280;
-    margin: 0 0 1.25rem;
+    font-size: var(--text-xs, 13px);
+    color: var(--text-muted, #64748B);
+    margin: 0 0 var(--space-5, 1.25rem);
   }
 
   .text-warning-rust {
-    color: #B45309;
+    color: var(--amber-fg, #92400E);
   }
 
   .zigs-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.25rem;
+    gap: var(--space-5, 1.25rem);
   }
 
   .zig-stat-card {
-    padding: 1.25rem 1.5rem;
-    border-radius: 12px;
-    border: 1px solid #E5E7EB;
-    background: #FFFFFF;
+    padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
 
   .zig-stat-highlight {
-    border: 2px solid #C2410C !important;
-    background: #FFF9F5;
+    border: 2px solid var(--brand, #EA580C) !important;
+    background: var(--brand-light, #FFF7ED);
   }
 
   .zig-stat-label {
-    font-size: 13px;
-    color: #6B7280;
-    font-weight: 500;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    font-weight: var(--font-bold, 700);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .zig-stat-num {
-    font-size: 30px;
-    font-weight: 800;
-    color: #111827;
-    margin: 0.35rem 0 0.2rem;
+    font-size: 28px;
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #0F172A);
+    margin: var(--space-2, 0.5rem) 0 var(--space-1, 0.25rem);
+    font-variant-numeric: tabular-nums;
   }
 
   .text-highlight-rust {
-    color: #C2410C;
+    color: var(--brand, #C2410C);
   }
 
   .zig-stat-sub {
-    font-size: 13px;
-    color: #6B7280;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
   }
 
   .dashboard-footnote {
-    font-size: 13px;
-    color: #9CA3AF;
-    margin-top: 2rem;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-subtle, #94A3B8);
+    margin-top: var(--space-8, 2rem);
+  }
+
+  @media (max-width: 960px) {
+    .attention-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .zigs-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .zigs-grid {
+      grid-template-columns: 1fr;
+    }
   }
 }

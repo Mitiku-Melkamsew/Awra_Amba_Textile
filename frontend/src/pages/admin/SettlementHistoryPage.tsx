@@ -166,7 +166,7 @@ export function SettlementHistoryPage() {
                         {!isPaid && (
                           <button
                             type="button"
-                            className="btn-sm"
+                            className="btn btn-sm"
                             style={{ background: "#059669", color: "#FFFFFF", fontWeight: 700 }}
                             onClick={() => handleOpenPayoutModal(row)}
                           >
@@ -175,13 +175,13 @@ export function SettlementHistoryPage() {
                         )}
                         <Link
                           to={`/admin/settlement/preview/${row.previewId}`}
-                          className="btn-sm"
+                          className="btn btn-sm btn-secondary"
                         >
                           🖨 Document
                         </Link>
                         <button
                           type="button"
-                          className="btn-sm primary"
+                          className="btn btn-sm btn-primary"
                           onClick={() => reportsApi.downloadBatchHisabCsv(row.previewId)}
                         >
                           ⬇ CSV

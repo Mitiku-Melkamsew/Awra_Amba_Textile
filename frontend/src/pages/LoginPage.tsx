@@ -80,16 +80,16 @@ export function LoginPage() {
         </div>
 
         {error && (
-          <div className="error-msg" style={{ margin: "0.75rem 0", color: "#b91c1c", fontSize: "0.85rem" }}>
+          <div className="error-msg">
             <span>⚠️</span> {error}
           </div>
         )}
 
         <button
           type="submit"
-          className="btn-primary"
+          className="btn btn-primary btn-full-width"
           disabled={loading}
-          style={{ width: "100%", justifyContent: "center", minHeight: 44, fontSize: 14.5, marginTop: "0.75rem" }}
+          style={{ minHeight: 44, fontSize: "14.5px" }}
         >
           {loading ? "Signing in…" : "Continue / ግባ →"}
         </button>

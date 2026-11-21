@@ -14,6 +14,10 @@
     overflow: hidden;
   }
 
+  .card-sm {
+    padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  }
+
   .card-header {
     padding: var(--space-4, 1rem) var(--space-6, 1.5rem);
     border-bottom: 1px solid var(--border-subtle, #F1F5F9);
@@ -118,5 +122,88 @@
     margin-top: var(--space-2, 0.5rem);
     font-size: var(--text-xs, 12px);
     color: var(--text-muted, #64748B);
+  }
+
+  /* ── Master-Detail Side Panel & Edit Drawer ────────────────── */
+  .edit-detail-panel,
+  .price-edit-panel {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 14px);
+    padding: var(--space-6, 1.5rem);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: var(--space-6, 1.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4, 1rem);
+    box-sizing: border-box;
+  }
+
+  .detail-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3, 0.75rem);
+    padding-bottom: var(--space-3, 0.75rem);
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+  }
+
+  .detail-panel-title {
+    margin: 0;
+    font-size: var(--text-base, 16px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+  }
+
+  .detail-panel-sub {
+    margin: 0.2rem 0 0 0;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+  }
+
+  .detail-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--text-muted, #64748B);
+    cursor: pointer;
+    padding: var(--space-1, 4px) var(--space-2, 8px);
+    border-radius: var(--radius-sm, 6px);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .detail-close-btn:hover {
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text, #0F172A);
+  }
+
+  .example-calc-box {
+    background: var(--bg-subtle, #F8FAFC);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-md, 10px);
+    padding: var(--space-4, 1rem);
+    font-size: var(--text-xs, 12.5px);
+    color: var(--text-muted, #475569);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .step-card {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-md, 10px);
+    padding: var(--space-5, 1.25rem);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .attention-card {
+    background: var(--amber-bg, #FFFBEB);
+    border: 1px solid var(--amber-border, #FDE68A);
+    border-radius: var(--radius-md, 10px);
+    padding: var(--space-4, 1rem);
+    color: var(--amber-fg, #92400E);
   }
 }
