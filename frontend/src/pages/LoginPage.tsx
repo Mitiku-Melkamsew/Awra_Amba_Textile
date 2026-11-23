@@ -6,7 +6,7 @@ import type { AuthUser } from "../domain/models";
 
 function getLandingRoute(u?: AuthUser | null): string {
   if (!u) return "/login";
-  if (u.roles?.includes("admin") || u.role === "admin") return "/admin/weavers";
+  if (u.roles?.includes("admin") || u.role === "admin") return "/admin/dashboard";
   if (u.roles?.includes("merchant") || u.role === "merchant") return "/merchant";
   return "/weaver";
 }

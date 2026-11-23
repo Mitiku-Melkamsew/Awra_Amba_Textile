@@ -142,6 +142,17 @@ export class SettlementController {
     }
   }
 
+  static async cancelBatch(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const actorUserId = req.user!.userId;
+      const result = await SettlementService.cancelBatch(id, req.body, actorUserId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async overrideLine(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);

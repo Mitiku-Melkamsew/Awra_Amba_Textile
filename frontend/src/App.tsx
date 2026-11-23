@@ -14,6 +14,8 @@ const DashboardPage = lazy(() => import("./pages/DashboardPage").then((m) => ({ 
 const ReportsPage = lazy(() => import("./pages/ReportsPage").then((m) => ({ default: m.ReportsPage })));
 const ProductionReportPage = lazy(() => import("./pages/admin/ProductionReportPage").then((m) => ({ default: m.ProductionReportPage })));
 const SettlementPage = lazy(() => import("./pages/SettlementPage").then((m) => ({ default: m.SettlementPage })));
+const NewSettlementRunPage = lazy(() => import("./pages/settlement/NewSettlementRunPage").then((m) => ({ default: m.NewSettlementRunPage })));
+const SettlementRunDetailPage = lazy(() => import("./pages/settlement/SettlementRunDetailPage").then((m) => ({ default: m.SettlementRunDetailPage })));
 const SettlementPreviewPage = lazy(() => import("./pages/admin/SettlementPreviewPage").then((m) => ({ default: m.SettlementPreviewPage })));
 const SettlementHistoryPage = lazy(() => import("./pages/admin/SettlementHistoryPage").then((m) => ({ default: m.SettlementHistoryPage })));
 const CatalogPage = lazy(() => import("./pages/admin/CatalogPage").then((m) => ({ default: m.CatalogPage })));
@@ -34,6 +36,7 @@ const TransactionsHubPage = lazy(() => import("./pages/admin/transactions/Transa
 // Lazy-loaded Weaver & Merchant Pages
 const WeaverPaymentsPage = lazy(() => import("./pages/weaver/WeaverPaymentsPage").then((m) => ({ default: m.WeaverPaymentsPage })));
 const WeaverPortalPage = lazy(() => import("./pages/weaver/WeaverPortalPage").then((m) => ({ default: m.WeaverPortalPage })));
+const WeaverZigsPage = lazy(() => import("./pages/weaver/WeaverZigsPage").then((m) => ({ default: m.WeaverZigsPage })));
 const WeaverZigDetailPage = lazy(() => import("./pages/weaver/WeaverZigDetailPage").then((m) => ({ default: m.WeaverZigDetailPage })));
 const WeaverRatesPage = lazy(() => import("./pages/weaver/WeaverRatesPage").then((m) => ({ default: m.WeaverRatesPage })));
 const WeaverCalculatorPage = lazy(() => import("./pages/weaver/WeaverCalculatorPage").then((m) => ({ default: m.WeaverCalculatorPage })));
@@ -81,7 +84,10 @@ function App() {
                   <Route path="transactions/:transactionId" element={<TransactionDetailPage />} />
                   <Route path="catalog" element={<CatalogPage />} />
                   <Route path="settlement" element={<SettlementPage />} />
+                  <Route path="settlement/new" element={<NewSettlementRunPage />} />
+                  <Route path="settlement/runs/:runId" element={<SettlementRunDetailPage />} />
                   <Route path="settlement/history" element={<SettlementHistoryPage />} />
+                  <Route path="settlement/history/:id" element={<SettlementRunDetailPage />} />
                   <Route path="settlement/preview/:previewId" element={<SettlementPreviewPage />} />
                   <Route path="reports/hisab/:type/:id" element={<HisabPrintPage />} />
                   <Route path="reports" element={<ReportsPage />} />
@@ -94,6 +100,7 @@ function App() {
               <Route path="/weaver" element={<RoleRoute role="weaver" redirectTo="/merchant" />}>
                 <Route element={<WeaverLayout />}>
                   <Route index element={<WeaverPortalPage />} />
+                  <Route path="zigs" element={<WeaverZigsPage />} />
                   <Route path="zigs/:zigId" element={<WeaverZigDetailPage />} />
                   <Route path="rates" element={<WeaverRatesPage />} />
                   <Route path="calculator" element={<WeaverCalculatorPage />} />

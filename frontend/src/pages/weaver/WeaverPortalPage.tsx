@@ -1,116 +1,171 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { weaverPortalService } from "../../infrastructure/services";
-import type { Weaver } from "../../domain/models";
-import { WeaverZigTabs } from "../../components/WeaverZigTabs";
+import { weaverPortalApi } from "../../api";
+import { fabricVariantName } from "../../utils/variantNames";
 
 export function WeaverPortalPage() {
   const { user } = useAuth();
-  const [weaver, setWeaver] = useState<Weaver | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [workOrders, setWorkOrders] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    weaverPortalService
-      .getProfile()
-      .then((data) => {
-        setWeaver(data);
+    Promise.all([
+      weaverPortalApi.profile().catch(() => null),
+      weaverPortalApi.workOrders().catch(() => []),
+      weaverPortalApi.payments().catch(() => []),
+    ])
+      .then(([prof, wos, pays]) => {
+        setProfile(prof || user);
+        setWorkOrders(wos || []);
+        setPayments(pays || []);
         setError("");
       })
-      .catch((err) => {
-        // Fallback: construct from user if profile endpoint returns 404 or other error
-        if (user) {
-          setWeaver({
-            userId: user.userId,
-            fullName: user.fullName || user.username,
-            phone: null,
-            email: null,
-            isActive: user.isActive ?? true,
-          });
-        } else {
-          setError(err.message || "Failed to load weaver profile");
-        }
-      })
+      .catch((err) => setError(err.message || "Failed to load artisan data"))
       .finally(() => setLoading(false));
   }, [user]);
 
+  // Status counts
+  const awaitingPaymentCount = useMemo(() => {
+    return workOrders.filter((wo) => {
+      const s = String(wo.status || "").toLowerCase();
+      return s === "returned";
+    }).length;
+  }, [workOrders]);
+
+  const inProgressCount = useMemo(() => {
+    return workOrders.filter((wo) => {
+      const s = String(wo.status || "").toLowerCase();
+      return s === "in_progress" || s === "assigned";
+    }).length;
+  }, [workOrders]);
+
+  const totalZigsCount = workOrders.length;
+  const pastPaymentsCount = payments.length;
+
+  const displayName = profile?.fullName || user?.fullName || user?.username || "Weaver 01";
+
   if (loading) {
     return (
-      <div className="page" style={{ padding: "3rem", textAlign: "center" }}>
-        <div className="loading"><span>⏳</span> Loading your artisan workspace…</div>
-      </div>
-    );
-  }
-
-  if (!weaver && error) {
-    return (
-      <div className="page" style={{ padding: "2rem" }}>
-        <div className="error-msg" style={{ background: "#fee2e2", color: "#b91c1c", padding: "1rem", borderRadius: "6px" }}>
-          <span>⚠️</span> {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (!weaver) {
-    return (
-      <div className="page" style={{ padding: "2rem" }}>
-        <div className="error-msg">Artisan workspace profile not found.</div>
+      <div className="loading" style={{ padding: "4rem 2rem", textAlign: "center" }}>
+        <span>⏳</span> Loading your workspace…
       </div>
     );
   }
 
   return (
-    <div className="page" style={{ padding: "1.5rem" }}>
-      {/* ── Weaver Welcome Banner ── */}
-      <div
-        className="card"
-        style={{
-          background: "linear-gradient(135deg, #062E22 0%, #0F4A39 100%)",
-          color: "#fff",
-          marginBottom: "1.5rem",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "1.5rem",
-          flexWrap: "wrap",
-          padding: "1.5rem 1.75rem",
-          borderRadius: "12px",
-          boxShadow: "0 10px 25px -5px rgba(6, 46, 34, 0.4)",
-        }}
-      >
-        <div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "rgba(110,231,175,0.18)", color: "#6EE7B7", padding: "0.2rem 0.65rem", borderRadius: "999px", fontSize: "11.5px", fontWeight: 700, marginBottom: "0.5rem" }}>
-            <span>🇪🇹</span> አውራ አምባ ሸማኔ / Cooperative Weaver
-          </div>
-          <h1 style={{ fontSize: "22px", fontWeight: 800, margin: "0 0 4px", color: "#FFFFFF" }}>
-            Welcome, {weaver.fullName || user?.fullName || "Weaver"}
-          </h1>
-          <p style={{ margin: 0, fontSize: "13.5px", color: "#A7F3D0" }}>
-            Review your active work orders (Zigs), track returned fabrics, and verify your earnings.
-          </p>
-        </div>
-
-        <Link
-          to="/weaver/payments"
-          className="btn btn-primary"
-          style={{
-            background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
-            color: "#fff",
-            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)",
-            padding: "0.65rem 1.25rem",
-            borderRadius: "8px",
-            textDecoration: "none",
-            fontWeight: 600,
-          }}
-        >
-          <span>💳</span> View Settlement History / የክፍያ ታሪክ →
-        </Link>
+    <div>
+      {/* ── Page Header (Image 7) ── */}
+      <div className="weaver-page-header">
+        <p className="weaver-eyebrow">አውራ አምባ ሸማኔ</p>
+        <h1 className="weaver-page-title">Welcome back, {displayName}</h1>
       </div>
 
-      <WeaverZigTabs weaver={weaver as any} zigLinkPrefix="/weaver/zigs" />
+      {error && (
+        <div className="error-msg" style={{ marginBottom: "1.5rem" }}>
+          <span>⚠️</span> {error}
+        </div>
+      )}
+
+      {/* ── Highlight Card: Awaiting Payment (Image 7) ── */}
+      <Link to="/weaver/zigs?status=returned" className="weaver-hero-card">
+        <div className="weaver-hero-eyebrow">Awaiting payment</div>
+        <div className="weaver-hero-amount">{awaitingPaymentCount} zigs</div>
+        <p className="weaver-hero-sub">Fabric returned, waiting to be settled</p>
+      </Link>
+
+      {/* ── 3-Column Stats Grid (Image 7) ── */}
+      <div className="weaver-stats-grid">
+        <div className="weaver-stat-card">
+          <div className="weaver-stat-label">Total zigs</div>
+          <div className="weaver-stat-value">{totalZigsCount}</div>
+        </div>
+
+        <div className="weaver-stat-card">
+          <div className="weaver-stat-label">In progress</div>
+          <div className="weaver-stat-value">{inProgressCount}</div>
+        </div>
+
+        <div className="weaver-stat-card">
+          <div className="weaver-stat-label">Past payments</div>
+          <div className="weaver-stat-value">{pastPaymentsCount}</div>
+        </div>
+      </div>
+
+      {/* ── Quick Links / Recent Jobs Section ── */}
+      <div style={{ marginTop: "2rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h2 style={{ fontSize: "1.15rem", fontWeight: 800, margin: 0, color: "var(--text)" }}>
+            Recent Active Jobs / የቅርብ ጊዜ ዝግ
+          </h2>
+          <Link
+            to="/weaver/zigs"
+            style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--brand, #C2410C)", textDecoration: "none" }}
+          >
+            View all zigs →
+          </Link>
+        </div>
+
+        {workOrders.length === 0 ? (
+          <div className="weaver-stat-card" style={{ textAlign: "center", padding: "2.5rem 1.5rem", color: "var(--text-muted)" }}>
+            <span style={{ fontSize: "1.75rem", display: "block", marginBottom: "0.5rem" }}>🧵</span>
+            No work orders assigned yet.
+          </div>
+        ) : (
+          <div className="weaver-zigs-list">
+            {workOrders.slice(0, 3).map((wo) => {
+              const s = String(wo.status || "").toLowerCase();
+              const badgeClass =
+                s === "in_progress"
+                  ? "weaver-status-in_progress"
+                  : s === "returned"
+                  ? "weaver-status-returned"
+                  : s === "reconciled" || s === "paid"
+                  ? "weaver-status-paid"
+                  : "weaver-status-assigned";
+
+              const badgeLabel =
+                s === "in_progress"
+                  ? "In progress"
+                  : s === "returned"
+                  ? "Returned"
+                  : s === "reconciled" || s === "paid"
+                  ? "✓ Paid"
+                  : "Assigned";
+
+              const fabricTitle = wo.fabricVariant
+                ? fabricVariantName(wo.fabricVariant)
+                : wo.fabric?.name || "Standard Fabric";
+
+              const yarnQty = (wo.yarnGiven || []).reduce(
+                (sum: number, y: any) => sum + (parseFloat(String(y.quantity || 0)) || 0),
+                0
+              );
+              const fabricPcs = (wo.fabricReturns || []).reduce(
+                (sum: number, r: any) => sum + (parseInt(String(r.quantityReturned || 0), 10) || 0),
+                0
+              );
+
+              return (
+                <Link key={wo.zigId} to={`/weaver/zigs/${wo.zigId}`} className="weaver-zig-card">
+                  <div className="weaver-zig-card-header">
+                    <span className="weaver-zig-card-id">{wo.zigId}</span>
+                    <span className={`weaver-status-badge ${badgeClass}`}>{badgeLabel}</span>
+                  </div>
+                  <div className="weaver-zig-card-fabric">{fabricTitle}</div>
+                  <div className="weaver-zig-card-meta">
+                    Yarn received {yarnQty > 0 ? `${yarnQty} kg` : "—"} · Fabric returned {fabricPcs} pcs
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -911,6 +911,9 @@ export const calculationsApi = {
   cancelSettlement: async (settlementId: number | string, reason: string) => {
     return settlementService.cancelSettlement(settlementId, reason);
   },
+  cancelBatch: async (batchId: number | string, reason: string) => {
+    return settlementService.cancelBatch(batchId, reason);
+  },
   pendingSummary: async () => {
     return settlementService.getPendingSummary();
   },
@@ -935,8 +938,10 @@ export const calculationsApi = {
       const amount = Number(b.totalAmount ?? 0);
       const paidTotal = Number(b.amountPaid ?? 0);
       const settlements = b.settlements ?? [];
-      let status: "paid" | "partial" | "unpaid" = "unpaid";
-      if (paidTotal >= amount - 0.01 && amount > 0) {
+      let status: "paid" | "partial" | "unpaid" | "cancelled" = "unpaid";
+      if (b.status === "cancelled") {
+        status = "cancelled";
+      } else if (paidTotal >= amount - 0.01 && amount > 0) {
         status = "paid";
       } else if (paidTotal > 0.01) {
         status = "partial";
@@ -1017,6 +1022,8 @@ export const calculationsApi = {
       });
 
       return {
+        settlementId: settlement.settlementId,
+        status: settlement.status,
         userId: settlement.weaverUserId,
         weaverName: settlement.weaver?.fullName ?? `Weaver #${settlement.weaverUserId}`,
         zigIds,
@@ -1027,12 +1034,15 @@ export const calculationsApi = {
 
     return {
       previewId: String(batch.batchId),
+      batchId: batch.batchId,
       status: batch.status,
+      cutoffDate: batch.cutoffDate,
       generatedAt: batch.createdAt,
       grandTotal: Number(batch.totalAmount ?? 0),
       amharicAmountInWords: batch.amharicAmountInWords,
       weaverCount: weavers.length,
       weavers,
+      settlements: batch.settlements,
     };
   },
   downloadPreviewCsv: async (previewId: string) => {

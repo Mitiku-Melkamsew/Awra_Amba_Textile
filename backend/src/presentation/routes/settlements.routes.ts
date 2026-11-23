@@ -97,6 +97,12 @@ settlementsRouter.post(
   validateBody(PaySettlementSchema),
   SettlementController.payBatch,
 );
+settlementsRouter.post(
+  "/batches/:id/cancel",
+  requireCapability(Capability.SETTLEMENTS_COMMIT),
+  validateBody(CancelSettlementSchema),
+  SettlementController.cancelBatch,
+);
 
 settlementsRouter.post(
   "/lines/:id/override",

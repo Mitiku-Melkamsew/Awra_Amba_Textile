@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { formatDateDDMMYY } from "../../../utils/formatDate";
 import type { ZigLedgerItem } from "./types";
 
@@ -8,182 +8,174 @@ interface ProductionReportTableProps {
 }
 
 export function ProductionReportTable({ data, loading }: ProductionReportTableProps) {
+  const navigate = useNavigate();
+
   return (
-    <div className="table-wrap">
-      <table>
+    <div className="reports-table-container">
+      <table className="reports-table">
         <thead>
           <tr>
-            <th>Zig ID</th>
-            <th>Artisan Weaver</th>
-            <th>Fabric Spec</th>
-            <th>Status</th>
-            <th>Yarn Issued</th>
-            <th>Fabric Returns</th>
-            <th style={{ textAlign: "right" }}>Net Balance</th>
-            <th>Dates</th>
-            <th>Settlement</th>
+            <th className="reports-th">Zig ID</th>
+            <th className="reports-th">Artisan Weaver</th>
+            <th className="reports-th">Fabric Spec</th>
+            <th className="reports-th text-center">Status</th>
+            <th className="reports-th">Yarn Issued</th>
+            <th className="reports-th">Fabric Returns</th>
+            <th className="reports-th text-right">Net Balance</th>
+            <th className="reports-th">Dates</th>
+            <th className="reports-th text-center">Settlement</th>
+            <th className="reports-th" style={{ width: "36px" }}></th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={9} style={{ textAlign: "center", padding: "3rem" }}>
+              <td colSpan={10} className="reports-td text-center" style={{ padding: "3rem", color: "#64748B" }}>
                 ⏳ Loading production ledger…
               </td>
             </tr>
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={9} style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
+              <td colSpan={10} className="reports-td text-center" style={{ padding: "3rem", color: "#94A3B8" }}>
                 No work orders found matching current criteria.
               </td>
             </tr>
           ) : (
             data.map((d) => {
               const isUnderweight = d.fabric.averageWeight > 0 && d.fabric.averageWeight < d.standardWeightG;
+              const isOngoing = d.status === "assigned" || d.status === "in_progress";
+              const isReturned = d.status === "returned";
+              const isReconciled = d.status === "reconciled" || d.isSettled;
+              const isCancelled = d.status === "cancelled";
 
               return (
-                <tr key={d.zigId}>
-                  <td>
+                <tr
+                  key={d.zigId}
+                  className="reports-tr"
+                  onClick={() => navigate(`/admin/zigs/${d.zigId}`)}
+                  title={`Click to view work order ${d.zigId}`}
+                >
+                  {/* Zig ID */}
+                  <td className="reports-td">
                     <Link
                       to={`/admin/zigs/${d.zigId}`}
-                      style={{ fontWeight: 700, color: "var(--brand, #c2410c)", textDecoration: "none" }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="reports-link-zig"
                     >
                       {d.zigId}
                     </Link>
                   </td>
 
-                  <td>
+                  {/* Weaver Name & Phone */}
+                  <td className="reports-td">
                     <Link
                       to={`/admin/weavers/${d.weaverUserId}`}
-                      style={{ fontWeight: 600, color: "#0f172a", textDecoration: "none" }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="reports-link-weaver"
                     >
                       {d.weaverName}
                     </Link>
                     {d.weaverPhone && (
-                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{d.weaverPhone}</div>
+                      <div className="reports-subtext">{d.weaverPhone}</div>
                     )}
                   </td>
 
-                  <td>
+                  {/* Fabric Spec */}
+                  <td className="reports-td">
                     <div style={{ fontWeight: 600, color: "#334155" }}>{d.fabricName}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                    <div className="reports-subtext">
                       {[d.warpColor, d.weftColor, d.design].filter(Boolean).join(" · ")}
                     </div>
                   </td>
 
-                  <td>
-                    <span
-                      style={{
-                        background:
-                          d.status === "in_progress"
-                            ? "#e0f2fe"
-                            : d.status === "returned"
-                            ? "#fef3c7"
-                            : d.status === "reconciled"
-                            ? "#dcfce7"
-                            : d.status === "cancelled"
-                            ? "#fee2e2"
-                            : "#f1f5f9",
-                        color:
-                          d.status === "in_progress"
-                            ? "#0369a1"
-                            : d.status === "returned"
-                            ? "#b45309"
-                            : d.status === "reconciled"
-                            ? "#15803d"
-                            : d.status === "cancelled"
-                            ? "#b91c1c"
-                            : "#475569",
-                        padding: "2px 8px",
-                        borderRadius: "9999px",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {d.status.replace("_", " ")}
-                    </span>
+                  {/* Status Badge */}
+                  <td className="reports-td text-center">
+                    {isReturned ? (
+                      <span className="badge-ready-settle">Returned</span>
+                    ) : isOngoing ? (
+                      <span className="badge-in-progress">
+                        {d.status === "in_progress" ? "In progress" : "Assigned"}
+                      </span>
+                    ) : isReconciled ? (
+                      <span className="badge-settled">✓ Reconciled</span>
+                    ) : isCancelled ? (
+                      <span className="badge-cancelled">Cancelled</span>
+                    ) : (
+                      <span className="badge-unpaid">{d.status}</span>
+                    )}
                   </td>
 
-                  <td>
+                  {/* Yarn Issued */}
+                  <td className="reports-td">
                     <div>{d.yarn.issuedQuantity} kg</div>
-                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                    <div className="reports-subtext">
                       {d.yarn.totalCost.toLocaleString()} ETB
                     </div>
                   </td>
 
-                  <td>
+                  {/* Fabric Returns & Compliance */}
+                  <td className="reports-td">
                     <div>
                       <strong>{d.fabric.receivedQuantity}</strong> pcs ({d.fabric.totalWeight.toLocaleString()} g)
                     </div>
                     {d.fabric.receivedQuantity > 0 && (
-                      <div
-                        style={{
-                          fontSize: "0.75rem",
-                          color: isUnderweight ? "#dc2626" : "#15803d",
-                          fontWeight: 600,
-                        }}
-                      >
+                      <div className={isUnderweight ? "reports-weight-under" : "reports-weight-pass"}>
                         Avg {d.fabric.averageWeight} g {isUnderweight ? `(std ${d.standardWeightG}g)` : "✓"}
                       </div>
                     )}
                   </td>
 
-                  <td style={{ textAlign: "right" }}>
-                    <span
-                      style={{
-                        fontWeight: 800,
-                        color: d.netPayable >= 0 ? "#15803d" : "#b45309",
-                      }}
-                    >
+                  {/* Net Balance */}
+                  <td className="reports-td text-right">
+                    <span className={d.netPayable >= 0 ? "reports-net-positive" : "reports-net-negative"}>
                       {d.netPayable >= 0 ? `+${d.netPayable.toLocaleString()}` : d.netPayable.toLocaleString()} ETB
                     </span>
                     {d.fabric.deductionAmount > 0 && (
-                      <div style={{ fontSize: "0.72rem", color: "#dc2626" }}>
+                      <div className="reports-weight-under">
                         -{d.fabric.deductionAmount.toLocaleString()} ded.
                       </div>
                     )}
                   </td>
 
-                  <td style={{ fontSize: "0.82rem", color: "#475569" }}>
-                    <div>Issued {formatDateDDMMYY(d.dateIssued)}</div>
+                  {/* Dates */}
+                  <td className="reports-td">
+                    <div className="reports-subtext">Issued {formatDateDDMMYY(d.dateIssued)}</div>
                     {d.dateReturned && (
-                      <div style={{ color: "#059669", fontWeight: 500 }}>
+                      <div style={{ color: "#059669", fontWeight: 500, fontSize: "0.75rem" }}>
                         Ret. {formatDateDDMMYY(d.dateReturned)}
                       </div>
                     )}
                   </td>
 
-                  <td>
+                  {/* Settlement Batch / Status */}
+                  <td className="reports-td text-center">
                     {d.settlement ? (
-                      <span
-                        style={{
-                          background: "#dcfce7",
-                          color: "#15803d",
-                          padding: "2px 7px",
-                          borderRadius: "6px",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                        }}
+                      <Link
+                        to={`/admin/settlement/runs/${d.settlement.batchId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="reports-link-batch"
+                        title={`View settlement run BATCH #${d.settlement.batchId}`}
                       >
                         Batch #{d.settlement.batchId}
-                      </span>
+                      </Link>
                     ) : d.status === "returned" ? (
-                      <span
-                        style={{
-                          background: "#fef3c7",
-                          color: "#92400e",
-                          padding: "2px 7px",
-                          borderRadius: "6px",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                        }}
+                      <Link
+                        to="/admin/settlement?tab=zigs"
+                        onClick={(e) => e.stopPropagation()}
+                        className="badge-ready-settle"
+                        style={{ textDecoration: "none" }}
+                        title="Ready for hisab settlement"
                       >
                         Ready to settle
-                      </span>
+                      </Link>
                     ) : (
                       <span style={{ color: "#94a3b8", fontSize: "0.75rem" }}>—</span>
                     )}
+                  </td>
+
+                  {/* Row Navigation Arrow */}
+                  <td className="reports-td text-right" style={{ padding: "0.5rem" }}>
+                    <span className="reports-action-arrow">›</span>
                   </td>
                 </tr>
               );
@@ -194,3 +186,5 @@ export function ProductionReportTable({ data, loading }: ProductionReportTablePr
     </div>
   );
 }
+
+export default ProductionReportTable;

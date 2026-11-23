@@ -6,97 +6,44 @@ interface ProductionKpiCardsProps {
 
 export function ProductionKpiCards({ stats }: ProductionKpiCardsProps) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: "1rem",
-        marginBottom: "1.5rem",
-      }}
-    >
-      {/* Ongoing WIP Card */}
-      <div
-        style={{
-          background: "#ffffff",
-          border: "1px solid #e2e8f0",
-          borderRadius: "12px",
-          padding: "1.25rem",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-          Active WIP (Ongoing)
-        </div>
-        <div style={{ fontSize: "1.85rem", fontWeight: 800, color: "#0369a1", margin: "0.3rem 0" }}>
-          {stats.ongoingCount}
-        </div>
-        <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+    <div className="reports-kpi-grid">
+      {/* Active WIP Card */}
+      <div className="reports-kpi-card">
+        <span className="reports-kpi-label">Active WIP (Ongoing)</span>
+        <div className="reports-kpi-num blue">{stats.ongoingCount}</div>
+        <span className="reports-kpi-sub">
           {stats.ongoingYarnKg.toLocaleString()} kg yarn currently on looms
-        </div>
+        </span>
       </div>
 
       {/* Returned Pending Settlement Card */}
-      <div
-        style={{
-          background: "#ffffff",
-          border: "1px solid #e2e8f0",
-          borderRadius: "12px",
-          padding: "1.25rem",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-          Returned (Pending HISAB)
-        </div>
-        <div style={{ fontSize: "1.85rem", fontWeight: 800, color: "#b45309", margin: "0.3rem 0" }}>
-          {stats.returnedCount}
-        </div>
-        <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+      <div className="reports-kpi-card reports-kpi-peach">
+        <span className="reports-kpi-label">Returned (Ready to Settle)</span>
+        <div className="reports-kpi-num rust">{stats.returnedCount}</div>
+        <span className="reports-kpi-sub">
           {stats.pendingLiability.toLocaleString()} ETB pending weaver pay
-        </div>
+        </span>
       </div>
 
       {/* Reconciled / Settled Card */}
-      <div
-        style={{
-          background: "#ffffff",
-          border: "1px solid #e2e8f0",
-          borderRadius: "12px",
-          padding: "1.25rem",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-          Reconciled (Settled)
-        </div>
-        <div style={{ fontSize: "1.85rem", fontWeight: 800, color: "#15803d", margin: "0.3rem 0" }}>
-          {stats.reconciledCount}
-        </div>
-        <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
-          {stats.reconciledTotal.toLocaleString()} ETB paid out
-        </div>
+      <div className="reports-kpi-card">
+        <span className="reports-kpi-label">Reconciled (Settled)</span>
+        <div className="reports-kpi-num green">{stats.reconciledCount}</div>
+        <span className="reports-kpi-sub">
+          {stats.reconciledTotal.toLocaleString()} ETB paid out in full
+        </span>
       </div>
 
-      {/* Quality Compliance Card */}
-      <div
-        style={{
-          background: "#ffffff",
-          border: "1px solid #e2e8f0",
-          borderRadius: "12px",
-          padding: "1.25rem",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-        }}
-      >
-        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-          Weight Compliance
-        </div>
-        <div style={{ fontSize: "1.85rem", fontWeight: 800, color: "#0f172a", margin: "0.3rem 0" }}>
-          {stats.qualityRate}%
-        </div>
-        <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+      {/* Weight Compliance Card */}
+      <div className="reports-kpi-card">
+        <span className="reports-kpi-label">Weight Compliance</span>
+        <div className="reports-kpi-num">{stats.qualityRate}%</div>
+        <span className="reports-kpi-sub">
           Meeting or exceeding fabric spec weight
-        </div>
+        </span>
       </div>
     </div>
   );
 }
+
+export default ProductionKpiCards;

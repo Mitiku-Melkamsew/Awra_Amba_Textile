@@ -28,8 +28,8 @@ export function MerchantPricesPage() {
   }, [prices, search]);
 
   return (
-    <div className="page">
-      <div className="page-header">
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem", boxSizing: "border-box" }}>
+      <div className="page-header" style={{ marginBottom: "1.5rem" }}>
         <div>
           <p className="eyebrow" style={{ background: "#E0F2FE", color: "#0369A1" }}>
             የሽያጭ ዋጋ ዝርዝር / Official Price Sheet
@@ -51,8 +51,8 @@ export function MerchantPricesPage() {
       )}
 
       {/* ── Search Bar ── */}
-      <div className="card" style={{ marginBottom: "1.5rem", padding: "1rem 1.25rem" }}>
-        <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+      <div className="card" style={{ marginBottom: "1.5rem", padding: "0.85rem 1.25rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           <span style={{ fontSize: "16px" }}>🔍</span>
           <input
             type="text"
@@ -60,13 +60,13 @@ export function MerchantPricesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input-field"
-            style={{ width: "100%", maxWidth: "400px", padding: "0.55rem 0.85rem", fontSize: "13.5px" }}
+            style={{ width: "100%", maxWidth: "420px", padding: "0.55rem 0.85rem", fontSize: "13.5px" }}
           />
         </div>
       </div>
 
-      <div className="table-wrap">
-        <table>
+      <div className="data-table-container">
+        <table className="data-table">
           <thead>
             <tr>
               <th>Fabric Type</th>

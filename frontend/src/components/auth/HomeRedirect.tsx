@@ -8,7 +8,7 @@ export function HomeRedirect() {
   if (!user) return <Navigate to="/" replace />;
 
   if (isAdmin) {
-    return <Navigate to="/admin/weavers" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
   if (isWeaver) {
     return <Navigate to="/weaver" replace />;

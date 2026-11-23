@@ -19,70 +19,51 @@ export function ProductionReportPage() {
   } = useProductionReport();
 
   return (
-    <div className="page">
-      <Link to="/admin/reports" className="back-link">
-        ← Back to Financial Overview
-      </Link>
-
-      <div className="page-header" style={{ marginBottom: "1.25rem" }}>
+    <div className="page reports-page">
+      {/* ── Page Header ── */}
+      <div className="reports-header">
         <div>
-          <p className="eyebrow">የምርት ክትትል / Production & WIP Ledger</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-            <h1 className="page-title">Work-in-Progress & Production Report</h1>
-            <span className="badge badge--neutral">{data.length} Total Zigs</span>
-          </div>
-          <p className="page-subtitle">
-            Lifecycle monitoring for all active weaving zigs, issued yarns, fabric returns, and quality compliance outside the payment flow.
+          <h1 className="reports-title">
+            Production & WIP Ledger <span className="reports-title-amharic">· የምርት ክትትል</span>
+          </h1>
+          <p className="reports-subtitle">
+            Lifecycle monitoring for all active weaving zigs, issued yarns, fabric returns, and quality compliance
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div className="reports-header-actions">
           <button
             type="button"
             onClick={exportCsv}
             disabled={filteredData.length === 0}
             className="btn btn-secondary"
-            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
           >
             <span>📥</span> Export CSV
           </button>
         </div>
       </div>
 
-      {/* ── Section Tabs ── */}
-      <div className="tab-bar">
-        <Link
-          to="/admin/reports"
-          className="tab-pill"
-          style={{ textDecoration: "none" }}
-        >
+      {/* ── Section Segmented Navigation Tabs ── */}
+      <div className="reports-segmented-tabs">
+        <Link to="/admin/reports" className="reports-segmented-tab">
           Financial Overview
         </Link>
-        <span className="tab-pill active">
+        <Link to="/admin/reports/production" className="reports-segmented-tab active">
           Production & WIP Ledger
-        </span>
+        </Link>
       </div>
 
-      {/* Error Banner */}
+      {/* ── Error Banner ── */}
       {error && (
-        <div
-          style={{
-            background: "#fee2e2",
-            border: "1px solid #fca5a5",
-            color: "#b91c1c",
-            padding: "0.75rem 1rem",
-            borderRadius: "8px",
-            marginBottom: "1rem",
-          }}
-        >
+        <div className="settlement-alert-error">
           ⚠️ {error}
         </div>
       )}
 
-      {/* Aggregated KPI Cards */}
+      {/* ── Aggregated KPI Cards ── */}
       <ProductionKpiCards stats={stats} />
 
-      {/* Status Filter Tabs & Search Bar */}
+      {/* ── Status Filter Tabs & Search Bar ── */}
       <ProductionReportToolbar
         statusTab={statusTab}
         onStatusTabChange={setStatusTab}
@@ -92,7 +73,7 @@ export function ProductionReportPage() {
         stats={stats}
       />
 
-      {/* Ledger Table */}
+      {/* ── Ledger Table ── */}
       <ProductionReportTable data={filteredData} loading={loading} />
     </div>
   );

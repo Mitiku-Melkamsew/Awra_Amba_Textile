@@ -79,6 +79,720 @@
     color: var(--red, #DC2626);
   }
 
+  /* ── Segmented Control Tabs (Zigs / Runs) ───────────────── */
+  .settlement-segmented-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg-subtle, #F1F5F9);
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .settlement-segmented-tab {
+    padding: 0.45rem 1.15rem;
+    border-radius: 7px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted, #64748B);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+  }
+
+  .settlement-segmented-tab:hover {
+    color: var(--text, #0F172A);
+  }
+
+  .settlement-segmented-tab.active {
+    background: var(--surface, #FFFFFF);
+    color: var(--text, #0F172A);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  /* ── Settlement KPI Cards ────────────────────────────────── */
+  .settlement-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .settlement-kpi-card {
+    border-radius: 14px;
+    padding: 1.35rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .settlement-kpi-peach {
+    background: #FFF7ED;
+    border: 1px solid #FED7AA;
+  }
+
+  .settlement-kpi-white {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+
+  .settlement-kpi-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    margin-bottom: 0.5rem;
+  }
+
+  .settlement-kpi-val {
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 0.35rem;
+    letter-spacing: -0.02em;
+  }
+
+  .settlement-kpi-val.rust {
+    color: var(--brand, #C2410C);
+  }
+
+  .settlement-kpi-val.dark {
+    color: var(--text, #0F172A);
+  }
+
+  .settlement-kpi-sub {
+    font-size: 0.82rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  /* ── Status Badges ───────────────────────────────────────── */
+  .badge-ready-settle {
+    background: #FEF3C7;
+    color: #92400E;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .badge-in-progress {
+    background: #E0F2FE;
+    color: #0369A1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .badge-settled {
+    background: #DCFCE7;
+    color: #15803D;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .badge-unpaid {
+    background: #F1F5F9;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .badge-cancelled {
+    background: #FEE2E2;
+    color: #B91C1C;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .badge-blocked {
+    background: #FEE2E2;
+    color: #B91C1C;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  /* ── Settlement Run Detail Banner ────────────────────────── */
+  .settlement-banner-card {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: 12px;
+    padding: 1.25rem 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+
+  .settlement-mistake-card {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: 12px;
+    padding: 1.25rem 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  /* ── Sticky Bottom Footer for New Settlement Run ─────────── */
+  .settlement-sticky-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface, #FFFFFF);
+    border-top: 1px solid var(--border, #E2E8F0);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 1.5rem -1.5rem -1.5rem -1.5rem;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+  }
+
+  /* ── Settlement Page Navigation & Alerts ─────────────────── */
+  .settlement-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--brand, #C2410C);
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 0.92rem;
+  }
+
+  .settlement-back-link:hover {
+    text-decoration: underline;
+  }
+
+  .settlement-loading-state {
+    text-align: center;
+    padding: 4rem;
+    color: var(--text-muted, #64748B);
+    font-size: 0.95rem;
+  }
+
+  .settlement-empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted, #94A3B8);
+    font-size: 0.95rem;
+  }
+
+  .settlement-alert-error {
+    background: #FEE2E2;
+    border: 1px solid #FCA5A5;
+    color: #B91C1C;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+  }
+
+  .settlement-alert-success {
+    background: #ECFDF5;
+    border: 1px solid #A7F3D0;
+    color: #065F46;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+  }
+
+  .settlement-alert-dismiss {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px;
+  }
+
+  /* ── Settlement Run Detail Header ────────────────────────── */
+  .settlement-run-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .settlement-run-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .settlement-run-title {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    margin: 0;
+  }
+
+  .settlement-run-subtitle {
+    color: var(--text-muted, #64748B);
+    font-size: 0.92rem;
+    margin: 0.35rem 0 0 0;
+  }
+
+  .settlement-run-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .settlement-btn-mark-paid {
+    background: var(--brand, #C2410C);
+    border: 1px solid var(--brand, #C2410C);
+    color: #FFFFFF;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.5rem 1.15rem;
+    cursor: pointer;
+  }
+
+  .settlement-btn-mark-paid:hover {
+    background: #9A3412;
+  }
+
+  /* ── Banner Card Elements ────────────────────────────────── */
+  .settlement-banner-desc {
+    color: var(--text-secondary, #334155);
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .settlement-banner-total-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .settlement-banner-total-label {
+    color: var(--text-muted, #64748B);
+    font-size: 0.95rem;
+  }
+
+  .settlement-banner-total-val {
+    color: var(--brand, #C2410C);
+    font-size: 1.65rem;
+    font-weight: 800;
+  }
+
+  /* ── Mistake Callout Elements ────────────────────────────── */
+  .settlement-mistake-title {
+    font-weight: 700;
+    color: var(--text, #0F172A);
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .settlement-mistake-sub {
+    color: var(--text-muted, #64748B);
+    font-size: 0.85rem;
+  }
+
+  .settlement-btn-cancel-link {
+    background: transparent;
+    border: none;
+    color: var(--red, #DC2626);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.6rem;
+    text-decoration: underline;
+  }
+
+  .settlement-btn-cancel-link:hover {
+    color: #991B1B;
+  }
+
+  /* ── Clean Table Elements ────────────────────────────────── */
+  .settlement-table-container {
+    background: var(--surface, #FFFFFF);
+    border-radius: 14px;
+    border: 1px solid var(--border, #E2E8F0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+  }
+
+  .settlement-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .settlement-th {
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748B);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border, #E2E8F0);
+    background: var(--surface, #FFFFFF);
+  }
+
+  .settlement-th.text-center,
+  .settlement-td.text-center {
+    text-align: center;
+  }
+
+  .settlement-th.text-right,
+  .settlement-td.text-right {
+    text-align: right;
+  }
+
+  .settlement-tr {
+    border-bottom: 1px solid #F1F5F9;
+    transition: background 0.1s ease;
+  }
+
+  .settlement-tr:hover {
+    background: #F8FAFC;
+  }
+
+  .settlement-td {
+    padding: 1rem 1.25rem;
+  }
+
+  .settlement-tfoot-row {
+    background: #F8FAFC;
+    border-top: 2px solid var(--border, #E2E8F0);
+  }
+
+  .settlement-tfoot-row td {
+    padding: 1rem 1.25rem;
+    font-weight: 700;
+    color: var(--text, #0F172A);
+  }
+
+  .settlement-tfoot-total {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+  }
+
+  .settlement-weaver-name-link {
+    font-weight: 700;
+    color: var(--text, #0F172A);
+    text-decoration: none;
+  }
+
+  .settlement-weaver-name-link:hover {
+    color: var(--brand, #C2410C);
+    text-decoration: underline;
+  }
+
+  .settlement-btn-statement {
+    padding: 0.35rem 0.85rem;
+    border-radius: 7px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .settlement-btn-open-run {
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  /* ── Filter Toolbar ──────────────────────────────────────── */
+  .settlement-toolbar-right {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .settlement-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #334155);
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+  }
+
+  .settlement-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+
+  /* ── Settlement Modals ───────────────────────────────────── */
+  .settlement-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+
+  .settlement-modal-dialog {
+    background: var(--surface, #FFFFFF);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 470px;
+    padding: 1.75rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    position: relative;
+    animation: modalPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .settlement-modal-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-muted, #94A3B8);
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px;
+  }
+
+  .settlement-modal-close:hover {
+    color: var(--text, #0F172A);
+  }
+
+  .settlement-modal-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text, #0F172A);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .settlement-modal-title.with-margin {
+    margin-bottom: 1.25rem;
+  }
+
+  .settlement-modal-sub {
+    font-size: 0.88rem;
+    color: var(--text-muted, #64748B);
+    margin: 0 0 1.25rem 0;
+    line-height: 1.45;
+  }
+
+  .settlement-modal-error {
+    background: #FEE2E2;
+    border: 1px solid #FCA5A5;
+    color: #B91C1C;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .settlement-modal-warning {
+    background: #FFFBEB;
+    border: 1px solid #FEF3C7;
+    color: #B45309;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+  }
+
+  .settlement-modal-info-box {
+    background: #F8FAFC;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #475569);
+    line-height: 1.45;
+  }
+
+  .settlement-modal-success-box {
+    background: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    color: #166534;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    margin-bottom: 1.5rem;
+  }
+
+  .settlement-modal-field {
+    margin-bottom: 1.25rem;
+  }
+
+  .settlement-modal-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary, #334155);
+    margin-bottom: 0.4rem;
+  }
+
+  .settlement-modal-input,
+  .settlement-modal-select,
+  .settlement-modal-textarea {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong, #CBD5E1);
+    font-size: 0.92rem;
+    color: var(--text, #0F172A);
+    box-sizing: border-box;
+    background: var(--surface, #FFFFFF);
+  }
+
+  .settlement-modal-input:focus,
+  .settlement-modal-select:focus,
+  .settlement-modal-textarea:focus {
+    outline: none;
+    border-color: var(--brand, #C2410C);
+    box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.12);
+  }
+
+  .settlement-modal-textarea {
+    resize: vertical;
+  }
+
+  .settlement-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .settlement-modal-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.75rem;
+  }
+
+  .settlement-modal-summary-label {
+    font-size: 0.9rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  .settlement-modal-summary-val {
+    font-weight: 700;
+    color: var(--text, #0F172A);
+  }
+
+  .settlement-modal-summary-total {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--brand, #C2410C);
+  }
+
+  .settlement-btn-confirm-primary {
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    background: var(--brand, #C2410C);
+    border: none;
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .settlement-btn-confirm-primary:hover:not(:disabled) {
+    background: #9A3412;
+  }
+
+  .settlement-btn-cancel-danger {
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    background: var(--red, #DC2626);
+    border: none;
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .settlement-btn-cancel-danger:hover:not(:disabled) {
+    background: #B91C1C;
+  }
+
+  .settlement-btn-cancel-danger:disabled,
+  .settlement-btn-confirm-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @keyframes modalPop {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   @media (max-width: 640px) {
     .settlement-steps {
       align-items: flex-start;

@@ -1,0 +1,658 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - WEAVER PORTAL STYLES (WEB-FIRST)
+   Clean typography, responsive cards, and mobile-friendly nav.
+   ───────────────────────────────────────────────────────────── */
+
+@layer pages {
+  /* ── Weaver Layout & Top Navbar ───────────────────────────── */
+  .weaver-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #F8FAFC;
+    color: var(--text, #0F172A);
+  }
+
+  .weaver-navbar {
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--border, #E2E8F0);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .weaver-navbar-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .weaver-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .weaver-brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--brand, #C2410C);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.15rem;
+  }
+
+  .weaver-brand-titles {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .weaver-brand-name {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    letter-spacing: -0.2px;
+  }
+
+  .weaver-brand-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  .weaver-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .weaver-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-md, 8px);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .weaver-nav-link:hover {
+    color: var(--text, #0F172A);
+    background: var(--bg-subtle, #F1F5F9);
+  }
+
+  .weaver-nav-link.active {
+    color: var(--brand, #C2410C);
+    background: var(--brand-light, #FFEDD5);
+    font-weight: 700;
+  }
+
+  .weaver-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .weaver-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .weaver-user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #FFEDD5;
+    color: var(--brand, #C2410C);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
+  .weaver-user-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text, #0F172A);
+  }
+
+  .weaver-signout-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted, #64748B);
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+
+  .weaver-signout-btn:hover {
+    color: var(--red, #DC2626);
+    background: #FEF2F2;
+  }
+
+  /* ── Mobile Bottom Navigation Bar ─────────────────────────── */
+  .weaver-bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: #FFFFFF;
+    border-top: 1px solid var(--border, #E2E8F0);
+    z-index: 50;
+    justify-content: space-around;
+    align-items: center;
+    padding: 0 0.5rem;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .weaver-bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    text-decoration: none;
+    flex: 1;
+    padding: 0.3rem 0;
+    transition: color 0.15s ease;
+  }
+
+  .weaver-bottom-nav-item.active {
+    color: var(--brand, #C2410C);
+    font-weight: 700;
+  }
+
+  .weaver-bottom-nav-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  /* ── Main Container (Web-first) ────────────────────────────── */
+  .weaver-main-content {
+    flex: 1;
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    box-sizing: border-box;
+  }
+
+  /* ── Header Typography ────────────────────────────────────── */
+  .weaver-page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .weaver-eyebrow {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    letter-spacing: 0.2px;
+  }
+
+  .weaver-page-title {
+    margin: 0 0 0.35rem;
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    letter-spacing: -0.5px;
+  }
+
+  .weaver-page-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  /* ── Hero / Highlight Cards ───────────────────────────────── */
+  .weaver-hero-card {
+    background: var(--brand, #C2410C);
+    color: #FFFFFF;
+    border-radius: var(--radius-lg, 14px);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 20px -4px rgba(194, 65, 12, 0.3);
+    text-decoration: none;
+    display: block;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .weaver-hero-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -4px rgba(194, 65, 12, 0.4);
+  }
+
+  .weaver-hero-eyebrow {
+    font-size: 0.88rem;
+    font-weight: 600;
+    opacity: 0.9;
+    margin-bottom: 0.35rem;
+  }
+
+  .weaver-hero-amount {
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 0.35rem;
+    color: #FFFFFF;
+  }
+
+  .weaver-hero-sub {
+    font-size: 0.9rem;
+    opacity: 0.85;
+    margin: 0;
+  }
+
+  /* ── 3-Column Stats Grid (Image 7) ────────────────────────── */
+  .weaver-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .weaver-stat-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.25rem 1.35rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .weaver-stat-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    margin-bottom: 0.5rem;
+  }
+
+  .weaver-stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    line-height: 1;
+  }
+
+  /* ── Filter Pills (Image 5) ────────────────────────────────── */
+  .weaver-filter-pills {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .weaver-filter-pill {
+    padding: 0.45rem 1.15rem;
+    border-radius: var(--radius-full, 9999px);
+    font-size: 0.88rem;
+    font-weight: 600;
+    border: 1px solid var(--border, #CBD5E1);
+    background: #FFFFFF;
+    color: var(--text, #334155);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .weaver-filter-pill:hover {
+    border-color: var(--brand, #C2410C);
+    color: var(--brand, #C2410C);
+  }
+
+  .weaver-filter-pill.active {
+    background: #064E3B;
+    border-color: #064E3B;
+    color: #FFFFFF;
+  }
+
+  /* ── Zig Cards List (Image 5) ──────────────────────────────── */
+  .weaver-zigs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .weaver-zig-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.15rem 1.35rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .weaver-zig-card:hover {
+    transform: translateY(-2px);
+    border-color: #CBD5E1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .weaver-zig-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+
+  .weaver-zig-card-id {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+  }
+
+  .weaver-zig-card-fabric {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text, #1E293B);
+    margin-bottom: 0.25rem;
+  }
+
+  .weaver-zig-card-meta {
+    font-size: 0.84rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  /* ── Status Pills (Image 5) ───────────────────────────────── */
+  .weaver-status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full, 9999px);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .weaver-status-in_progress {
+    background: #E0F2FE;
+    color: #0369A1;
+  }
+
+  .weaver-status-returned {
+    background: #FEF3C7;
+    color: #B45309;
+  }
+
+  .weaver-status-reconciled,
+  .weaver-status-paid {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  .weaver-status-assigned {
+    background: #F1F5F9;
+    color: #475569;
+  }
+
+  .weaver-status-cancelled {
+    background: #FEE2E2;
+    color: #DC2626;
+  }
+
+  /* ── Payments Highlight & List (Image 3) ───────────────────── */
+  .weaver-payments-hero {
+    background: #ECFDF5;
+    border: 1px solid #A7F3D0;
+    border-radius: var(--radius-lg, 14px);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .weaver-payments-hero-label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #065F46;
+    margin-bottom: 0.35rem;
+  }
+
+  .weaver-payments-hero-total {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #065F46;
+    line-height: 1.1;
+  }
+
+  .weaver-payment-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.15rem 1.35rem;
+    margin-bottom: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+
+  .weaver-payment-amount {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    margin-bottom: 0.2rem;
+  }
+
+  .weaver-payment-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  .weaver-receipt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border, #CBD5E1);
+    background: #FFFFFF;
+    color: var(--text, #334155);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .weaver-receipt-btn:hover {
+    border-color: var(--brand, #C2410C);
+    color: var(--brand, #C2410C);
+    background: var(--bg-subtle, #F8FAFC);
+  }
+
+  /* ── Rates Cards (Image 2) ─────────────────────────────────── */
+  .weaver-rates-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 14px);
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+
+  .weaver-rates-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    margin: 0 0 1rem;
+  }
+
+  .weaver-rate-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+    font-size: 0.95rem;
+  }
+
+  .weaver-rate-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .weaver-rate-name {
+    font-weight: 600;
+    color: var(--text, #1E293B);
+  }
+
+  .weaver-rate-price {
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Calculator (Image 1) ──────────────────────────────────── */
+  .weaver-calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .weaver-calc-rule-box {
+    background: #F1F5F9;
+    border-radius: var(--radius-md, 10px);
+    padding: 0.9rem 1.15rem;
+    font-size: 0.88rem;
+    color: var(--text, #334155);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+
+  .weaver-calc-result-card {
+    background: #FFF7ED;
+    border: 1px solid #FED7AA;
+    border-radius: var(--radius-lg, 14px);
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 2px 8px rgba(194, 65, 12, 0.06);
+  }
+
+  .weaver-calc-result-label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #9A3412;
+    margin-bottom: 0.35rem;
+  }
+
+  .weaver-calc-result-total {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #C2410C;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+
+  .weaver-calc-breakdown-line {
+    font-size: 0.9rem;
+    color: #7C2D12;
+    margin-bottom: 0.35rem;
+  }
+
+  .weaver-calc-breakdown-line:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ── Zig Detail Stepper (Image 4) ──────────────────────────── */
+  .weaver-stepper-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .weaver-stepper-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+  }
+
+  .weaver-stepper-item.completed {
+    color: #15803D;
+  }
+
+  .weaver-stepper-item.current {
+    color: #C2410C;
+    font-weight: 700;
+  }
+
+  .weaver-stepper-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    background: #F1F5F9;
+    color: #64748B;
+  }
+
+  .weaver-stepper-dot.completed {
+    background: #065F46;
+    color: #FFFFFF;
+  }
+
+  .weaver-stepper-dot.current {
+    background: #C2410C;
+    color: #FFFFFF;
+  }
+
+  /* ── Responsive Media Queries ─────────────────────────────── */
+  @media (max-width: 640px) {
+    .weaver-nav-links {
+      display: none;
+    }
+
+    .weaver-bottom-nav {
+      display: flex;
+    }
+
+    .weaver-main-content {
+      padding: 1.25rem 1rem 5rem;
+    }
+
+    .weaver-stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .weaver-calc-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}

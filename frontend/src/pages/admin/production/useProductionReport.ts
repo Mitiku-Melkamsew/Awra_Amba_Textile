@@ -1,14 +1,47 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { settlementsApi } from "../../../api";
 import { formatDateDDMMYY } from "../../../utils/formatDate";
 import type { ZigLedgerItem, ProductionStatusTab, ProductionStats } from "./types";
 
 export function useProductionReport() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlStatus = searchParams.get("status");
+  const initialStatus: ProductionStatusTab =
+    urlStatus === "ongoing" || urlStatus === "returned" || urlStatus === "reconciled"
+      ? urlStatus
+      : "all";
+
   const [data, setData] = useState<ZigLedgerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [statusTab, setStatusTab] = useState<ProductionStatusTab>("all");
+  const [statusTab, setStatusTabState] = useState<ProductionStatusTab>(initialStatus);
   const [search, setSearch] = useState("");
+
+  // Sync state if urlStatus changes (e.g. dashboard link navigation)
+  useEffect(() => {
+    if (urlStatus === "ongoing" || urlStatus === "returned" || urlStatus === "reconciled") {
+      setStatusTabState(urlStatus);
+    } else if (!urlStatus) {
+      setStatusTabState("all");
+    }
+  }, [urlStatus]);
+
+  const setStatusTab = useCallback(
+    (tab: ProductionStatusTab) => {
+      setStatusTabState(tab);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab === "all") {
+          next.delete("status");
+        } else {
+          next.set("status", tab);
+        }
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   const fetchLedger = useCallback(() => {
     setLoading(true);

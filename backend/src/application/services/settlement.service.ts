@@ -526,6 +526,90 @@ export class SettlementService {
   }
 
   /**
+   * Cancel an entire settlement batch, releasing all contained zigs back to 'returned' status
+   */
+  static async cancelBatch(
+    batchId: number,
+    data: { reason: string },
+    actorUserId: number,
+  ) {
+    const batch = await prisma.settlementBatch.findUnique({
+      where: { batchId },
+      include: {
+        settlements: {
+          include: { workOrders: true, payments: true },
+        },
+      },
+    });
+    if (!batch) throw new NotFoundError(`Settlement batch ${batchId} not found`);
+    if (batch.status === "cancelled") {
+      throw new ConflictError("Settlement batch is already cancelled");
+    }
+    const hasPaidSettlements = batch.settlements.some(
+      (s) => s.status === "paid" || s.payments.length > 0,
+    );
+    if (hasPaidSettlements) {
+      throw new ConflictError(
+        "Cannot cancel a settlement batch that has recorded payments. Reverse the payments first.",
+      );
+    }
+
+    return prisma.$transaction(async (tx) => {
+      // 1. Mark all settlements in this batch as cancelled
+      await tx.settlement.updateMany({
+        where: { batchId },
+        data: {
+          status: "cancelled",
+          cancelReason: data.reason,
+        },
+      });
+
+      // 2. Revert all work orders belonging to this batch back to 'returned' status
+      const settlementIds = batch.settlements.map((s) => s.settlementId);
+      await tx.workOrder.updateMany({
+        where: {
+          OR: [
+            { settlementBatchId: batchId },
+            ...(settlementIds.length > 0 ? [{ settlementId: { in: settlementIds } }] : []),
+          ],
+        },
+        data: {
+          status: "returned",
+          settlementId: null,
+          settlementBatchId: null,
+        },
+      });
+
+      // 3. Mark the batch itself as cancelled
+      const updatedBatch = await tx.settlementBatch.update({
+        where: { batchId },
+        data: {
+          status: "cancelled",
+          totalAmount: 0,
+          amountPaid: 0,
+        },
+      });
+
+      // 4. Record audit log
+      await AuditService.record(
+        {
+          actorUserId,
+          action: "settlement_batch.cancel",
+          entityType: "settlement_batch",
+          entityId: batchId,
+          details: {
+            reason: data.reason,
+            settlementCount: batch.settlements.length,
+          },
+        },
+        tx,
+      );
+
+      return updatedBatch;
+    });
+  }
+
+  /**
    * List batches with pagination
    */
   static async listBatches() {

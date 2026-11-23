@@ -2,221 +2,383 @@ import { useEffect, useState, useMemo } from "react";
 import { merchantApi } from "../../api";
 import type { AvailableFabric } from "../../api";
 
+function derivePattern(design: string): "geberdin" | "zigzag" | "stripes" {
+  const d = (design || "").toLowerCase();
+  if (d.includes("zigzag")) return "zigzag";
+  if (d.includes("stripe") || d.includes("tibeb") || d.includes("line")) return "stripes";
+  return "geberdin";
+}
+
 export function MerchantFabricsPage() {
   const [fabrics, setFabrics] = useState<AvailableFabric[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedFabrics, setSelectedFabrics] = useState<string[]>([]);
+  const [selectedWarps, setSelectedWarps] = useState<string[]>([]);
+  const [selectedWefts, setSelectedWefts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setLoading(true);
     merchantApi
       .availableFabrics()
-      .then(setFabrics)
+      .then((data) => {
+        setFabrics(data || []);
+        setError("");
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredFabrics = useMemo(() => {
-    if (!search.trim()) return fabrics;
-    const q = search.toLowerCase();
-    return fabrics.filter(
-      (f) =>
-        f.fabricName.toLowerCase().includes(q) ||
-        f.sku.toLowerCase().includes(q) ||
-        f.design.toLowerCase().includes(q) ||
-        f.warpColor.toLowerCase().includes(q) ||
-        f.weftColor.toLowerCase().includes(q)
+  // 1. Fabric categories with counts
+  const fabricFacet = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const f of fabrics) {
+      const name = (f.fabricName || "Fabric").toLowerCase();
+      counts[name] = (counts[name] || 0) + 1;
+    }
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }, [fabrics]);
+
+  // 2. Warp colors available for selected fabrics
+  const warpFacet = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const pool =
+      selectedFabrics.length === 0
+        ? fabrics
+        : fabrics.filter((f) => selectedFabrics.includes((f.fabricName || "").toLowerCase()));
+
+    for (const f of pool) {
+      const warp = (f.warpColor || "Natural").toLowerCase();
+      counts[warp] = (counts[warp] || 0) + 1;
+    }
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }, [fabrics, selectedFabrics]);
+
+  // 3. Weft colors available for selected fabrics & warp choices
+  const weftFacet = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let pool =
+      selectedFabrics.length === 0
+        ? fabrics
+        : fabrics.filter((f) => selectedFabrics.includes((f.fabricName || "").toLowerCase()));
+
+    if (selectedWarps.length > 0) {
+      pool = pool.filter((f) => selectedWarps.includes((f.warpColor || "").toLowerCase()));
+    }
+
+    for (const f of pool) {
+      const weft = (f.weftColor || "Natural").toLowerCase();
+      counts[weft] = (counts[weft] || 0) + 1;
+    }
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }, [fabrics, selectedFabrics, selectedWarps]);
+
+  // Toggle helpers
+  const toggleFabric = (name: string) => {
+    setSelectedFabrics((prev) =>
+      prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]
     );
-  }, [fabrics, search]);
+  };
+
+  const toggleWarp = (name: string) => {
+    setSelectedWarps((prev) =>
+      prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]
+    );
+  };
+
+  const toggleWeft = (name: string) => {
+    setSelectedWefts((prev) =>
+      prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedFabrics([]);
+    setSelectedWarps([]);
+    setSelectedWefts([]);
+    setSearch("");
+  };
+
+  // Filtered fabrics for the catalog grid
+  const filteredFabrics = useMemo(() => {
+    return fabrics.filter((f) => {
+      const fname = (f.fabricName || "").toLowerCase();
+      const warp = (f.warpColor || "").toLowerCase();
+      const weft = (f.weftColor || "").toLowerCase();
+      const design = (f.design || "").toLowerCase();
+      const sku = (f.sku || "").toLowerCase();
+
+      if (selectedFabrics.length > 0 && !selectedFabrics.includes(fname)) {
+        return false;
+      }
+      if (selectedWarps.length > 0 && !selectedWarps.includes(warp)) {
+        return false;
+      }
+      if (selectedWefts.length > 0 && !selectedWefts.includes(weft)) {
+        return false;
+      }
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        const matches =
+          fname.includes(q) ||
+          warp.includes(q) ||
+          weft.includes(q) ||
+          design.includes(q) ||
+          sku.includes(q);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [fabrics, selectedFabrics, selectedWarps, selectedWefts, search]);
+
+  const hasActiveFilters =
+    selectedFabrics.length > 0 ||
+    selectedWarps.length > 0 ||
+    selectedWefts.length > 0 ||
+    Boolean(search.trim());
 
   return (
-    <div className="page">
-      {/* ── Welcome Banner ── */}
-      <div
-        className="card"
-        style={{
-          background: "linear-gradient(135deg, #075985 0%, #0369A1 100%)",
-          color: "#fff",
-          marginBottom: "1.5rem",
-          padding: "1.5rem 1.75rem",
-          borderRadius: "14px",
-          boxShadow: "0 10px 25px -5px rgba(3, 105, 161, 0.35)",
-        }}
-      >
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", background: "rgba(224, 242, 254, 0.2)", color: "#BAE6FD", padding: "0.2rem 0.65rem", borderRadius: "999px", fontSize: "11.5px", fontWeight: 700, marginBottom: "0.5rem" }}>
-          <span>🇪🇹</span> አውራ አምባ ማህበር የጨርቅ ካታሎግ
-        </div>
-        <h1 style={{ fontSize: "22px", fontWeight: 800, margin: "0 0 6px", color: "#FFFFFF" }}>
-          Available Fabrics Catalog / የሚገኙ ጨርቆች
-        </h1>
-        <p style={{ margin: 0, fontSize: "13.5px", color: "#E0F2FE", maxWidth: "700px", lineHeight: 1.5 }}>
-          Browse artisan-crafted cooperative fabrics with official technical specifications and current verified cooperative selling prices.
-        </p>
-      </div>
-
-      {/* ── Wholesale Ordering Notice ── */}
-      <div
-        style={{
-          background: "#EFF6FF",
-          border: "1px solid #BFDBFE",
-          borderRadius: "10px",
-          padding: "0.85rem 1.25rem",
-          marginBottom: "1.5rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          fontSize: "13px",
-          color: "#1E40AF",
-        }}
-      >
-        <span style={{ fontSize: "1.25rem" }}>ℹ️</span>
-        <div>
-          <strong>Commercial Notice:</strong> Direct wholesale orders and merchant credit approval workflows are currently managed directly by cooperative management. For bulk purchase orders, contact the sales desk with the variant SKU numbers listed below.
-        </div>
-      </div>
-
-      {/* ── Filter / Search Bar ── */}
-      <div className="card" style={{ marginBottom: "1.5rem", padding: "1rem 1.25rem" }}>
-        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: "1 1 300px" }}>
-            <span style={{ fontSize: "16px" }}>🔍</span>
-            <input
-              type="text"
-              placeholder="Search by fabric name, SKU, design pattern, or color..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-field"
-              style={{ width: "100%", padding: "0.55rem 0.85rem", fontSize: "13.5px" }}
-            />
-          </div>
-          <span className="badge badge--neutral" style={{ fontSize: "12.5px" }}>
-            {filteredFabrics.length} {filteredFabrics.length === 1 ? "Variant" : "Variants"} Available
-          </span>
-        </div>
-      </div>
-
-      {error && (
-        <div className="error-msg" style={{ marginBottom: "1.5rem" }}>
-          <span>⚠️</span> {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="loading" style={{ padding: "3rem 1rem", textAlign: "center" }}>
-          <span>⏳</span> Loading available fabrics catalog…
-        </div>
-      ) : filteredFabrics.length === 0 ? (
-        <div className="empty-state card" style={{ padding: "3rem 1.5rem", textAlign: "center" }}>
-          <span className="empty-icon" style={{ fontSize: "2rem" }}>🧣</span>
-          <p style={{ fontWeight: 600, color: "var(--text)", margin: "0.5rem 0" }}>
-            {search ? "No fabrics match your search query." : "No fabrics cataloged yet."}
-          </p>
-          <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-            Please check back soon or clear the search filter.
-          </span>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1.25rem" }}>
-          {filteredFabrics.map((fabric) => (
-            <div
-              key={fabric.fabricVariantId}
-              className="card"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                padding: "1.25rem",
-                borderRadius: "12px",
-                border: "1px solid #E2E8F0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                transition: "transform 0.15s ease, box-shadow 0.15s ease",
-              }}
+    <div className="merchant-catalog-layout">
+      {/* ── Left Filter Sidebar (Image 6) ── */}
+      <aside className="merchant-filter-card">
+        <div className="merchant-filter-header">
+          <h2 className="merchant-filter-title">Filter</h2>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="merchant-filter-clear-btn"
             >
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
-                  <span
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: "11px",
-                      background: "#F1F5F9",
-                      padding: "0.2rem 0.5rem",
-                      borderRadius: "6px",
-                      color: "#475569",
-                      fontWeight: 600,
-                    }}
-                  >
-                    SKU: {fabric.sku}
-                  </span>
-                  <span className="badge badge--success" style={{ fontSize: "11px" }}>
-                    Standard Spec
-                  </span>
-                </div>
-
-                <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>
-                  {fabric.fabricName}
-                </h3>
-                <p style={{ margin: "0 0 1rem", fontSize: "12.5px", color: "var(--text-muted)" }}>
-                  Pattern: <strong>{fabric.design}</strong>
-                </p>
-
-                <div
-                  style={{
-                    background: "#F8FAFC",
-                    borderRadius: "8px",
-                    padding: "0.75rem",
-                    marginBottom: "1rem",
-                    fontSize: "12px",
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <div>
-                    <span style={{ color: "#64748B", display: "block" }}>Warp / Weft</span>
-                    <strong style={{ color: "#1E293B" }}>{fabric.warpColor} / {fabric.weftColor}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "#64748B", display: "block" }}>Std Weight</span>
-                    <strong style={{ color: "#1E293B" }}>{fabric.standardWeightG}g</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "#64748B", display: "block" }}>Std Length</span>
-                    <strong style={{ color: "#1E293B" }}>{fabric.standardLengthCm} cm</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "#64748B", display: "block" }}>Std Width</span>
-                    <strong style={{ color: "#1E293B" }}>{fabric.standardWidthCm} cm</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  borderTop: "1px solid #E2E8F0",
-                  paddingTop: "0.85rem",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <span style={{ fontSize: "12px", color: "#64748B", fontWeight: 500 }}>
-                  Official Selling Price
-                </span>
-                <span
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 800,
-                    color: "#0369A1",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {fabric.sellingPrice > 0 ? `${Number(fabric.sellingPrice).toLocaleString()} ETB` : "Inquire"}
-                </span>
-              </div>
-            </div>
-          ))}
+              Clear all
+            </button>
+          )}
         </div>
-      )}
+
+        {/* Step 1: Fabric */}
+        <div className="merchant-filter-group">
+          <span className="merchant-filter-group-label">1 · FABRIC</span>
+          {fabricFacet.map((f) => {
+            const isChecked = selectedFabrics.includes(f.name);
+            return (
+              <label
+                key={f.name}
+                className={`merchant-filter-option ${isChecked ? "selected" : ""}`}
+              >
+                <div className="merchant-filter-checkbox-wrap">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleFabric(f.name)}
+                    className="merchant-filter-checkbox"
+                  />
+                  <span>{f.name}</span>
+                </div>
+                <span className="merchant-filter-count">{f.count}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        {/* Step 2: Warp */}
+        <div className="merchant-filter-group">
+          <span className="merchant-filter-group-label">2 · WARP · ዋርፍ</span>
+          {warpFacet.map((w) => {
+            const isChecked = selectedWarps.includes(w.name);
+            return (
+              <label
+                key={w.name}
+                className={`merchant-filter-option ${isChecked ? "selected" : ""}`}
+              >
+                <div className="merchant-filter-checkbox-wrap">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleWarp(w.name)}
+                    className="merchant-filter-checkbox"
+                  />
+                  <span>{w.name}</span>
+                </div>
+                <span className="merchant-filter-count">{w.count}</span>
+              </label>
+            );
+          })}
+          <p className="merchant-filter-subtext">Colors available for your fabric</p>
+        </div>
+
+        {/* Step 3: Weft */}
+        <div className="merchant-filter-group">
+          <span className="merchant-filter-group-label">3 · WEFT · ሸፋ</span>
+          {weftFacet.map((w) => {
+            const isChecked = selectedWefts.includes(w.name);
+            return (
+              <label
+                key={w.name}
+                className={`merchant-filter-option ${isChecked ? "selected" : ""}`}
+              >
+                <div className="merchant-filter-checkbox-wrap">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleWeft(w.name)}
+                    className="merchant-filter-checkbox"
+                  />
+                  <span>{w.name}</span>
+                </div>
+                <span className="merchant-filter-count">{w.count}</span>
+              </label>
+            );
+          })}
+          <p className="merchant-filter-subtext">Colors available for your choices</p>
+        </div>
+      </aside>
+
+      {/* ── Right Content Area (Image 6) ── */}
+      <section className="merchant-content-area">
+        {/* Header Title & Count */}
+        <div className="merchant-content-header">
+          <h1 className="merchant-page-title">Fabrics · የሚገኙ ጨርቆች</h1>
+          <span className="merchant-page-count">
+            {filteredFabrics.length} of {fabrics.length} fabrics
+          </span>
+        </div>
+
+        {/* Search Bar */}
+        <div className="merchant-search-input-wrap">
+          <span className="merchant-search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search by fabric, color or pattern"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="merchant-search-input"
+          />
+        </div>
+
+        {/* Active Filter Chips */}
+        {hasActiveFilters && (
+          <div className="merchant-active-chips">
+            {selectedFabrics.map((f) => (
+              <span key={f} className="merchant-filter-chip">
+                <span>Fabric: {f}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleFabric(f)}
+                  className="merchant-chip-remove"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+
+            {selectedWarps.map((w) => (
+              <span key={w} className="merchant-filter-chip">
+                <span>Warp: {w}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleWarp(w)}
+                  className="merchant-chip-remove"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+
+            {selectedWefts.map((w) => (
+              <span key={w} className="merchant-filter-chip">
+                <span>Weft: {w}</span>
+                <button
+                  type="button"
+                  onClick={() => toggleWeft(w)}
+                  className="merchant-chip-remove"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="merchant-filter-clear-btn"
+              style={{ marginLeft: "0.25rem" }}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="error-msg">
+            <span>⚠️</span> {error}
+          </div>
+        )}
+
+        {/* Fabrics Grid */}
+        {loading ? (
+          <div className="loading" style={{ padding: "4rem 1rem", textAlign: "center" }}>
+            <span>⏳</span> Loading fabrics catalog…
+          </div>
+        ) : filteredFabrics.length === 0 ? (
+          <div
+            className="merchant-filter-card"
+            style={{ textAlign: "center", padding: "3rem 1.5rem", color: "var(--text-muted)" }}
+          >
+            <span style={{ fontSize: "2rem", display: "block", marginBottom: "0.5rem" }}>🧣</span>
+            <p style={{ margin: "0 0 0.25rem", fontWeight: 700, color: "var(--text)" }}>
+              No fabrics match your selected filters.
+            </p>
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="btn btn-secondary btn-sm"
+              style={{ marginTop: "0.75rem" }}
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="merchant-fabrics-grid">
+            {filteredFabrics.map((f) => {
+              const fname = (f.fabricName || "fabric").toLowerCase();
+              const warp = (f.warpColor || "natural").toLowerCase();
+              const weft = (f.weftColor || "natural").toLowerCase();
+              const design = (f.design || "standard").toLowerCase();
+              const patternType = derivePattern(design);
+
+              const title = `${fname} · ${warp} · ${design}`;
+              const patternDesc = `Pattern ${design} · warp ${warp} / weft ${weft}`;
+              const specs = `${f.standardWeightG ?? 64} g · ${f.standardLengthCm ?? 240} × ${
+                f.standardWidthCm ?? 150
+              } cm`;
+              const priceNum = Math.round(Number(f.sellingPrice) || 0);
+
+              return (
+                <div key={f.fabricVariantId} className="merchant-fabric-card">
+                  <div className={`merchant-fabric-swatch swatch-${patternType}`} />
+                  <div className="merchant-fabric-body">
+                    <h3 className="merchant-fabric-card-title">{title}</h3>
+                    <p className="merchant-fabric-card-pattern">{patternDesc}</p>
+                    <span className="merchant-fabric-specs-pill">{specs}</span>
+
+                    <div className="merchant-fabric-price-row">
+                      <span className="merchant-fabric-price-amount">
+                        {priceNum > 0 ? priceNum.toLocaleString() : "—"}
+                      </span>
+                      <span className="merchant-fabric-price-unit">ETB per piece</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Footer Note */}
+        <p className="merchant-catalog-footer">
+          Each choice narrows the next one, so you only see colors that exist. Official selling prices.
+        </p>
+      </section>
     </div>
   );
 }

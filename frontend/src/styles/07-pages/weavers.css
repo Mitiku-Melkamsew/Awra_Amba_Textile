@@ -1,0 +1,285 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - WEAVERS & ZIGS PAGE
+   Toolbar, roster table, artisan cards, and profile styles.
+   ───────────────────────────────────────────────────────────── */
+
+@layer pages {
+  /* ── Weavers Toolbar ─────────────────────────────────────── */
+  .weavers-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+    margin-bottom: var(--space-5, 1.25rem);
+    width: 100%;
+  }
+
+  /* Search input fills all remaining horizontal space */
+  .weavers-search-wrap {
+    flex: 1 1 auto;
+    position: relative;
+    min-width: 180px;
+  }
+
+  .weavers-search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted, #64748B);
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .weavers-search-input {
+    width: 100%;
+    height: 38px;
+    padding-left: 2.4rem;
+    padding-right: 0.85rem;
+    font-size: var(--text-sm, 13.5px);
+    border: 1px solid var(--border, #CBD5E1);
+    border-radius: var(--radius-md, 8px);
+    background: var(--surface, #FFFFFF);
+    color: var(--text, #0F172A);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-sizing: border-box;
+  }
+
+  .weavers-search-input:focus {
+    border-color: var(--brand, #C2410C);
+    box-shadow: 0 0 0 3px var(--brand-subtle, rgba(194, 65, 12, 0.12));
+  }
+
+  /* Right-most controls group */
+  .weavers-controls-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    flex-shrink: 0;
+  }
+
+  /* ── Segmented Control for Sort (Matching Toggle Design) ── */
+  .weavers-segmented-control {
+    display: inline-flex;
+    align-items: center;
+    background: #EEF2F6;
+    padding: 4px;
+    border-radius: 12px;
+    gap: 3px;
+  }
+
+  .weavers-segmented-btn {
+    padding: 0.45rem 1.15rem;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: #2D3748;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .weavers-segmented-btn:hover {
+    color: #0F172A;
+  }
+
+  .weavers-segmented-btn.active {
+    background: #FFFFFF;
+    color: var(--brand, #C2410C);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Status Filter Select (compact on the right) */
+  .weavers-status-select {
+    height: 34px;
+    padding: 0 0.65rem;
+    font-size: var(--text-xs, 12px);
+    font-weight: 600;
+    color: var(--text, #334155);
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #CBD5E1);
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .weavers-status-select:focus {
+    border-color: var(--brand, #C2410C);
+  }
+
+  /* Count badge */
+  .weavers-count-badge {
+    font-size: var(--text-xs, 12.5px);
+    color: var(--text-muted, #64748B);
+    font-weight: 500;
+    white-space: nowrap;
+    padding-left: var(--space-1, 0.25rem);
+  }
+
+  /* ── Roster Table ────────────────────────────────────────── */
+  .weavers-table-card {
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 14px);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+
+  .weavers-table-header {
+    display: grid;
+    grid-template-columns: minmax(200px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) auto;
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+    padding: 0.85rem 1.5rem;
+    font-size: var(--text-xs, 12px);
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    background: var(--bg-subtle, #F8FAFC);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .weavers-table-row {
+    display: grid;
+    grid-template-columns: minmax(200px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) auto;
+    align-items: center;
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+    padding: 0.85rem 1.5rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .weavers-table-row:hover {
+    background: var(--surface-hover, #F8FAFC);
+  }
+
+  .weavers-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--brand-light, #FFEDD5);
+    color: var(--brand, #C2410C);
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .weavers-avatar.deactivated {
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text-muted, #94A3B8);
+  }
+
+  .weavers-name-link {
+    font-weight: 700;
+    color: var(--text, #0F172A);
+    text-decoration: none;
+    font-size: 14.5px;
+    transition: color 0.15s ease;
+  }
+
+  .weavers-name-link:hover {
+    color: var(--brand, #C2410C);
+  }
+
+  .weavers-id-pill {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    background: var(--bg-subtle, #F1F5F9);
+    padding: 1px 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .weavers-empty-state {
+    text-align: center;
+    padding: 3.5rem 1rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  .weavers-empty-icon {
+    font-size: 2rem;
+    margin-bottom: var(--space-2, 0.5rem);
+  }
+
+  .weavers-empty-title {
+    font-weight: 600;
+    color: var(--text, #0F172A);
+    font-size: 15px;
+  }
+
+  .weavers-empty-sub {
+    font-size: var(--text-xs, 13px);
+    margin-top: var(--space-1, 0.25rem);
+  }
+
+  .weavers-name-col {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+  }
+
+  .weavers-subtext {
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    margin-top: 2px;
+  }
+
+  .weavers-cell-text {
+    font-size: var(--text-sm, 13.5px);
+    color: var(--text, #334155);
+    font-weight: 500;
+  }
+
+  .weavers-cell-muted {
+    font-size: var(--text-sm, 13.5px);
+    color: var(--text-muted, #64748B);
+    font-weight: 500;
+  }
+
+  .weavers-actions-col {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+    justify-content: flex-end;
+  }
+
+  .weavers-chevron {
+    color: var(--text-subtle, #94A3B8);
+    font-size: 1.15rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    padding: 0.2rem;
+    transition: color 0.15s ease;
+  }
+
+  .weavers-chevron:hover {
+    color: var(--brand, #C2410C);
+  }
+
+  @media (max-width: 820px) {
+    .weavers-toolbar {
+      flex-wrap: wrap;
+    }
+    .weavers-search-wrap {
+      width: 100%;
+      flex: 1 1 100%;
+    }
+    .weavers-controls-right {
+      width: 100%;
+      justify-content: flex-end;
+      margin-left: 0;
+    }
+  }
+}

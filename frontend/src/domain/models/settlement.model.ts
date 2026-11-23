@@ -170,7 +170,7 @@ export interface CommittedSettlementSummary {
   paymentCount: number;
   paidTotal: number;
   balance?: number;
-  status?: "paid" | "partial" | "unpaid";
+  status?: "paid" | "partial" | "unpaid" | "cancelled";
   paymentMethod: string | null;
   confirmedBy: string;
 }

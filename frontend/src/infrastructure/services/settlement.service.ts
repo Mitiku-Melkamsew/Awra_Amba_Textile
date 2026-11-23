@@ -50,6 +50,13 @@ export const settlementService = {
     });
   },
 
+  async cancelBatch(id: string | number, reason: string): Promise<any> {
+    return request(`/settlements/batches/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+  },
+
   async getPendingSummary(): Promise<PendingSettlementsSummary> {
     return request<PendingSettlementsSummary>("/settlements/pending-summary");
   },

@@ -32,7 +32,7 @@ export function WeaversPage() {
   return (
     <div className="page">
       {/* ── Page Header ── */}
-      <div className="page-header" style={{ marginBottom: "1.25rem" }}>
+      <div className="page-header mb-4">
         <div>
           <p className="eyebrow">ሸማኔዎች · WEAVERS</p>
           <h1 className="page-title">Weavers</h1>
@@ -61,7 +61,7 @@ export function WeaversPage() {
       />
 
       {error && (
-        <div className="error-msg" style={{ marginBottom: "1rem" }}>
+        <div className="error-msg mb-4">
           <span>⚠️</span> {error}
         </div>
       )}

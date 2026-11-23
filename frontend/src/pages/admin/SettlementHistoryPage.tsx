@@ -174,8 +174,14 @@ export function SettlementHistoryPage() {
                           </button>
                         )}
                         <Link
-                          to={`/admin/settlement/preview/${row.previewId}`}
+                          to={`/admin/settlement/runs/${row.previewId}`}
                           className="btn btn-sm btn-secondary"
+                        >
+                          Open
+                        </Link>
+                        <Link
+                          to={`/admin/settlement/preview/${row.previewId}`}
+                          className="btn btn-sm btn-ghost"
                         >
                           🖨 Document
                         </Link>

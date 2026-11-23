@@ -229,10 +229,10 @@ export function PublicHomePage() {
             ) : (
               <>
                 <Link to="/login" className="public-staff-link">
-                  {lang === "en" ? "Weaver or staff" : "ሸማኔ ወይም ሰራተኛ"}
+                  {lang === "en" ? "Sign in" : "ግባ"}
                 </Link>
-                <Link to="/login" className="btn btn-primary btn-sm">
-                  {lang === "en" ? "Merchant sign in" : "የነጋዴ መግቢያ"}
+                <Link to="/signup" className="btn btn-primary btn-sm">
+                  {lang === "en" ? "Sign up" : "ተመዝገብ"}
                 </Link>
               </>
             )}

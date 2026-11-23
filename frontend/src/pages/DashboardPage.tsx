@@ -107,13 +107,18 @@ export function DashboardPage() {
           <p className="dashboard-date">{formattedToday}</p>
           <h1 className="dashboard-greeting">Good morning, {adminName}</h1>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => navigate("/admin/weavers")}
-        >
-          + Issue zig
-        </button>
+        <div className="dashboard-header-actions">
+          <Link to="/admin/reports/production" className="btn btn-secondary">
+            Production Ledger
+          </Link>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate("/admin/weavers")}
+          >
+            + Issue zig
+          </button>
+        </div>
       </div>
 
       {/* Needs your attention */}
@@ -178,35 +183,59 @@ export function DashboardPage() {
 
       {/* Zigs in production */}
       <section className="dashboard-section" style={{ marginTop: "2.5rem" }}>
-        <h2 className="dashboard-section-title">Zigs in production</h2>
+        <div className="dashboard-section-header">
+          <h2 className="dashboard-section-title">Zigs in production</h2>
+          <Link
+            to="/admin/reports/production"
+            className="btn btn-secondary btn-sm dashboard-section-action"
+          >
+            <span>🏭</span> View Production & WIP Ledger →
+          </Link>
+        </div>
         <div className="zigs-grid">
           {/* Assigned */}
-          <div className="card zig-stat-card">
+          <Link
+            to="/admin/reports/production?status=ongoing"
+            className="card zig-stat-card"
+            title="View ongoing zigs in production ledger"
+          >
             <span className="zig-stat-label">Assigned</span>
             <div className="zig-stat-num">{assignedZigs}</div>
             <span className="zig-stat-sub">awaiting setup</span>
-          </div>
+          </Link>
 
           {/* In progress */}
-          <div className="card zig-stat-card">
+          <Link
+            to="/admin/reports/production?status=ongoing"
+            className="card zig-stat-card"
+            title="View in-progress zigs in production ledger"
+          >
             <span className="zig-stat-label">In progress</span>
             <div className="zig-stat-num">{inProgressZigs}</div>
             <span className="zig-stat-sub">being woven</span>
-          </div>
+          </Link>
 
           {/* Returned (Active highlight) */}
-          <div className="card zig-stat-card zig-stat-highlight">
+          <Link
+            to="/admin/reports/production?status=returned"
+            className="card zig-stat-card zig-stat-highlight"
+            title="View returned zigs ready to settle"
+          >
             <span className="zig-stat-label">Returned</span>
             <div className="zig-stat-num text-highlight-rust">{returnedZigs}</div>
             <span className="zig-stat-sub">ready to settle</span>
-          </div>
+          </Link>
 
           {/* Reconciled */}
-          <div className="card zig-stat-card">
+          <Link
+            to="/admin/reports/production?status=reconciled"
+            className="card zig-stat-card"
+            title="View reconciled/settled zigs"
+          >
             <span className="zig-stat-label">Reconciled</span>
             <div className="zig-stat-num">{reconciledZigs}</div>
             <span className="zig-stat-sub">settled and paid</span>
-          </div>
+          </Link>
         </div>
       </section>
 

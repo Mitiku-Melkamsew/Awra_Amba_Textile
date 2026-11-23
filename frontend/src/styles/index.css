@@ -27,5 +27,8 @@
 @import "./07-pages/reports.css";
 @import "./07-pages/prices.css";
 @import "./07-pages/settlement.css";
+@import "./07-pages/weavers.css";
+@import "./07-pages/weaver-portal.css";
+@import "./07-pages/merchant-portal.css";
 @import "./07-pages/public-home.css";
 @import "./07-pages/print.css";

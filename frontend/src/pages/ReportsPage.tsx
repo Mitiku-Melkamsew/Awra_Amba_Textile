@@ -124,43 +124,35 @@ export function ReportsPage() {
 
   return (
     <div className="page reports-page">
-      {/* ── Page Header & Navigation ── */}
-      <div className="page-header" style={{ marginBottom: "1.25rem" }}>
+      {/* ── Page Header ── */}
+      <div className="reports-header">
         <div>
-          <p className="eyebrow">ሪፖርቶች · REPORTS & ANALYTICS</p>
-          <h1 className="page-title">
-            Reports <span className="title-amharic">· ሪፖርቶች</span>
+          <h1 className="reports-title">
+            Reports <span className="reports-title-amharic">· ሪፖርቶች</span>
           </h1>
-          <p className="page-subtitle">
+          <p className="reports-subtitle">
             Financial performance, revenues, expenses, and artisan balances
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-          <Link
-            to="/admin/reports/production"
-            className="btn btn-secondary"
-            style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
-          >
+
+        <div className="reports-header-actions">
+          <Link to="/admin/reports/production" className="btn btn-secondary">
             <span>🏭</span> Production & WIP Ledger →
           </Link>
         </div>
       </div>
 
-      {/* ── Section Tabs ── */}
-      <div className="tab-bar">
-        <span className="tab-pill active">
+      {/* ── Section Segmented Navigation Tabs ── */}
+      <div className="reports-segmented-tabs">
+        <Link to="/admin/reports" className="reports-segmented-tab active">
           Financial Overview
-        </span>
-        <Link
-          to="/admin/reports/production"
-          className="tab-pill"
-          style={{ textDecoration: "none" }}
-        >
+        </Link>
+        <Link to="/admin/reports/production" className="reports-segmented-tab">
           Production & WIP Ledger
         </Link>
       </div>
 
-      {/* Period Filter Chips */}
+      {/* ── Period Filter Chips ── */}
       <div className="reports-period-row">
         <span className="reports-period-label">Period</span>
         <div className="reports-chips-group">
@@ -202,44 +194,44 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {/* Top 3 Metric Cards */}
+      {/* ── Top 3 Metric Cards ── */}
       <div className="reports-kpi-grid">
-        <div className="card reports-kpi-card">
+        <div className="reports-kpi-card">
           <span className="reports-kpi-label">Revenue (billed)</span>
           <div className="reports-kpi-num">{revenueBilled.toLocaleString()}</div>
-          <span className="reports-kpi-sub">ETB</span>
+          <span className="reports-kpi-sub">ETB total billed</span>
         </div>
 
-        <div className="card reports-kpi-card">
+        <div className="reports-kpi-card">
           <span className="reports-kpi-label">Expenses</span>
           <div className="reports-kpi-num">{expenses.toLocaleString()}</div>
-          <span className="reports-kpi-sub">ETB</span>
+          <span className="reports-kpi-sub">ETB yarn, settlements & fabric</span>
         </div>
 
-        <div className="card reports-kpi-card">
+        <div className="reports-kpi-card reports-kpi-peach">
           <span className="reports-kpi-label">Net operating profit</span>
-          <div className="reports-kpi-num text-profit-rust">
+          <div className="reports-kpi-num rust">
             {netOperatingProfit.toLocaleString()}
           </div>
           <span className="reports-kpi-sub">ETB · revenue minus expenses</span>
         </div>
       </div>
 
-      {/* Main Breakdown Section */}
+      {/* ── Main Breakdown Section ── */}
       <div className="reports-main-layout">
         {/* Left Column */}
         <div className="reports-left-col">
           {/* Revenue & Expenses Detail Card */}
-          <div className="card reports-breakdown-card">
+          <div className="reports-card">
             <div className="breakdown-columns-grid">
               {/* Revenue column */}
-              <div className="breakdown-col">
+              <div>
                 <h3 className="breakdown-col-title">Revenue</h3>
                 <div className="breakdown-row">
                   <div className="breakdown-row-left">
                     <span className="breakdown-row-label">Fabric sold to merchants</span>
                     <span className="breakdown-row-sub">
-                      collected {fabricCollected.toLocaleString()}
+                      collected {fabricCollected.toLocaleString()} ETB
                     </span>
                   </div>
                   <span className="breakdown-row-val">{fabricSoldToMerchants.toLocaleString()}</span>
@@ -248,7 +240,7 @@ export function ReportsPage() {
                   <div className="breakdown-row-left">
                     <span className="breakdown-row-label">Yarn sold to weavers</span>
                     <span className="breakdown-row-sub">
-                      collected {yarnCollected.toLocaleString()}
+                      collected {yarnCollected.toLocaleString()} ETB
                     </span>
                   </div>
                   <span className="breakdown-row-val">{yarnSoldToWeavers.toLocaleString()}</span>
@@ -256,7 +248,7 @@ export function ReportsPage() {
               </div>
 
               {/* Expenses column */}
-              <div className="breakdown-col">
+              <div>
                 <h3 className="breakdown-col-title">Expenses</h3>
                 <div className="breakdown-row">
                   <span className="breakdown-row-label">Yarn bought from suppliers</span>
@@ -274,67 +266,73 @@ export function ReportsPage() {
             </div>
 
             {/* Explanatory callout */}
-            <div className="reports-callout-warning">
-              <span className="callout-icon">ⓘ</span>
-              <p className="callout-text">
-                <strong>How these are counted:</strong> sales and weaver purchases by the amount
+            <div className="reports-callout-info">
+              <span className="reports-callout-icon">ⓘ</span>
+              <p className="reports-callout-text">
+                <strong>Accounting basis:</strong> Sales and weaver purchases are counted by the amount
                 billed, settlements only once paid. Please confirm this basis with your accountant
-                before using it for the General Assembly.
+                before generating financial records for the General Assembly.
               </p>
             </div>
           </div>
 
           {/* HISAB settlement statements card */}
-          <div className="card hisab-statements-card">
-            <div className="hisab-statements-header">
+          <div className="reports-card">
+            <div className="reports-card-header">
               <div>
-                <h3 className="hisab-statements-title">HISAB settlement statements</h3>
-                <p className="hisab-statements-sub">
-                  Print or download a statement for each payment
+                <h3 className="reports-card-title">HISAB settlement statements</h3>
+                <p className="reports-card-sub">
+                  Print or download individual statement receipts for each payment
                 </p>
               </div>
               <button
                 type="button"
-                className="btn btn-link"
+                className="btn btn-secondary btn-sm"
                 onClick={() => setShowHisabList(!showHisabList)}
               >
-                {showHisabList ? "Close ✕" : "Open >"}
+                {showHisabList ? "Close ✕" : "Open Statements >"}
               </button>
             </div>
 
             {/* Collapsible statement ledger table */}
             {showHisabList && (
-              <div className="hisab-records-table-wrap">
-                <table className="hisab-records-table">
+              <div className="reports-table-container">
+                <table className="reports-table">
                   <thead>
                     <tr>
-                      <th>Ref #</th>
-                      <th>Artisan Weaver</th>
-                      <th>Payment Date</th>
-                      <th style={{ textAlign: "right" }}>Amount</th>
-                      <th style={{ textAlign: "right" }}>Actions</th>
+                      <th className="reports-th">Ref #</th>
+                      <th className="reports-th">Artisan Weaver</th>
+                      <th className="reports-th">Payment Date</th>
+                      <th className="reports-th text-right">Amount</th>
+                      <th className="reports-th text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payments.length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: "center", padding: "1.5rem", color: "#64748B" }}>
+                        <td colSpan={5} className="reports-td text-center" style={{ color: "#64748B", padding: "2rem" }}>
                           No recorded payments found.
                         </td>
                       </tr>
                     ) : (
                       payments.slice(0, 5).map((p) => (
-                        <tr key={p.paymentId}>
-                          <td style={{ fontFamily: "monospace", fontWeight: 700 }}>#{p.paymentId}</td>
-                          <td>{p.weaver?.fullName}</td>
-                          <td>{formatDateDDMMYY(p.paymentDate)}</td>
-                          <td style={{ textAlign: "right", fontWeight: 700 }}>
-                            {parseFloat(p.amount || "0").toLocaleString()} ETB
+                        <tr key={p.paymentId} className="reports-tr">
+                          <td className="reports-td" style={{ fontFamily: "monospace", fontWeight: 700 }}>
+                            #{p.paymentId}
                           </td>
-                          <td style={{ textAlign: "right" }}>
+                          <td className="reports-td">
+                            {p.weaver?.fullName}
+                          </td>
+                          <td className="reports-td">
+                            {formatDateDDMMYY(p.paymentDate)}
+                          </td>
+                          <td className="reports-td text-right">
+                            <strong>{parseFloat(p.amount || "0").toLocaleString()} ETB</strong>
+                          </td>
+                          <td className="reports-td text-right">
                             <Link
                               to={`/admin/reports/hisab/payment/${p.paymentId}?print=1`}
-                              className="btn btn-primary btn-sm"
+                              className="btn btn-secondary btn-sm"
                               target="_blank"
                             >
                               🖨 Receipt
@@ -353,15 +351,15 @@ export function ReportsPage() {
         {/* Right Column: Owed to weavers & Owed by merchants */}
         <div className="reports-right-col">
           {/* Card 1: Owed to weavers */}
-          <div className="card reports-owed-card">
-            <div className="owed-card-header">
-              <div className="owed-card-title-row">
-                <h3 className="owed-card-title">Owed to weavers</h3>
-                <span className="badge-pill-amber">{weaversOwed.length} weavers</span>
+          <div className="reports-card">
+            <div className="reports-card-header">
+              <div>
+                <h3 className="reports-card-title">Owed to weavers</h3>
+                <p className="reports-card-sub">
+                  Returned zigs not yet settled, and unpaid fabric purchases
+                </p>
               </div>
-              <p className="owed-card-sub">
-                Returned zigs not yet settled, and unpaid fabric purchases
-              </p>
+              <span className="badge-ready-settle">{weaversOwed.length} weavers</span>
             </div>
 
             <div className="owed-list">
@@ -381,18 +379,18 @@ export function ReportsPage() {
               className="btn btn-secondary btn-full-width"
               onClick={() => navigate("/admin/weavers")}
             >
-              See all weavers
+              See all weavers →
             </button>
           </div>
 
           {/* Card 2: Owed by merchants */}
-          <div className="card reports-owed-card">
-            <div className="owed-card-header">
-              <div className="owed-card-title-row">
-                <h3 className="owed-card-title">Owed by merchants</h3>
-                <span className="badge-pill-amber">{merchantsOwed.length} merchants</span>
+          <div className="reports-card">
+            <div className="reports-card-header">
+              <div>
+                <h3 className="reports-card-title">Owed by merchants</h3>
+                <p className="reports-card-sub">Unpaid fabric sales receivables</p>
               </div>
-              <p className="owed-card-sub">Unpaid fabric sales</p>
+              <span className="badge-ready-settle">{merchantsOwed.length} merchants</span>
             </div>
 
             <div className="owed-list">
@@ -409,7 +407,7 @@ export function ReportsPage() {
               className="btn btn-secondary btn-full-width"
               onClick={() => navigate("/admin/transactions")}
             >
-              See all merchants
+              See all merchants →
             </button>
           </div>
         </div>

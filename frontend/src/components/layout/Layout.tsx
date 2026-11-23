@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 // Clean stroke icons matching the design
@@ -110,6 +110,12 @@ function ActivityIcon() {
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
 
   return (
     <div className="app-shell">
@@ -229,7 +235,7 @@ export function Layout() {
               <span className="sidebar-user-name">{user?.username ?? "Admin 1"}</span>
               <button
                 type="button"
-                onClick={logout}
+                onClick={handleSignOut}
                 className="sidebar-signout-btn"
               >
                 Sign out

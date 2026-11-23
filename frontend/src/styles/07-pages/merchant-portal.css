@@ -1,0 +1,486 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - MERCHANT PORTAL STYLES (MATCHING IMAGE 6)
+   Top navbar, faceted filter sidebar, and woven fabric cards grid.
+   ───────────────────────────────────────────────────────────── */
+
+@layer pages {
+  /* ── Merchant Shell & Navbar ──────────────────────────────── */
+  .merchant-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #F8FAFC;
+    color: var(--text, #0F172A);
+  }
+
+  .merchant-navbar {
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--border, #E2E8F0);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .merchant-navbar-inner {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .merchant-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .merchant-brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--brand, #C2410C);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.15rem;
+  }
+
+  .merchant-brand-titles {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .merchant-brand-name {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    letter-spacing: -0.2px;
+  }
+
+  .merchant-brand-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted, #64748B);
+  }
+
+  .merchant-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .merchant-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-md, 8px);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .merchant-nav-link:hover {
+    color: var(--text, #0F172A);
+    background: var(--bg-subtle, #F1F5F9);
+  }
+
+  .merchant-nav-link.active {
+    color: var(--brand, #C2410C);
+    background: var(--brand-light, #FFEDD5);
+    font-weight: 700;
+  }
+
+  .merchant-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .merchant-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #FFEDD5;
+    color: #9A3412;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  .merchant-user-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .merchant-user-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text, #0F172A);
+  }
+
+  .merchant-signout-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted, #64748B);
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.15s ease;
+  }
+
+  .merchant-signout-btn:hover {
+    color: var(--brand, #C2410C);
+    text-decoration: underline;
+  }
+
+  /* ── 2-Column Catalog Layout (Image 6) ─────────────────────── */
+  .merchant-catalog-layout {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  /* ── Filter Sidebar Card ──────────────────────────────────── */
+  .merchant-filter-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 14px);
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .merchant-filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+  }
+
+  .merchant-filter-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+  }
+
+  .merchant-filter-clear-btn {
+    background: none;
+    border: none;
+    color: var(--brand, #C2410C);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .merchant-filter-clear-btn:hover {
+    text-decoration: underline;
+  }
+
+  .merchant-filter-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .merchant-filter-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .merchant-filter-group-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text, #334155);
+    margin-bottom: 0.65rem;
+  }
+
+  .merchant-filter-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+    margin-bottom: 0.25rem;
+  }
+
+  .merchant-filter-option:hover {
+    background: var(--bg-subtle, #F8FAFC);
+  }
+
+  .merchant-filter-option.selected {
+    background: #FFF7ED;
+  }
+
+  .merchant-filter-checkbox-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text, #1E293B);
+  }
+
+  .merchant-filter-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--brand, #C2410C);
+    cursor: pointer;
+  }
+
+  .merchant-filter-count {
+    font-size: 0.82rem;
+    color: var(--text-muted, #64748B);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .merchant-filter-subtext {
+    font-size: 0.78rem;
+    color: var(--text-muted, #64748B);
+    margin: 0.4rem 0 0 0.65rem;
+    line-height: 1.3;
+  }
+
+  /* ── Right Content Area ───────────────────────────────────── */
+  .merchant-content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .merchant-content-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .merchant-page-title {
+    margin: 0;
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    letter-spacing: -0.5px;
+  }
+
+  .merchant-page-count {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748B);
+  }
+
+  .merchant-search-input-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  .merchant-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted, #94A3B8);
+    font-size: 1rem;
+    pointer-events: none;
+  }
+
+  .merchant-search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.6rem;
+    border-radius: var(--radius-lg, 10px);
+    border: 1px solid var(--border, #CBD5E1);
+    background: #FFFFFF;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .merchant-search-input:focus {
+    outline: none;
+    border-color: var(--brand, #C2410C);
+    box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.12);
+  }
+
+  /* ── Active Filter Chips Row ──────────────────────────────── */
+  .merchant-active-chips {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .merchant-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #FFEDD5;
+    color: #9A3412;
+    border: 1px solid #FED7AA;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-full, 9999px);
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .merchant-chip-remove {
+    background: none;
+    border: none;
+    color: #9A3412;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+
+  /* ── Fabrics Grid (Image 6) ────────────────────────────────── */
+  .merchant-fabrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .merchant-fabric-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 14px);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+
+  .merchant-fabric-card:hover {
+    transform: translateY(-2px);
+    border-color: #CBD5E1;
+    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
+  }
+
+  .merchant-fabric-swatch {
+    height: 100px;
+    width: 100%;
+    background: #E2E8F0;
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+  }
+
+  .swatch-stripes {
+    background: repeating-linear-gradient(
+      90deg,
+      #E2E8F0,
+      #E2E8F0 12px,
+      #CBD5E1 12px,
+      #CBD5E1 24px
+    );
+  }
+
+  .swatch-geberdin {
+    background: repeating-linear-gradient(
+      45deg,
+      #E2E8F0,
+      #E2E8F0 8px,
+      #CBD5E1 8px,
+      #CBD5E1 16px
+    );
+  }
+
+  .swatch-zigzag {
+    background: linear-gradient(135deg, #CBD5E1 25%, transparent 25%) -20px 0,
+                linear-gradient(225deg, #CBD5E1 25%, transparent 25%) -20px 0,
+                linear-gradient(315deg, #CBD5E1 25%, transparent 25%),
+                linear-gradient(45deg, #CBD5E1 25%, #E2E8F0 25%);
+    background-size: 40px 40px;
+  }
+
+  .merchant-fabric-body {
+    padding: 1.25rem 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    flex: 1;
+  }
+
+  .merchant-fabric-card-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    margin: 0;
+  }
+
+  .merchant-fabric-card-pattern {
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748B);
+    margin: 0;
+  }
+
+  .merchant-fabric-specs-pill {
+    display: inline-block;
+    align-self: flex-start;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-full, 9999px);
+    background: #F1F5F9;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .merchant-fabric-price-row {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .merchant-fabric-price-amount {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text, #0F172A);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .merchant-fabric-price-unit {
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748B);
+    font-weight: 500;
+  }
+
+  .merchant-catalog-footer {
+    font-size: 0.82rem;
+    color: var(--text-muted, #64748B);
+    margin-top: 1rem;
+    line-height: 1.4;
+  }
+
+  /* ── Responsive ───────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .merchant-catalog-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+}

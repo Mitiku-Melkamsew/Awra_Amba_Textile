@@ -104,6 +104,35 @@
     color: var(--amber-fg, #92400E);
   }
 
+  .dashboard-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+    flex-wrap: wrap;
+  }
+
+  .dashboard-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4, 1rem);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .dashboard-section-header .dashboard-section-title {
+    margin-bottom: 0;
+  }
+
+  .dashboard-section-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--text-xs, 13px);
+    font-weight: var(--font-semibold, 600);
+    text-decoration: none;
+  }
+
   .zigs-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -119,6 +148,16 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+
+  .zig-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: var(--brand, #C2410C);
   }
 
   .zig-stat-highlight {

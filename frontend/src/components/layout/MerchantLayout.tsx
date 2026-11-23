@@ -1,90 +1,73 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-
-const links = [
-  { to: "/merchant", label: "Available Fabrics", icon: "🧣", amharic: "የሚገኙ ጨርቆች", end: true },
-  { to: "/merchant/prices", label: "Official Price List", icon: "🏷️", amharic: "የሽያጭ ዋጋ ዝርዝር" },
-];
 
 export function MerchantLayout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const initials = user?.username
-    ? user.username.slice(0, 2).toUpperCase()
-    : "MC";
+  const handleSignOut = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
+
+  const displayName = user?.fullName || user?.username || "Merchant 1";
+  const initial = displayName.charAt(0).toUpperCase() || "M";
 
   return (
-    <div className="app-shell">
-      {/* ── Merchant Sidebar ── */}
-      <aside className="sidebar merchant-sidebar">
-        <div className="sidebar-brand">
-          <div
-            className="sidebar-brand-mark"
-            style={{ background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)" }}
-          >
-            🏬
-          </div>
-          <div className="sidebar-brand-info">
-            <p className="sidebar-brand-eyebrow">አውራ አምባ ቴክስታይል</p>
-            <p className="sidebar-brand-name">Merchant Portal</p>
-          </div>
-        </div>
+    <div className="merchant-shell">
+      {/* ── Top Navbar (Matching Image 6) ── */}
+      <header className="merchant-navbar">
+        <div className="merchant-navbar-inner">
+          <NavLink to="/merchant" className="merchant-brand">
+            <div className="merchant-brand-mark">
+              <span>አ</span>
+            </div>
+            <div className="merchant-brand-titles">
+              <span className="merchant-brand-name">Awra Amba Textile</span>
+              <span className="merchant-brand-sub">አውራ አምባ ቴክስቲል ማህበር</span>
+            </div>
+          </NavLink>
 
-        <nav className="sidebar-nav" aria-label="Merchant navigation">
-          <p className="sidebar-nav-label">Commercial Catalog / ካታሎግ</p>
-          {links.map((link) => (
+          <nav className="merchant-nav-links" aria-label="Merchant navigation">
             <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={({ isActive }) => (isActive ? "nav-item active" : "nav-item")}
+              to="/merchant"
+              end
+              className={({ isActive }) =>
+                `merchant-nav-link ${isActive ? "active" : ""}`
+              }
             >
-              <span className="nav-icon" aria-hidden="true">{link.icon}</span>
-              <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
-                <span>{link.label}</span>
-                <span style={{ fontSize: "10.5px", opacity: 0.7, fontWeight: 400 }}>{link.amharic}</span>
-              </span>
+              <span>🧣</span>
+              <span>Fabrics / ጨርቆች</span>
             </NavLink>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="sidebar-status-pill merchant">
-            <span className="status-indicator-dot" /> Active Commercial Buyer
-          </div>
-          <div className="sidebar-user">
-            <div
-              className="sidebar-user-avatar"
-              style={{ background: "linear-gradient(135deg, #0284C7 0%, #0369A1 100%)" }}
+            <NavLink
+              to="/merchant/prices"
+              className={({ isActive }) =>
+                `merchant-nav-link ${isActive ? "active" : ""}`
+              }
             >
-              {initials}
-            </div>
-            <div className="sidebar-user-details">
-              <span className="sidebar-user-name">{user?.fullName || user?.username || "Merchant Partner"}</span>
-              <span className="sidebar-user-role" style={{ color: "#7DD3FC" }}>Wholesale Buyer</span>
+              <span>🏷️</span>
+              <span>Prices / ዋጋ ዝርዝር</span>
+            </NavLink>
+          </nav>
+
+          <div className="merchant-user-info">
+            <div className="merchant-user-avatar">{initial}</div>
+            <div className="merchant-user-meta">
+              <span className="merchant-user-name">{displayName}</span>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="merchant-signout-btn"
+              >
+                Sign out
+              </button>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="nav-item"
-            style={{
-              width: "100%",
-              textAlign: "left",
-              fontSize: "12.5px",
-              background: "none",
-              color: "#FCA5A5",
-              opacity: 0.85,
-            }}
-          >
-            <span className="nav-icon" aria-hidden="true">🚪</span>
-            <span>Sign out / ውጣ</span>
-          </button>
         </div>
-      </aside>
+      </header>
 
       {/* ── Main Content Area ── */}
-      <main className="main-content" style={{ background: "#F8FAFC" }}>
+      <main>
         <Outlet />
       </main>
     </div>

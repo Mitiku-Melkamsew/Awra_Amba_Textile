@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { reportsApi, weaverPortalApi } from "../../api";
 import { formatDateDDMMYY } from "../../utils/formatDate";
 
@@ -29,108 +28,71 @@ export function WeaverPaymentsPage() {
   );
 
   return (
-    <div className="page">
-      <Link to="/weaver" className="back-link">
-        ← Back to My Work Orders / ወደ ዝግ ዝርዝር
-      </Link>
-
-      <div className="page-header">
-        <div>
-          <p className="eyebrow" style={{ background: "#D1FAE5", color: "#065F46" }}>
-            የተከፈለ ሂሳብ / Payment History
-          </p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <h1 className="page-title">My Settled Payments</h1>
-            <span className="badge badge--success">{payments.length} Settlements</span>
-          </div>
-          <p className="page-subtitle">
-            All confirmed batch payroll distributions and downloadable official HISAB receipts.
-          </p>
-        </div>
-
-        {payments.length > 0 && (
-          <div className="card card-sm" style={{ padding: "0.6rem 1rem", background: "#FFFFFF", borderColor: "#A7F3D0" }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>
-              Total Earnings Received
-            </span>
-            <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--green)" }}>
-              {Math.round(totalEarnings).toLocaleString()} ETB
-            </div>
-          </div>
-        )}
+    <div>
+      {/* ── Page Header (Image 3) ── */}
+      <div className="weaver-page-header">
+        <h1 className="weaver-page-title">Payments · የተከፈለ ሂሳብ</h1>
+        <p className="weaver-page-subtitle">Your settled payments</p>
       </div>
 
       {error && (
-        <div className="error-msg" style={{ marginBottom: "1rem" }}>
+        <div className="error-msg" style={{ marginBottom: "1.25rem" }}>
           <span>⚠️</span> {error}
         </div>
       )}
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Payment Reference</th>
-              <th>Date Settled</th>
-              <th>Payment Method</th>
-              <th style={{ textAlign: "right" }}>Amount (ETB)</th>
-              <th style={{ textAlign: "right" }}>Official Receipt</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5}>
-                  <div className="loading"><span>⏳</span> Loading payment records…</div>
-                </td>
-              </tr>
-            ) : payments.length === 0 ? (
-              <tr>
-                <td colSpan={5}>
-                  <div className="empty-state">
-                    <span className="empty-icon">💳</span>
-                    <p style={{ fontWeight: 600, color: "var(--text)" }}>
-                      No payment distributions recorded yet.
-                    </p>
-                    <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                      When you return woven fabric and an admin runs batch settlement, your payout will appear here.
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              payments.map((payment) => (
-                <tr key={payment.paymentId}>
-                  <td style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--green)" }}>
-                    #{payment.paymentId}
-                  </td>
-                  <td style={{ color: "var(--text-muted)" }}>
-                    {formatDateDDMMYY(payment.paymentDate)}
-                  </td>
-                  <td>
-                    <span className="badge badge--neutral">
-                      {payment.paymentMethod ?? "Cash / Bank Transfer"}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: "right", fontWeight: 700, color: "var(--green)", fontVariantNumeric: "tabular-nums" }}>
-                    {parseFloat(payment.amount || "0").toLocaleString()} ETB
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-primary"
-                      style={{ background: "linear-gradient(135deg, #10B981 0%, #059669 100%)", border: "none" }}
-                      onClick={() => reportsApi.downloadHisabCsv(payment.paymentId, "payment")}
-                    >
-                      ⬇ Download HISAB CSV
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* ── Total Received Highlight Card (Image 3) ── */}
+      <div className="weaver-payments-hero">
+        <div className="weaver-payments-hero-label">Total received</div>
+        <div className="weaver-payments-hero-total">
+          {Math.round(totalEarnings).toLocaleString()} ETB
+        </div>
       </div>
+
+      {/* ── Payment Cards List (Image 3) ── */}
+      {loading ? (
+        <div className="loading" style={{ padding: "3rem 1rem", textAlign: "center" }}>
+          <span>⏳</span> Loading payment records…
+        </div>
+      ) : payments.length === 0 ? (
+        <div className="weaver-stat-card" style={{ textAlign: "center", padding: "3rem 1.5rem", color: "var(--text-muted)" }}>
+          <span style={{ fontSize: "2rem", display: "block", marginBottom: "0.5rem" }}>💳</span>
+          <p style={{ margin: "0 0 0.25rem", fontWeight: 700, color: "var(--text)" }}>No payments recorded yet.</p>
+          <span style={{ fontSize: "0.85rem" }}>
+            When you return woven fabric and an admin confirms batch settlement, your payout and receipt will appear here.
+          </span>
+        </div>
+      ) : (
+        <div>
+          {payments.map((p) => {
+            const amountNum = parseFloat(p.amount || "0");
+            const dateStr = p.paymentDate ? formatDateDDMMYY(p.paymentDate) : "—";
+            const methodStr = p.paymentMethod || "Cash";
+
+            return (
+              <div key={p.paymentId} className="weaver-payment-card">
+                <div>
+                  <div className="weaver-payment-amount">
+                    {Math.round(amountNum).toLocaleString()} ETB
+                  </div>
+                  <div className="weaver-payment-sub">
+                    {dateStr} · {methodStr}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => reportsApi.downloadHisabCsv(p.paymentId, "payment")}
+                  className="weaver-receipt-btn"
+                >
+                  <span>⬇</span>
+                  <span>Receipt</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
