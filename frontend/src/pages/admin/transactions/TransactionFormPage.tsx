@@ -180,16 +180,12 @@ export function TransactionFormPage() {
         setNewFvWeftColorId={txn.setNewFvWeftColorId}
         newFvDesignId={txn.newFvDesignId}
         setNewFvDesignId={txn.setNewFvDesignId}
-        newFvSku={txn.newFvSku}
-        setNewFvSku={txn.setNewFvSku}
         newYvYarnId={txn.newYvYarnId}
         setNewYvYarnId={txn.setNewYvYarnId}
         newYvColorId={txn.newYvColorId}
         setNewYvColorId={txn.setNewYvColorId}
         newYvSupplierId={txn.newYvSupplierId}
         setNewYvSupplierId={txn.setNewYvSupplierId}
-        newYvSku={txn.newYvSku}
-        setNewYvSku={txn.setNewYvSku}
         showNewFabricForm={txn.showNewFabricForm}
         setShowNewFabricForm={txn.setShowNewFabricForm}
         inlineFabricName={txn.inlineFabricName}

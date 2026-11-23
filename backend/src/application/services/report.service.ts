@@ -144,6 +144,12 @@ export class ReportService {
       profitability: {
         netOperatingProfit: Number(netOperatingProfit.toFixed(2)),
       },
+      fabricSalesRevenue: Number(merchantSales._sum.totalAmount ?? 0),
+      yarnSalesRevenue: Number(yarnSales._sum.totalAmount ?? 0),
+      fabricPurchasesExpense: Number((weaverDirectPurchases._sum.totalAmount ?? 0).toFixed(2)),
+      yarnProcurementExpense: Number(totalYarnProcurementExpense.toFixed(2)),
+      weaverSettlementsExpense: Number((settlements._sum.netAmount ?? 0).toFixed(2)),
+      netCashFlow: Number(netOperatingProfit.toFixed(2)),
     };
   }
 

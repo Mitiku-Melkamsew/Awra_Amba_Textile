@@ -29,7 +29,22 @@ export function FabricPricesTable({
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => {
+            {items.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  style={{
+                    textAlign: "center",
+                    padding: "2.5rem 1rem",
+                    color: "var(--text-muted, #64748B)",
+                    fontSize: "14px",
+                  }}
+                >
+                  No fabric prices found. Click "+ Set new price" to record official rates.
+                </td>
+              </tr>
+            ) : (
+              items.map((item) => {
               const isSelected = selectedItem?.id === item.id;
 
               return (
@@ -89,7 +104,7 @@ export function FabricPricesTable({
                   )}
                 </Fragment>
               );
-            })}
+            }))}
           </tbody>
         </table>
       </div>

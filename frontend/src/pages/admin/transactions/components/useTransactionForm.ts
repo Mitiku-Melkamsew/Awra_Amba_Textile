@@ -95,13 +95,11 @@ export function useTransactionForm() {
   const [newFvWarpColorId, setNewFvWarpColorId] = useState("");
   const [newFvWeftColorId, setNewFvWeftColorId] = useState("");
   const [newFvDesignId, setNewFvDesignId] = useState("");
-  const [newFvSku, setNewFvSku] = useState("");
 
   // Yarn Variant Fields
   const [newYvYarnId, setNewYvYarnId] = useState("");
   const [newYvColorId, setNewYvColorId] = useState("");
   const [newYvSupplierId, setNewYvSupplierId] = useState("");
-  const [newYvSku, setNewYvSku] = useState("");
 
   // Inline Creation Sub-Forms inside Add Variant Modal
   const [showNewFabricForm, setShowNewFabricForm] = useState(false);
@@ -386,7 +384,7 @@ export function useTransactionForm() {
     }
   };
 
-  const handleOpenAddVariantModal = (lineId?: string, query?: string) => {
+  const handleOpenAddVariantModal = (lineId?: string, _query?: string) => {
     setTargetLineIdForVariant(lineId || lines[0]?.id || null);
     setVariantModalError("");
     setShowNewFabricForm(false);
@@ -406,7 +404,6 @@ export function useTransactionForm() {
         setNewFvWeftColorId(String(colors[0].colorId));
       if (designs.length > 0 && !newFvDesignId)
         setNewFvDesignId(String(designs[0].designId));
-      if (query && !newFvSku) setNewFvSku(query.trim());
     } else {
       if (yarns.length > 0 && !newYvYarnId)
         setNewYvYarnId(String(yarns[0].yarnId));
@@ -414,7 +411,6 @@ export function useTransactionForm() {
         setNewYvColorId(String(colors[0].colorId));
       if (suppliers.length > 0 && !newYvSupplierId)
         setNewYvSupplierId(String(suppliers[0].supplierId));
-      if (query && !newYvSku) setNewYvSku(query.trim());
     }
     setShowAddVariantModal(true);
   };
@@ -548,7 +544,6 @@ export function useTransactionForm() {
           warpColorId: Number(newFvWarpColorId),
           weftColorId: Number(newFvWeftColorId),
           designId: effectiveDesignId,
-          sku: newFvSku.trim() || undefined,
         });
         const updated = await catalogApi.fabricVariants();
         setFabricVariants(updated);
@@ -567,7 +562,6 @@ export function useTransactionForm() {
           yarnId: Number(newYvYarnId),
           colorId: Number(newYvColorId),
           supplierId: Number(newYvSupplierId),
-          sku: newYvSku.trim() || undefined,
         });
         const updated = await catalogApi.yarnVariants();
         setYarnVariants(updated);
@@ -580,8 +574,6 @@ export function useTransactionForm() {
         }
       }
       setShowAddVariantModal(false);
-      setNewFvSku("");
-      setNewYvSku("");
     } catch (err: any) {
       setVariantModalError(err.message || "Failed to create variant");
     } finally {
@@ -714,16 +706,12 @@ export function useTransactionForm() {
     setNewFvWeftColorId,
     newFvDesignId,
     setNewFvDesignId,
-    newFvSku,
-    setNewFvSku,
     newYvYarnId,
     setNewYvYarnId,
     newYvColorId,
     setNewYvColorId,
     newYvSupplierId,
     setNewYvSupplierId,
-    newYvSku,
-    setNewYvSku,
     showNewFabricForm,
     setShowNewFabricForm,
     inlineFabricName,

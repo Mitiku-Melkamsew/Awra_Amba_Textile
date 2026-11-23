@@ -24,16 +24,12 @@ export interface CreateVariantModalProps {
   setNewFvWeftColorId: (val: string) => void;
   newFvDesignId: string;
   setNewFvDesignId: (val: string) => void;
-  newFvSku: string;
-  setNewFvSku: (val: string) => void;
   newYvYarnId: string;
   setNewYvYarnId: (val: string) => void;
   newYvColorId: string;
   setNewYvColorId: (val: string) => void;
   newYvSupplierId: string;
   setNewYvSupplierId: (val: string) => void;
-  newYvSku: string;
-  setNewYvSku: (val: string) => void;
   // Inline Creators
   showNewFabricForm: boolean;
   setShowNewFabricForm: (val: boolean) => void;
@@ -100,16 +96,12 @@ export function CreateVariantModal({
   setNewFvWeftColorId,
   newFvDesignId,
   setNewFvDesignId,
-  newFvSku,
-  setNewFvSku,
   newYvYarnId,
   setNewYvYarnId,
   newYvColorId,
   setNewYvColorId,
   newYvSupplierId,
   setNewYvSupplierId,
-  newYvSku,
-  setNewYvSku,
   showNewFabricForm,
   setShowNewFabricForm,
   inlineFabricName,
@@ -541,18 +533,8 @@ export function CreateVariantModal({
                 />
               </div>
 
-              <div>
-                <label className="form-label" style={{ fontSize: "12.5px", marginBottom: "0.3rem" }}>
-                  SKU (optional)
-                </label>
-                <input
-                  type="text"
-                  value={newFvSku}
-                  onChange={(e) => setNewFvSku(e.target.value)}
-                  placeholder="e.g. GAB-WHT-01"
-                  className="input"
-                  style={{ height: 38 }}
-                />
+              <div style={{ fontSize: "12px", color: "var(--color-text-secondary, #666)", gridColumn: "1 / -1" }}>
+                ℹ️ SKU is automatically generated with a unique deterministic code (e.g. FV-{'{fabric}'}-{'{design}'}-{'{warp}'}-{'{weft}'}).
               </div>
             </div>
           </>
@@ -755,18 +737,8 @@ export function CreateVariantModal({
               </div>
             </div>
 
-            <div>
-              <label className="form-label" style={{ fontSize: "12.5px", marginBottom: "0.3rem" }}>
-                SKU (optional)
-              </label>
-              <input
-                type="text"
-                value={newYvSku}
-                onChange={(e) => setNewYvSku(e.target.value)}
-                placeholder="e.g. CTN-20-RAW"
-                className="input"
-                style={{ height: 38 }}
-              />
+            <div style={{ fontSize: "12px", color: "var(--color-text-secondary, #666)" }}>
+              ℹ️ SKU is automatically generated with a unique deterministic code (e.g. YV-{'{yarn}'}-{'{supplier}'}-{'{color}'}).
             </div>
           </>
         )}

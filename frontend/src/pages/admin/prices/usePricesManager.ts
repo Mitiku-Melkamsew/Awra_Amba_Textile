@@ -44,10 +44,9 @@ export function usePricesManager() {
 
   async function loadLiveData() {
     try {
-      const [fpList, ypList, fabList] = await Promise.all([
+      const [fpList, ypList] = await Promise.all([
         catalogApi.fabricPrices(),
         catalogApi.yarnPrices(),
-        catalogApi.fabrics().catch(() => []),
       ]);
 
       if (fpList && fpList.length > 0) {
@@ -105,73 +104,11 @@ export function usePricesManager() {
           setNewWeaverRate(String(mappedFp[0].weaverRate));
           setNewSellingPrice(String(mappedFp[0].sellingPrice));
         }
-      } else if (fabList && fabList.length > 0) {
-        const defaultRates: Record<string, { weaver: number; sell: number }> = {
-          medebegna: { weaver: 1300, sell: 1900 },
-          gabi: { weaver: 950, sell: 1400 },
-          netela: { weaver: 700, sell: 1050 },
-        };
-        const initialFp: FabricPriceItem[] = fabList.map((f: any, idx: number) => {
-          const fname = f.name?.toLowerCase() || "medebegna";
-          const fallback = defaultRates[fname] || { weaver: 1000, sell: 1500 };
-          return {
-            id: idx + 1,
-            fabricId: f.fabricId,
-            name: fname,
-            weaverRate: fallback.weaver,
-            sellingPrice: fallback.sell,
-            inEffectSince: "01/07/2026",
-            isCurrent: true,
-            earlierPrice:
-              fname === "medebegna"
-                ? {
-                    weaverRate: 1200,
-                    sellingPrice: 1750,
-                    period: "01/01/2026 - 30/06/2026",
-                  }
-                : undefined,
-          };
-        });
-        setFabricPrices(initialFp);
-        setSelectedFabricId(initialFp[0].id);
-        setNewWeaverRate(String(initialFp[0].weaverRate + 80));
-        setNewSellingPrice(String(initialFp[0].sellingPrice));
       } else {
-        const hardcodedFabrics: FabricPriceItem[] = [
-          {
-            id: 1,
-            name: "medebegna",
-            weaverRate: 1300,
-            sellingPrice: 1900,
-            inEffectSince: "01/07/2026",
-            isCurrent: true,
-            earlierPrice: {
-              weaverRate: 1200,
-              sellingPrice: 1750,
-              period: "01/01/2026 - 30/06/2026",
-            },
-          },
-          {
-            id: 2,
-            name: "gabi",
-            weaverRate: 950,
-            sellingPrice: 1400,
-            inEffectSince: "01/03/2026",
-            isCurrent: true,
-          },
-          {
-            id: 3,
-            name: "netela",
-            weaverRate: 700,
-            sellingPrice: 1050,
-            inEffectSince: "15/05/2026",
-            isCurrent: true,
-          },
-        ];
-        setFabricPrices(hardcodedFabrics);
-        setSelectedFabricId(1);
-        setNewWeaverRate("1380");
-        setNewSellingPrice("1900");
+        setFabricPrices([]);
+        setSelectedFabricId(null);
+        setNewWeaverRate("");
+        setNewSellingPrice("");
       }
 
       if (ypList && ypList.length > 0) {
@@ -198,42 +135,14 @@ export function usePricesManager() {
           setNewYarnSellingPrice(String(mappedYp[0].sellingPrice));
         }
       } else {
-        const hardcodedYarns: YarnPriceItem[] = [
-          {
-            id: 1,
-            yarnName: "cotton · white",
-            supplierName: "Supplier A",
-            purchasePrice: 410,
-            sellingPrice: 520,
-            inEffectSince: "01/07/2026",
-            isCurrent: true,
-          },
-          {
-            id: 2,
-            yarnName: "cotton · red",
-            supplierName: "Supplier A",
-            purchasePrice: 430,
-            sellingPrice: 540,
-            inEffectSince: "01/07/2026",
-            isCurrent: true,
-          },
-          {
-            id: 3,
-            yarnName: "cotton · white",
-            supplierName: "Supplier B",
-            purchasePrice: 395,
-            sellingPrice: 520,
-            inEffectSince: "15/09/2026",
-            isCurrent: true,
-          },
-        ];
-        setYarnPrices(hardcodedYarns);
-        setSelectedYarnId(1);
-        setNewYarnPurchasePrice("410");
-        setNewYarnSellingPrice("520");
+        setYarnPrices([]);
+        setSelectedYarnId(null);
+        setNewYarnPurchasePrice("");
+        setNewYarnSellingPrice("");
       }
     } catch {
-      // Graceful fallback
+      setFabricPrices([]);
+      setYarnPrices([]);
     }
   }
 

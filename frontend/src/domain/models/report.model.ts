@@ -10,12 +10,28 @@ export interface WeaverBalanceSummary {
 }
 
 export interface CommercialReportSummary {
-  fabricSalesRevenue: number;
-  yarnSalesRevenue: number;
-  fabricPurchasesExpense: number;
-  yarnProcurementExpense: number;
-  weaverSettlementsExpense: number;
-  netCashFlow: number;
+  revenue?: {
+    merchantFabricSalesTotal: number;
+    merchantFabricSalesCollected: number;
+    weaverYarnSalesTotal: number;
+    weaverYarnSalesCollected: number;
+    grossCommercialRevenue: number;
+  };
+  expenses?: {
+    supplierYarnProcurementExpense: number;
+    weaverSettlementPayouts: number;
+    weaverDirectFabricPurchases: number;
+    totalExpenses: number;
+  };
+  profitability?: {
+    netOperatingProfit: number;
+  };
+  fabricSalesRevenue?: number;
+  yarnSalesRevenue?: number;
+  fabricPurchasesExpense?: number;
+  yarnProcurementExpense?: number;
+  weaverSettlementsExpense?: number;
+  netCashFlow?: number;
 }
 
 export interface ProductionReportSummary {

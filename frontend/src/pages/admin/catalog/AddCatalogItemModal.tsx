@@ -42,13 +42,11 @@ export function AddCatalogItemModal({
   const [newFvWarpColorId, setNewFvWarpColorId] = useState<number | "">("");
   const [newFvWeftColorId, setNewFvWeftColorId] = useState<number | "">("");
   const [newFvDesignId, setNewFvDesignId] = useState<number | "">("");
-  const [newFvSku, setNewFvSku] = useState("");
 
   // Add Yarn Variant fields
   const [newYvYarnId, setNewYvYarnId] = useState<number | "">("");
   const [newYvColorId, setNewYvColorId] = useState<number | "">("");
   const [newYvSupplierId, setNewYvSupplierId] = useState<number | "">("");
-  const [newYvSku, setNewYvSku] = useState("");
 
   // Add Simple items (Yarn, Color, Design, Supplier)
   const [newSimpleName, setNewSimpleName] = useState("");
@@ -94,11 +92,9 @@ export function AddCatalogItemModal({
     setNewFvWarpColorId(colors[0]?.colorId || "");
     setNewFvWeftColorId(colors[0]?.colorId || "");
     setNewFvDesignId(designs[0]?.designId || "");
-    setNewFvSku("");
     setNewYvYarnId(yarns[0]?.yarnId || "");
     setNewYvColorId(colors[0]?.colorId || "");
     setNewYvSupplierId(suppliers[0]?.supplierId || "");
-    setNewYvSku("");
     setNewSimpleName("");
     setNewSupplierPhone("");
     setNewColorHex("#000000");
@@ -314,7 +310,6 @@ export function AddCatalogItemModal({
           warpColorId: Number(newFvWarpColorId),
           weftColorId: Number(newFvWeftColorId),
           designId: Number(newFvDesignId),
-          sku: newFvSku.trim() || undefined,
         });
         onItemCreated("Fabric type variant added successfully.");
       } else if (activeTab === "yarns") {
@@ -335,7 +330,6 @@ export function AddCatalogItemModal({
           yarnId: Number(newYvYarnId),
           colorId: Number(newYvColorId),
           supplierId: Number(newYvSupplierId),
-          sku: newYvSku.trim() || undefined,
         });
         onItemCreated("Yarn type variant added successfully.");
       } else if (activeTab === "colors") {
@@ -612,15 +606,9 @@ export function AddCatalogItemModal({
               />
             </div>
 
-            <FormField label="SKU (Optional)" hint="Unique identifier, e.g. GAB-WHT-NAT">
-              <input
-                type="text"
-                className="input"
-                placeholder="e.g. GAB-WHT-NAT"
-                value={newFvSku}
-                onChange={(e) => setNewFvSku(e.target.value)}
-              />
-            </FormField>
+            <div className="text-xs text-secondary mt-1">
+              ℹ️ SKU is generated automatically with a deterministic format (e.g. FV-{'{fabric}'}-{'{design}'}-{'{warp}'}-{'{weft}'}).
+            </div>
           </>
         )}
 
@@ -767,15 +755,9 @@ export function AddCatalogItemModal({
               />
             </div>
 
-            <FormField label="SKU (Optional)" hint="e.g. YRN-COT-BLU">
-              <input
-                type="text"
-                className="input"
-                placeholder="e.g. YRN-COT-BLU"
-                value={newYvSku}
-                onChange={(e) => setNewYvSku(e.target.value)}
-              />
-            </FormField>
+            <div className="text-xs text-secondary mt-1">
+              ℹ️ SKU is generated automatically with a deterministic format (e.g. YV-{'{yarn}'}-{'{supplier}'}-{'{color}'}).
+            </div>
           </>
         )}
 

@@ -13,19 +13,19 @@ export function DashboardPage() {
   const navigate = useNavigate();
 
   // Attention stats
-  const [readyToSettleCount, setReadyToSettleCount] = useState<number>(4);
-  const [readyToSettleAmount, setReadyToSettleAmount] = useState<number>(212400);
-  const [lowStockCount, setLowStockCount] = useState<number>(3);
-  const [lowStockYarnCount, setLowStockYarnCount] = useState<number>(2);
-  const [lowStockFabricCount, setLowStockFabricCount] = useState<number>(1);
-  const [unpaidTxnCount, setUnpaidTxnCount] = useState<number>(3);
-  const [unpaidTxnAmount, setUnpaidTxnAmount] = useState<number>(96000);
+  const [readyToSettleCount, setReadyToSettleCount] = useState<number>(0);
+  const [readyToSettleAmount, setReadyToSettleAmount] = useState<number>(0);
+  const [lowStockCount, setLowStockCount] = useState<number>(0);
+  const [lowStockYarnCount, setLowStockYarnCount] = useState<number>(0);
+  const [lowStockFabricCount, setLowStockFabricCount] = useState<number>(0);
+  const [unpaidTxnCount, setUnpaidTxnCount] = useState<number>(0);
+  const [unpaidTxnAmount, setUnpaidTxnAmount] = useState<number>(0);
 
   // Production zig counts
-  const [assignedZigs, setAssignedZigs] = useState<number>(3);
-  const [inProgressZigs, setInProgressZigs] = useState<number>(8);
-  const [returnedZigs, setReturnedZigs] = useState<number>(4);
-  const [reconciledZigs, setReconciledZigs] = useState<number>(41);
+  const [assignedZigs, setAssignedZigs] = useState<number>(0);
+  const [inProgressZigs, setInProgressZigs] = useState<number>(0);
+  const [returnedZigs, setReturnedZigs] = useState<number>(0);
+  const [reconciledZigs, setReconciledZigs] = useState<number>(0);
 
   useEffect(() => {
     async function loadStats() {
@@ -54,8 +54,8 @@ export function DashboardPage() {
         // 2. Ready to settle summary
         if (pendingRes.status === "fulfilled" && pendingRes.value) {
           const pending = pendingRes.value;
-          const wCount = pending.weaverCount ?? (pending.unsettledZigCount > 0 ? 4 : 0);
-          const liability = pending.pendingLiability ?? pending.totalPendingAmount ?? 212400;
+          const wCount = pending.weaverCount ?? pending.unsettledZigCount ?? 0;
+          const liability = pending.pendingLiability ?? pending.totalPendingAmount ?? 0;
           setReadyToSettleCount(wCount);
           setReadyToSettleAmount(liability);
         }

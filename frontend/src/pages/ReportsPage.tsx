@@ -9,28 +9,20 @@ export function ReportsPage() {
   const [period, setPeriod] = useState<"month" | "30days" | "year" | "all" | "custom">("year");
 
   // Summary financials
-  const [revenueBilled, setRevenueBilled] = useState<number>(580000);
-  const [expenses, setExpenses] = useState<number>(440000);
-  const [fabricSoldToMerchants, setFabricSoldToMerchants] = useState<number>(520000);
-  const [fabricCollected] = useState<number>(400000);
-  const [yarnSoldToWeavers, setYarnSoldToWeavers] = useState<number>(60000);
-  const [yarnCollected] = useState<number>(60000);
+  const [revenueBilled, setRevenueBilled] = useState<number>(0);
+  const [expenses, setExpenses] = useState<number>(0);
+  const [fabricSoldToMerchants, setFabricSoldToMerchants] = useState<number>(0);
+  const [fabricCollected, setFabricCollected] = useState<number>(0);
+  const [yarnSoldToWeavers, setYarnSoldToWeavers] = useState<number>(0);
+  const [yarnCollected, setYarnCollected] = useState<number>(0);
 
-  const [yarnBoughtSuppliers, setYarnBoughtSuppliers] = useState<number>(210000);
-  const [weaverSettlementsPaid, setWeaverSettlementsPaid] = useState<number>(190000);
-  const [fabricBoughtWeavers, setFabricBoughtWeavers] = useState<number>(40000);
+  const [yarnBoughtSuppliers, setYarnBoughtSuppliers] = useState<number>(0);
+  const [weaverSettlementsPaid, setWeaverSettlementsPaid] = useState<number>(0);
+  const [fabricBoughtWeavers, setFabricBoughtWeavers] = useState<number>(0);
 
   // Dynamic lists for liabilities and receivables
-  const [weaversOwed, setWeaversOwed] = useState<Array<{ name: string; meta: string; amount: string }>>([
-    { name: "Weaver 01", meta: "2 zigs ready to settle", amount: "14,200 ETB" },
-    { name: "Weaver 02", meta: "1 zig ready to settle", amount: "8,600 ETB" },
-    { name: "Weaver 03", meta: "Unpaid purchase", amount: "3,400 ETB" },
-  ]);
-
-  const [merchantsOwed, setMerchantsOwed] = useState<Array<{ name: string; amount: string }>>([
-    { name: "Merchant 1", amount: "55,000 ETB" },
-    { name: "Merchant 2", amount: "41,000 ETB" },
-  ]);
+  const [weaversOwed, setWeaversOwed] = useState<Array<{ name: string; meta: string; amount: string }>>([]);
+  const [merchantsOwed, setMerchantsOwed] = useState<Array<{ name: string; amount: string }>>([]);
 
   // Statements list state (when expanded)
   const [showHisabList, setShowHisabList] = useState(false);
@@ -42,17 +34,27 @@ export function ReportsPage() {
       .getCommercialSummary()
       .then((data) => {
         if (data) {
-          if (data.fabricSalesRevenue || data.yarnSalesRevenue) {
-            setFabricSoldToMerchants(data.fabricSalesRevenue);
-            setYarnSoldToWeavers(data.yarnSalesRevenue);
-            setRevenueBilled(data.fabricSalesRevenue + data.yarnSalesRevenue);
-          }
-          if (data.yarnProcurementExpense || data.weaverSettlementsExpense || data.fabricPurchasesExpense) {
-            setYarnBoughtSuppliers(data.yarnProcurementExpense);
-            setWeaverSettlementsPaid(data.weaverSettlementsExpense);
-            setFabricBoughtWeavers(data.fabricPurchasesExpense);
-            setExpenses(data.yarnProcurementExpense + data.weaverSettlementsExpense + data.fabricPurchasesExpense);
-          }
+          const fabricRev = data.revenue?.merchantFabricSalesTotal ?? data.fabricSalesRevenue ?? 0;
+          const fabricCol = data.revenue?.merchantFabricSalesCollected ?? 0;
+          const yarnRev = data.revenue?.weaverYarnSalesTotal ?? data.yarnSalesRevenue ?? 0;
+          const yarnCol = data.revenue?.weaverYarnSalesCollected ?? 0;
+          const totalRev = data.revenue?.grossCommercialRevenue ?? (fabricRev + yarnRev);
+
+          const yarnExp = data.expenses?.supplierYarnProcurementExpense ?? data.yarnProcurementExpense ?? 0;
+          const settlementExp = data.expenses?.weaverSettlementPayouts ?? data.weaverSettlementsExpense ?? 0;
+          const fabricExp = data.expenses?.weaverDirectFabricPurchases ?? data.fabricPurchasesExpense ?? 0;
+          const totalExp = data.expenses?.totalExpenses ?? (yarnExp + settlementExp + fabricExp);
+
+          setFabricSoldToMerchants(fabricRev);
+          setFabricCollected(fabricCol);
+          setYarnSoldToWeavers(yarnRev);
+          setYarnCollected(yarnCol);
+          setRevenueBilled(totalRev);
+
+          setYarnBoughtSuppliers(yarnExp);
+          setWeaverSettlementsPaid(settlementExp);
+          setFabricBoughtWeavers(fabricExp);
+          setExpenses(totalExp);
         }
       })
       .catch(() => {});
@@ -74,14 +76,17 @@ export function ReportsPage() {
           if (active.length > 0) {
             setWeaversOwed(active.slice(0, 5));
           } else {
-            setWeaversOwed(
-              balances.slice(0, 3).map((w) => ({
+            const pending = balances
+              .filter((w) => (w.estimatedPendingPayout || 0) > 0)
+              .map((w) => ({
                 name: w.fullName,
-                meta: `${w.activeWorkOrdersCount || 1} zigs in progress`,
-                amount: `${Math.round(w.estimatedPendingPayout || 4500).toLocaleString()} ETB`,
-              }))
-            );
+                meta: `${w.activeWorkOrdersCount || 0} zigs in progress`,
+                amount: `${Math.round(w.estimatedPendingPayout || 0).toLocaleString()} ETB`,
+              }));
+            setWeaversOwed(pending.slice(0, 5));
           }
+        } else {
+          setWeaversOwed([]);
         }
       })
       .catch(() => {});
@@ -97,16 +102,9 @@ export function ReportsPage() {
               name: m.fullName || m.username || "Merchant",
               amount: `${Math.round(m.totalReceivableBalance || 0).toLocaleString()} ETB`,
             }));
-          if (mapped.length > 0) {
-            setMerchantsOwed(mapped.slice(0, 5));
-          } else {
-            setMerchantsOwed(
-              balances.slice(0, 2).map((m: any) => ({
-                name: m.fullName || m.username || "Merchant",
-                amount: `${Math.round(m.totalReceivableBalance || 0).toLocaleString()} ETB`,
-              }))
-            );
-          }
+          setMerchantsOwed(mapped.slice(0, 5));
+        } else {
+          setMerchantsOwed([]);
         }
       })
       .catch(() => {});
@@ -363,15 +361,21 @@ export function ReportsPage() {
             </div>
 
             <div className="owed-list">
-              {weaversOwed.map((w, idx) => (
-                <div key={idx} className="owed-item">
-                  <div className="owed-item-left">
-                    <span className="owed-item-name">{w.name}</span>
-                    <span className="owed-item-meta">{w.meta}</span>
-                  </div>
-                  <span className="owed-item-amount">{w.amount}</span>
+              {weaversOwed.length === 0 ? (
+                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-text-secondary, #666)", fontSize: "13px" }}>
+                  No outstanding weaver settlements pending.
                 </div>
-              ))}
+              ) : (
+                weaversOwed.map((w, idx) => (
+                  <div key={idx} className="owed-item">
+                    <div className="owed-item-left">
+                      <span className="owed-item-name">{w.name}</span>
+                      <span className="owed-item-meta">{w.meta}</span>
+                    </div>
+                    <span className="owed-item-amount">{w.amount}</span>
+                  </div>
+                ))
+              )}
             </div>
 
             <button
@@ -394,12 +398,18 @@ export function ReportsPage() {
             </div>
 
             <div className="owed-list">
-              {merchantsOwed.map((m, idx) => (
-                <div key={idx} className="owed-item">
-                  <span className="owed-item-name">{m.name}</span>
-                  <span className="owed-item-amount">{m.amount}</span>
+              {merchantsOwed.length === 0 ? (
+                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-text-secondary, #666)", fontSize: "13px" }}>
+                  No outstanding merchant receivables pending.
                 </div>
-              ))}
+              ) : (
+                merchantsOwed.map((m, idx) => (
+                  <div key={idx} className="owed-item">
+                    <span className="owed-item-name">{m.name}</span>
+                    <span className="owed-item-amount">{m.amount}</span>
+                  </div>
+                ))
+              )}
             </div>
 
             <button

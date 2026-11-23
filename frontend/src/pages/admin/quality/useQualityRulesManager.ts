@@ -1,24 +1,14 @@
 import { useEffect, useState, useMemo, type FormEvent } from "react";
 import { catalogApi, type QualityRuleRow } from "../../../api";
 
-export const DEFAULT_QUALITY_RULES: QualityRuleRow[] = [
-  {
-    qualityRuleId: 1,
-    factor: "weight",
-    unit: "g",
-    deductionPerUnit: 10,
-    isActive: true,
-  },
-];
-
 export function useQualityRulesManager() {
-  const [rules, setRules] = useState<QualityRuleRow[]>(DEFAULT_QUALITY_RULES);
+  const [rules, setRules] = useState<QualityRuleRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRuleId, setSelectedRuleId] = useState<number | null>(1);
+  const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
   const [showClosed, setShowClosed] = useState(false);
 
   // Edit panel state
-  const [editDeduction, setEditDeduction] = useState<string>("12");
+  const [editDeduction, setEditDeduction] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -40,14 +30,14 @@ export function useQualityRulesManager() {
         setSelectedRuleId(active.qualityRuleId);
         setEditDeduction(String(active.deductionPerUnit));
       } else {
-        setRules(DEFAULT_QUALITY_RULES);
-        setSelectedRuleId(1);
-        setEditDeduction("10");
+        setRules([]);
+        setSelectedRuleId(null);
+        setEditDeduction("");
       }
     } catch {
-      setRules(DEFAULT_QUALITY_RULES);
-      setSelectedRuleId(1);
-      setEditDeduction("10");
+      setRules([]);
+      setSelectedRuleId(null);
+      setEditDeduction("");
     } finally {
       setLoading(false);
     }

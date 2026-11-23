@@ -3,105 +3,6 @@ import { auditService } from "../../../infrastructure/services";
 import type { AuditLog } from "../../../domain/models";
 import type { LogItem, LogDetailItem } from "./types";
 
-export const INITIAL_LOGS: LogItem[] = [
-  {
-    id: 1,
-    when: "13/11/2026 09:42",
-    rawDate: new Date("2026-11-13T09:42:00"),
-    who: "Admin 1",
-    whatHappenedTitle: "Settlement run confirmed",
-    whatHappenedSub: "Settlements · run [ref]",
-    actionText: "✓ Confirmed",
-    actionType: "confirmed",
-    area: "Settlements",
-    details: [
-      { label: "Batch ID", value: "SETTLE-2026-11-13" },
-      { label: "Total paid", value: "212,400 ETB" },
-      { label: "Weavers count", value: "4 weavers" },
-      { label: "Confirmed by", value: "Admin 1" },
-    ],
-  },
-  {
-    id: 2,
-    when: "13/11/2026 09:15",
-    rawDate: new Date("2026-11-13T09:15:00"),
-    who: "Admin 1",
-    whatHappenedTitle: "Fabric price changed",
-    whatHappenedSub: "Catalog · medebegna",
-    actionText: "✎ Changed",
-    actionType: "changed",
-    area: "Prices",
-    details: [
-      { label: "Fabric", value: "medebegna" },
-      { label: "Weaver rate", value: "1,300 → 1,380" },
-      { label: "Selling price", value: "1,900 (no change)" },
-      { label: "Takes effect on", value: "13/11/2026" },
-    ],
-  },
-  {
-    id: 3,
-    when: "12/11/2026 16:30",
-    rawDate: new Date("2026-11-12T16:30:00"),
-    who: "Staff 1",
-    whatHappenedTitle: "Fabric return recorded",
-    whatHappenedSub: "Zigs · [zig id], return #[id]",
-    actionText: "+ Created",
-    actionType: "created",
-    area: "Zigs",
-    details: [
-      { label: "Work order", value: "ZIG-8491" },
-      { label: "Pieces returned", value: "10 pieces" },
-      { label: "Inspected by", value: "Staff 1" },
-    ],
-  },
-  {
-    id: 4,
-    when: "12/11/2026 16:12",
-    rawDate: new Date("2026-11-12T16:12:00"),
-    who: "Staff 1",
-    whatHappenedTitle: "Fabric return deleted",
-    whatHappenedSub: "Zigs · [zig id], return #[id]",
-    actionText: "🗑 Deleted",
-    actionType: "deleted",
-    area: "Zigs",
-    details: [
-      { label: "Work order", value: "ZIG-8490" },
-      { label: "Reason", value: "Entered duplicate weight reading" },
-    ],
-  },
-  {
-    id: 5,
-    when: "12/11/2026 11:05",
-    rawDate: new Date("2026-11-12T11:05:00"),
-    who: "Admin 1",
-    whatHappenedTitle: "Transaction cancelled",
-    whatHappenedSub: "Transactions · [id]",
-    actionText: "✕ Cancelled",
-    actionType: "cancelled",
-    area: "Transactions",
-    details: [
-      { label: "Transaction #", value: "TXN-3012" },
-      { label: "Type", value: "Yarn disbursement" },
-      { label: "Reason", value: "Cancelled upon artisan request" },
-    ],
-  },
-  {
-    id: 6,
-    when: "11/11/2026 14:20",
-    rawDate: new Date("2026-11-11T14:20:00"),
-    who: "Admin 1",
-    whatHappenedTitle: "User roles changed",
-    whatHappenedSub: "Users · Weaver 01",
-    actionText: "✎ Changed",
-    actionType: "changed",
-    area: "Users",
-    details: [
-      { label: "Target user", value: "Weaver 01" },
-      { label: "Roles", value: "weaver → weaver, staff" },
-    ],
-  },
-];
-
 export function formatAuditLogItem(item: AuditLog): LogItem {
   const date = new Date(item.createdAt);
   const formattedDate = `${String(date.getDate()).padStart(2, "0")}/${String(
@@ -225,11 +126,11 @@ export function formatAuditLogItem(item: AuditLog): LogItem {
 }
 
 export function useAuditLogsManager() {
-  const [logs, setLogs] = useState<LogItem[]>(INITIAL_LOGS);
+  const [logs, setLogs] = useState<LogItem[]>([]);
   const [whatFilter, setWhatFilter] = useState("All areas");
   const [whoFilter, setWhoFilter] = useState("Everyone");
   const [periodFilter, setPeriodFilter] = useState("Last 30 days");
-  const [expandedId, setExpandedId] = useState<string | number | null>(2);
+  const [expandedId, setExpandedId] = useState<string | number | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 25;
 
@@ -240,13 +141,15 @@ export function useAuditLogsManager() {
       .then((res) => {
         if (!isMounted) return;
         const rawList = res.logs ?? [];
-        if (rawList.length > 0) {
-          const mapped = rawList.map(formatAuditLogItem);
-          setLogs(mapped);
-          setExpandedId(mapped[0]?.id ?? null);
-        }
+        const mapped = rawList.map(formatAuditLogItem);
+        setLogs(mapped);
+        setExpandedId(mapped[0]?.id ?? null);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!isMounted) return;
+        setLogs([]);
+        setExpandedId(null);
+      });
 
     return () => {
       isMounted = false;

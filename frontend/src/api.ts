@@ -1106,19 +1106,19 @@ export const weaverPortalApi = {
 
 export const merchantApi = {
   availableFabrics: async () => {
-    const variants = await merchantPortalService.getCatalog();
+    const variants = (await merchantPortalService.getCatalog()) as any[];
     return variants.map((v) => ({
       fabricVariantId: v.fabricVariantId,
       sku: v.sku,
       fabricId: v.fabricId,
-      fabricName: v.fabric?.name ?? "Fabric",
-      standardLengthCm: v.fabric?.standardLengthCm ?? 200,
-      standardWidthCm: v.fabric?.standardWidthCm ?? 100,
-      standardWeightG: v.fabric?.standardWeightG ?? 500,
-      design: v.design?.name ?? "Standard",
-      warpColor: v.warpColor?.name ?? "Natural",
-      weftColor: v.weftColor?.name ?? "Natural",
-      sellingPrice: Number(v.fabric?.prices?.[0]?.sellingPrice ?? 0),
+      fabricName: v.fabricName ?? v.fabric?.name ?? "Fabric",
+      standardLengthCm: v.standardLengthCm ?? v.fabric?.standardLengthCm ?? 200,
+      standardWidthCm: v.standardWidthCm ?? v.fabric?.standardWidthCm ?? 100,
+      standardWeightG: v.standardWeightG ?? v.fabric?.standardWeightG ?? 500,
+      design: typeof v.design === "string" ? v.design : (v.design?.name ?? "Standard"),
+      warpColor: typeof v.warpColor === "string" ? v.warpColor : (v.warpColor?.name ?? "Natural"),
+      weftColor: typeof v.weftColor === "string" ? v.weftColor : (v.weftColor?.name ?? "Natural"),
+      sellingPrice: Number(v.sellingPrice ?? v.fabric?.prices?.[0]?.sellingPrice ?? 0),
     }));
   },
   prices: async () => {

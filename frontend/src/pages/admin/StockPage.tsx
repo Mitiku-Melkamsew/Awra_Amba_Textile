@@ -18,24 +18,9 @@ interface FabricRow {
   stockSnapshot: number;
 }
 
-// Fallback sample data matching the exact screenshot
-const DEFAULT_YARNS: YarnRow[] = [
-  { yarnVariantId: 2, sku: "SKU Y-002", name: "cotton · red", colorName: "red", stockSnapshot: 18 },
-  { yarnVariantId: 5, sku: "SKU Y-005", name: "cotton · indigo", colorName: "indigo", stockSnapshot: 12 },
-  { yarnVariantId: 3, sku: "SKU Y-003", name: "cotton · black", colorName: "black", stockSnapshot: 0 },
-  { yarnVariantId: 1, sku: "SKU Y-001", name: "cotton · white", colorName: "white", stockSnapshot: 120 },
-  { yarnVariantId: 4, sku: "SKU Y-004", name: "silk · red", colorName: "red", stockSnapshot: 64 },
-];
-
-const DEFAULT_FABRICS: FabricRow[] = [
-  { fabricVariantId: 1, sku: "SKU F-001", name: "medebegna · biret · geberdin", stockSnapshot: 4 },
-  { fabricVariantId: 2, sku: "SKU F-002", name: "gabi · [color]", stockSnapshot: 0 },
-  { fabricVariantId: 3, sku: "SKU F-003", name: "netela · [color]", stockSnapshot: 45 },
-];
-
 export function StockPage() {
-  const [yarns, setYarns] = useState<YarnRow[]>(DEFAULT_YARNS);
-  const [fabrics, setFabrics] = useState<FabricRow[]>(DEFAULT_FABRICS);
+  const [yarns, setYarns] = useState<YarnRow[]>([]);
+  const [fabrics, setFabrics] = useState<FabricRow[]>([]);
   const [activeTab, setActiveTab] = useState<"yarn" | "fabric">("yarn");
   const [search, setSearch] = useState("");
   const [lowStockOnly, setLowStockOnly] = useState(false);
@@ -44,7 +29,7 @@ export function StockPage() {
     stockApi
       .get()
       .then((data) => {
-        if (data.yarnVariants && data.yarnVariants.length > 0) {
+        if (data.yarnVariants) {
           const mappedYarns: YarnRow[] = (data.yarnVariants as any[]).map((y) => {
             const material = y.yarn?.name ?? "cotton";
             const color = y.color?.name ?? "natural";
@@ -59,7 +44,7 @@ export function StockPage() {
           setYarns(mappedYarns);
         }
 
-        if (data.fabricVariants && data.fabricVariants.length > 0) {
+        if (data.fabricVariants) {
           const mappedFabrics: FabricRow[] = (data.fabricVariants as FabricVariant[]).map((f) => {
             const fname = f.fabric?.name ?? "fabric";
             const warp = f.warpColor?.name;
@@ -77,7 +62,8 @@ export function StockPage() {
         }
       })
       .catch(() => {
-        // Fallback to default sample data
+        setYarns([]);
+        setFabrics([]);
       });
   }, []);
 

@@ -21,46 +21,13 @@ export interface FabricWithRates {
   isActive: boolean;
 }
 
-export const DEFAULT_FABRICS: FabricWithRates[] = [
-  {
-    fabricId: 1,
-    name: "medebegna",
-    standardLengthCm: 240,
-    standardWidthCm: 150,
-    standardWeightG: 64,
-    weaverRate: 1300,
-    sellingPrice: 1900,
-    isActive: true,
-  },
-  {
-    fabricId: 2,
-    name: "gabi",
-    standardLengthCm: 240,
-    standardWidthCm: 150,
-    standardWeightG: 520,
-    weaverRate: 950,
-    sellingPrice: 1400,
-    isActive: true,
-  },
-  {
-    fabricId: 3,
-    name: "netela",
-    standardLengthCm: 200,
-    standardWidthCm: 100,
-    standardWeightG: 150,
-    weaverRate: 700,
-    sellingPrice: 1050,
-    isActive: true,
-  },
-];
-
 export function useCatalogData() {
   const [tab, setTab] = useState<CatalogTab>("fabrics");
   const [search, setSearch] = useState("");
   const [showDeactivated, setShowDeactivated] = useState(false);
 
   // Data collections
-  const [fabrics, setFabrics] = useState<FabricWithRates[]>(DEFAULT_FABRICS);
+  const [fabrics, setFabrics] = useState<FabricWithRates[]>([]);
   const [fabricVariants, setFabricVariants] = useState<FabricVariant[]>([]);
   const [yarns, setYarns] = useState<any[]>([]);
   const [yarnVariants, setYarnVariants] = useState<any[]>([]);
@@ -69,11 +36,11 @@ export function useCatalogData() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
 
   // Selection & edit state for fabrics
-  const [selectedFabricId, setSelectedFabricId] = useState<number | null>(2);
-  const [editName, setEditName] = useState("gabi");
-  const [editWeight, setEditWeight] = useState("520");
-  const [editLength, setEditLength] = useState("240");
-  const [editWidth, setEditWidth] = useState("150");
+  const [selectedFabricId, setSelectedFabricId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editWeight, setEditWeight] = useState("");
+  const [editLength, setEditLength] = useState("");
+  const [editWidth, setEditWidth] = useState("");
 
   // Selection & edit state for yarns
   const [selectedYarnId, setSelectedYarnId] = useState<number | null>(null);
@@ -119,12 +86,6 @@ export function useCatalogData() {
         ]);
 
       if (fabList && fabList.length > 0) {
-        const defaultRates: Record<string, { weaver: number; sell: number }> = {
-          medebegna: { weaver: 1300, sell: 1900 },
-          gabi: { weaver: 950, sell: 1400 },
-          netela: { weaver: 700, sell: 1050 },
-        };
-
         const combined: FabricWithRates[] = fabList.map((f: any) => {
           const matchedPrices = fpList.filter(
             (p: FabricPriceRow) => p.fabricId === f.fabricId && p.isActive !== false
@@ -134,7 +95,6 @@ export function useCatalogData() {
               new Date(b.effectiveFrom || 0).getTime() - new Date(a.effectiveFrom || 0).getTime()
           );
           const currentPrice = matchedPrices[0];
-          const defRate = defaultRates[f.name.toLowerCase()] || { weaver: 1000, sell: 1500 };
 
           return {
             fabricId: f.fabricId,
@@ -142,28 +102,28 @@ export function useCatalogData() {
             standardLengthCm: f.standardLengthCm ?? 240,
             standardWidthCm: f.standardWidthCm ?? 150,
             standardWeightG: f.standardWeightG ?? 520,
-            weaverRate: currentPrice ? Number(currentPrice.weaverRate) : defRate.weaver,
-            sellingPrice: currentPrice ? Number(currentPrice.sellingPrice) : defRate.sell,
+            weaverRate: currentPrice ? Number(currentPrice.weaverRate) : 0,
+            sellingPrice: currentPrice ? Number(currentPrice.sellingPrice) : 0,
             isActive: f.isActive ?? true,
           };
         });
 
         setFabrics(combined);
-        const gabi = combined.find((f) => f.name.toLowerCase() === "gabi") || combined[0];
-        if (gabi) {
-          setSelectedFabricId(gabi.fabricId);
-          setEditName(gabi.name);
-          setEditWeight(String(gabi.standardWeightG));
-          setEditLength(String(gabi.standardLengthCm));
-          setEditWidth(String(gabi.standardWidthCm));
+        const firstFab = combined[0];
+        if (firstFab) {
+          setSelectedFabricId(firstFab.fabricId);
+          setEditName(firstFab.name);
+          setEditWeight(String(firstFab.standardWeightG));
+          setEditLength(String(firstFab.standardLengthCm));
+          setEditWidth(String(firstFab.standardWidthCm));
         }
       } else {
-        setFabrics(DEFAULT_FABRICS);
-        setSelectedFabricId(2);
-        setEditName("gabi");
-        setEditWeight("520");
-        setEditLength("240");
-        setEditWidth("150");
+        setFabrics([]);
+        setSelectedFabricId(null);
+        setEditName("");
+        setEditWeight("");
+        setEditLength("");
+        setEditWidth("");
       }
 
       setFabricVariants(fvList || []);
@@ -223,12 +183,12 @@ export function useCatalogData() {
         });
       }
     } catch {
-      setFabrics(DEFAULT_FABRICS);
-      setSelectedFabricId(2);
-      setEditName("gabi");
-      setEditWeight("520");
-      setEditLength("240");
-      setEditWidth("150");
+      setFabrics([]);
+      setSelectedFabricId(null);
+      setEditName("");
+      setEditWeight("");
+      setEditLength("");
+      setEditWidth("");
     } finally {
       setLoading(false);
     }

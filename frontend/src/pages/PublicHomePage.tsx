@@ -14,64 +14,6 @@ interface FabricCardItem {
   patternType: "geberdin" | "zigzag" | "stripes";
 }
 
-// Authentic Awra Amba Cooperative Catalog items (with official rates and specs)
-const INITIAL_FABRICS: FabricCardItem[] = [
-  {
-    id: 1,
-    category: "medebegna",
-    title: "medebegna · biret · geberdin",
-    specs: "64 g · 240 × 150 cm",
-    price: "1,900 ETB per piece",
-    rawPrice: 1900,
-    patternType: "geberdin",
-  },
-  {
-    id: 2,
-    category: "medebegna",
-    title: "medebegna · biret · zigzag",
-    specs: "64 g · 240 × 150 cm",
-    price: "1,900 ETB per piece",
-    rawPrice: 1900,
-    patternType: "zigzag",
-  },
-  {
-    id: 3,
-    category: "medebegna",
-    title: "medebegna · red/white · geberdin",
-    specs: "64 g · 240 × 150 cm",
-    price: "1,900 ETB per piece",
-    rawPrice: 1900,
-    patternType: "geberdin",
-  },
-  {
-    id: 4,
-    category: "gabi",
-    title: "gabi · white/indigo · stripes",
-    specs: "520 g · 240 × 150 cm",
-    price: "1,400 ETB per piece",
-    rawPrice: 1400,
-    patternType: "stripes",
-  },
-  {
-    id: 5,
-    category: "gabi",
-    title: "gabi · natural white · tibeb",
-    specs: "520 g · 240 × 150 cm",
-    price: "1,400 ETB per piece",
-    rawPrice: 1400,
-    patternType: "stripes",
-  },
-  {
-    id: 6,
-    category: "netela",
-    title: "netela · white/gold · tibeb",
-    specs: "150 g · 200 × 100 cm",
-    price: "1,050 ETB per piece",
-    rawPrice: 1050,
-    patternType: "stripes",
-  },
-];
-
 function derivePattern(design: string): "geberdin" | "zigzag" | "stripes" {
   const d = design.toLowerCase();
   if (d.includes("zigzag")) return "zigzag";
@@ -99,7 +41,8 @@ function mapVariantToCard(v: AvailableFabric): FabricCardItem {
 
 export function PublicHomePage() {
   const { user } = useAuth();
-  const [fabrics, setFabrics] = useState<FabricCardItem[]>(INITIAL_FABRICS);
+  const [fabrics, setFabrics] = useState<FabricCardItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [lang, setLang] = useState<"am" | "en">("en");
 
@@ -108,11 +51,13 @@ export function PublicHomePage() {
     let isMounted = true;
 
     async function loadCatalog() {
+      setLoading(true);
       try {
         const liveVariants = await catalogApi.publicCatalog();
         if (isMounted && Array.isArray(liveVariants) && liveVariants.length > 0) {
           const mapped = liveVariants.map(mapVariantToCard);
           setFabrics(mapped);
+          setLoading(false);
           return;
         }
       } catch {
@@ -122,28 +67,29 @@ export function PublicHomePage() {
       try {
         const prices = await catalogApi.fabricPrices();
         if (isMounted && Array.isArray(prices) && prices.length > 0) {
-          // Update prices of the initial fabrics using live selling prices from DB
-          setFabrics((prev) =>
-            prev.map((item) => {
-              const matched = prices.find(
-                (p) =>
-                  p.isActive !== false &&
-                  p.fabric?.name?.toLowerCase() === item.category.toLowerCase()
-              );
-              if (matched && Number(matched.sellingPrice) > 0) {
-                const sp = Number(matched.sellingPrice);
-                return {
-                  ...item,
-                  price: `${sp.toLocaleString()} ETB per piece`,
-                  rawPrice: sp,
-                };
-              }
-              return item;
-            })
-          );
+          const mappedFromPrices: FabricCardItem[] = prices
+            .filter((p) => p.isActive !== false && p.fabric)
+            .map((p, idx) => {
+              const fname = p.fabric?.name || "Fabric";
+              const sp = Number(p.sellingPrice) || 0;
+              return {
+                id: p.fabricPriceId || idx + 1,
+                category: fname.toLowerCase(),
+                title: fname,
+                specs: `${p.fabric?.standardWeightG ?? 500} g · ${p.fabric?.standardLengthCm ?? 240} × ${p.fabric?.standardWidthCm ?? 150} cm`,
+                price: sp > 0 ? `${sp.toLocaleString()} ETB per piece` : "Official price on request",
+                rawPrice: sp,
+                patternType: "geberdin",
+              };
+            });
+          setFabrics(mappedFromPrices);
+        } else if (isMounted) {
+          setFabrics([]);
         }
       } catch {
-        // Graceful fallback: stays with authentic cooperative items
+        if (isMounted) setFabrics([]);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     }
 
@@ -168,15 +114,15 @@ export function PublicHomePage() {
 
   // Top fabrics for hero preview cards
   const heroCard1 = useMemo(
-    () => fabrics.find((f) => f.category === "medebegna") || fabrics[0] || INITIAL_FABRICS[0],
+    () => fabrics.find((f) => f.category === "medebegna") || fabrics[0],
     [fabrics]
   );
   const heroCard2 = useMemo(
-    () => fabrics.find((f) => f.category === "gabi") || fabrics[3] || INITIAL_FABRICS[3],
+    () => fabrics.find((f) => f.category === "gabi") || fabrics[1],
     [fabrics]
   );
   const heroCard3 = useMemo(
-    () => fabrics.find((f) => f.category === "netela") || fabrics[5] || INITIAL_FABRICS[5],
+    () => fabrics.find((f) => f.category === "netela") || fabrics[2],
     [fabrics]
   );
 
@@ -289,40 +235,46 @@ export function PublicHomePage() {
 
           {/* Right Stacked Preview Cards */}
           <div className="public-hero-right">
-            <div className="stacked-cards-container">
-              {/* Card 1 */}
-              <div className="stacked-preview-card card-top">
-                <div className={`woven-swatch-banner swatch-${heroCard1.patternType}`}></div>
-                <div className="stacked-card-body">
-                  <div className="stacked-card-title">{heroCard1.title}</div>
-                  <div className="stacked-card-specs">{heroCard1.specs}</div>
-                  <div className="stacked-card-price">{heroCard1.rawPrice.toLocaleString()}</div>
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="stacked-preview-card card-mid">
-                <div className={`woven-swatch-banner swatch-${heroCard2.patternType}`}></div>
-                <div className="stacked-card-body">
-                  <div className="stacked-card-title">{heroCard2.title}</div>
-                  <div className="stacked-card-specs">{heroCard2.specs}</div>
-                  <div className="stacked-card-price">{heroCard2.rawPrice.toLocaleString()}</div>
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="stacked-preview-card card-bot">
-                <div className={`woven-swatch-banner swatch-${heroCard3.patternType}`}></div>
-                <div className="stacked-card-body">
-                  <div className="stacked-card-title">{heroCard3.title}</div>
-                  <div className="stacked-card-specs">{heroCard3.specs}</div>
-                  <div className="stacked-card-price">
-                    {heroCard3.rawPrice.toLocaleString()}{" "}
-                    <span className="price-unit">ETB per piece</span>
+            {heroCard1 ? (
+              <div className="stacked-cards-container">
+                {/* Card 1 */}
+                <div className="stacked-preview-card card-top">
+                  <div className={`woven-swatch-banner swatch-${heroCard1.patternType}`}></div>
+                  <div className="stacked-card-body">
+                    <div className="stacked-card-title">{heroCard1.title}</div>
+                    <div className="stacked-card-specs">{heroCard1.specs}</div>
+                    <div className="stacked-card-price">{heroCard1.rawPrice.toLocaleString()}</div>
                   </div>
                 </div>
+
+                {/* Card 2 */}
+                {heroCard2 && (
+                  <div className="stacked-preview-card card-mid">
+                    <div className={`woven-swatch-banner swatch-${heroCard2.patternType}`}></div>
+                    <div className="stacked-card-body">
+                      <div className="stacked-card-title">{heroCard2.title}</div>
+                      <div className="stacked-card-specs">{heroCard2.specs}</div>
+                      <div className="stacked-card-price">{heroCard2.rawPrice.toLocaleString()}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Card 3 */}
+                {heroCard3 && (
+                  <div className="stacked-preview-card card-bot">
+                    <div className={`woven-swatch-banner swatch-${heroCard3.patternType}`}></div>
+                    <div className="stacked-card-body">
+                      <div className="stacked-card-title">{heroCard3.title}</div>
+                      <div className="stacked-card-specs">{heroCard3.specs}</div>
+                      <div className="stacked-card-price">
+                        {heroCard3.rawPrice.toLocaleString()}{" "}
+                        <span className="price-unit">ETB per piece</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -356,19 +308,29 @@ export function PublicHomePage() {
           </div>
         </div>
 
-        {/* 3x2 Grid */}
-        <div className="fabrics-grid">
-          {filteredFabrics.map((fabric) => (
-            <div key={fabric.id} className="card fabric-item-card">
-              <div className={`fabric-swatch-header swatch-${fabric.patternType}`}></div>
-              <div className="fabric-card-content">
-                <h3 className="fabric-card-title">{fabric.title}</h3>
-                <p className="fabric-card-specs">{fabric.specs}</p>
-                <div className="fabric-card-price">{fabric.price}</div>
+        {/* Grid or Status */}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+            Loading fabrics from cooperative catalog…
+          </div>
+        ) : filteredFabrics.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+            No fabrics currently available in the public catalog.
+          </div>
+        ) : (
+          <div className="fabrics-grid">
+            {filteredFabrics.map((fabric) => (
+              <div key={fabric.id} className="card fabric-item-card">
+                <div className={`fabric-swatch-header swatch-${fabric.patternType}`}></div>
+                <div className="fabric-card-content">
+                  <h3 className="fabric-card-title">{fabric.title}</h3>
+                  <p className="fabric-card-specs">{fabric.specs}</p>
+                  <div className="fabric-card-price">{fabric.price}</div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Button to browse all */}
         <div className="fabrics-section-footer">
