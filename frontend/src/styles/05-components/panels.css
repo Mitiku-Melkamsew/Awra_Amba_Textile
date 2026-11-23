@@ -1,0 +1,77 @@
+/* ─────────────────────────────────────────────────────────────
+   AWRA AMBA TEXTILE - DETAIL PANELS & CALLOUTS
+   Slide-over detail panels, their anatomy, and inline example boxes.
+   ───────────────────────────────────────────────────────────── */
+
+@layer components {
+  .edit-detail-panel,
+  .price-edit-panel {
+    width: 340px;
+    min-width: 340px;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: var(--space-6, 1.5rem);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border, #E5E7EB);
+    background: var(--surface, #FFFFFF);
+    align-self: flex-start;
+    position: sticky;
+    top: var(--space-6, 1.5rem);
+    z-index: 10;
+  }
+
+  .detail-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3, 0.75rem);
+    margin-bottom: var(--space-5, 1.25rem);
+  }
+
+  .detail-panel-title {
+    font-size: var(--text-lg, 18px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--text, #111827);
+    margin: 0;
+  }
+
+  .detail-panel-sub {
+    font-size: var(--text-sm, 13px);
+    color: var(--text-muted, #64748B);
+    margin: 2px 0 0;
+  }
+
+  .detail-close-btn {
+    background: none;
+    border: none;
+    font-size: var(--text-lg, 18px);
+    color: var(--text-subtle, #94A3B8);
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+
+  .detail-close-btn:hover {
+    color: var(--text, #1E293B);
+  }
+
+  .example-calc-box {
+    background: var(--bg-subtle, #F8FAFC);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-sm, 8px);
+    padding: 0.85rem 1rem;
+    font-size: var(--text-xs, 12.5px);
+    color: var(--text, #334155);
+    margin: var(--space-5, 1.25rem) 0 0.85rem;
+    line-height: var(--leading-normal, 1.5);
+  }
+
+  @media (max-width: 960px) {
+    .edit-detail-panel,
+    .price-edit-panel {
+      width: 100%;
+      min-width: 0;
+      position: static;
+    }
+  }
+}

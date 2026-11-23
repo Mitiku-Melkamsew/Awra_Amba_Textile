@@ -35,6 +35,7 @@ export function CatalogPage() {
     colors,
     designs,
     suppliers,
+    // Fabrics
     selectedFabric,
     handleSelectFabric,
     editName,
@@ -47,6 +48,46 @@ export function CatalogPage() {
     setEditWidth,
     handleSaveFabricSpecs,
     handleToggleFabricStatus,
+    // Yarns
+    selectedYarn,
+    handleSelectYarn,
+    editYarnName,
+    setEditYarnName,
+    handleSaveYarnSpecs,
+    handleToggleYarnStatus,
+    // Colors
+    selectedColor,
+    handleSelectColor,
+    editColorName,
+    setEditColorName,
+    editColorHex,
+    setEditColorHex,
+    handleSaveColorSpecs,
+    // Designs
+    selectedDesign,
+    handleSelectDesign,
+    editDesignName,
+    setEditDesignName,
+    editDesignDescription,
+    setEditDesignDescription,
+    handleSaveDesignSpecs,
+    // Suppliers
+    selectedSupplier,
+    handleSelectSupplier,
+    editSupplierName,
+    setEditSupplierName,
+    editSupplierPhone,
+    setEditSupplierPhone,
+    handleSaveSupplierSpecs,
+    handleToggleSupplierStatus,
+    // Variants
+    selectedFabricVariant,
+    handleSelectFabricVariant,
+    handleToggleFabricVariantStatus,
+    selectedYarnVariant,
+    handleSelectYarnVariant,
+    handleToggleYarnVariantStatus,
+    // Shared
     saving,
     statusMessage,
     setStatusMessage,
@@ -166,18 +207,78 @@ export function CatalogPage() {
         <FabricVariantsTab
           variants={fabricVariants}
           showDeactivated={showDeactivated}
+          selectedVariant={selectedFabricVariant}
+          onSelectVariant={handleSelectFabricVariant}
+          onToggleStatus={handleToggleFabricVariantStatus}
+          saving={saving}
         />
       )}
 
-      {tab === "yarns" && <YarnsTab yarns={yarns} />}
+      {tab === "yarns" && (
+        <YarnsTab
+          yarns={yarns}
+          selectedYarn={selectedYarn}
+          onSelectYarn={handleSelectYarn}
+          editName={editYarnName}
+          onEditNameChange={setEditYarnName}
+          onSaveSpecs={handleSaveYarnSpecs}
+          onToggleStatus={handleToggleYarnStatus}
+          saving={saving}
+        />
+      )}
 
-      {tab === "yarnVariants" && <YarnVariantsTab variants={yarnVariants} />}
+      {tab === "yarnVariants" && (
+        <YarnVariantsTab
+          variants={yarnVariants}
+          selectedVariant={selectedYarnVariant}
+          onSelectVariant={handleSelectYarnVariant}
+          onToggleStatus={handleToggleYarnVariantStatus}
+          saving={saving}
+        />
+      )}
 
-      {tab === "colors" && <ColorsTab colors={colors} />}
+      {tab === "colors" && (
+        <ColorsTab
+          colors={colors}
+          selectedColor={selectedColor}
+          onSelectColor={handleSelectColor}
+          editName={editColorName}
+          onEditNameChange={setEditColorName}
+          editHex={editColorHex}
+          onEditHexChange={setEditColorHex}
+          onSaveSpecs={handleSaveColorSpecs}
+          saving={saving}
+        />
+      )}
 
-      {tab === "designs" && <DesignsTab designs={designs} />}
+      {tab === "designs" && (
+        <DesignsTab
+          designs={designs}
+          selectedDesign={selectedDesign}
+          onSelectDesign={handleSelectDesign}
+          editName={editDesignName}
+          onEditNameChange={setEditDesignName}
+          editDescription={editDesignDescription}
+          onEditDescriptionChange={setEditDesignDescription}
+          onSaveSpecs={handleSaveDesignSpecs}
+          saving={saving}
+        />
+      )}
 
-      {tab === "suppliers" && <SuppliersTab suppliers={suppliers} />}
+      {tab === "suppliers" && (
+        <SuppliersTab
+          suppliers={suppliers}
+          selectedSupplier={selectedSupplier}
+          onSelectSupplier={handleSelectSupplier}
+          editName={editSupplierName}
+          onEditNameChange={setEditSupplierName}
+          editPhone={editSupplierPhone}
+          onEditPhoneChange={setEditSupplierPhone}
+          onSaveSpecs={handleSaveSupplierSpecs}
+          onToggleStatus={handleToggleSupplierStatus}
+          saving={saving}
+        />
+      )}
 
       {/* ── Unified Add Item Dialog ── */}
       <AddCatalogItemModal

@@ -2,13 +2,9 @@ import { useWeaversManager } from "./weavers/useWeaversManager";
 import { WeaverRosterToolbar } from "./weavers/WeaverRosterToolbar";
 import { WeaverRosterTable } from "./weavers/WeaverRosterTable";
 import { AddWeaverModal } from "./weavers/AddWeaverModal";
-import { WeaverRatesTransparency } from "../../components/WeaverRatesTransparency";
-import { WeaverWageCalculator } from "../../components/WeaverWageCalculator";
 
 export function WeaversPage() {
   const {
-    tab,
-    handleTabChange,
     weavers,
     search,
     setSearch,
@@ -53,63 +49,28 @@ export function WeaversPage() {
         </button>
       </div>
 
-      {/* ── Navigation Tabs ── */}
-      <div className="tab-bar">
-        <button
-          type="button"
-          onClick={() => handleTabChange("roster")}
-          className={`tab-pill ${tab === "roster" ? "active" : ""}`}
-        >
-          Artisans Roster
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange("rates")}
-          className={`tab-pill ${tab === "rates" ? "active" : ""}`}
-        >
-          Piece Rates & Transparency
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange("calculator")}
-          className={`tab-pill ${tab === "calculator" ? "active" : ""}`}
-        >
-          Wage & Deduction Calculator
-        </button>
-      </div>
+      {/* ── Artisans Roster ── */}
+      <WeaverRosterToolbar
+        search={search}
+        setSearch={setSearch}
+        sort={sort}
+        setSort={setSort}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        count={weavers.length}
+      />
 
-      {/* Tab 2: Rates & Transparency */}
-      {tab === "rates" && <WeaverRatesTransparency />}
-
-      {/* Tab 3: Wage & Deduction Calculator */}
-      {tab === "calculator" && <WeaverWageCalculator />}
-
-      {/* Tab 1: Artisans Roster */}
-      {tab === "roster" && (
-        <>
-          <WeaverRosterToolbar
-            search={search}
-            setSearch={setSearch}
-            sort={sort}
-            setSort={setSort}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            count={weavers.length}
-          />
-
-          {error && (
-            <div className="error-msg" style={{ marginBottom: "1rem" }}>
-              <span>⚠️</span> {error}
-            </div>
-          )}
-
-          <WeaverRosterTable
-            weavers={weavers}
-            sort={sort}
-            search={search}
-          />
-        </>
+      {error && (
+        <div className="error-msg" style={{ marginBottom: "1rem" }}>
+          <span>⚠️</span> {error}
+        </div>
       )}
+
+      <WeaverRosterTable
+        weavers={weavers}
+        sort={sort}
+        search={search}
+      />
 
       {/* ── Add Weaver Modal ── */}
       <AddWeaverModal

@@ -95,7 +95,7 @@ export function WeaverPortalPage() {
 
         <Link
           to="/weaver/payments"
-          className="btn-primary"
+          className="btn btn-primary"
           style={{
             background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
             color: "#fff",

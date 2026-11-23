@@ -86,7 +86,7 @@ export function WeaverRatesTransparency() {
               <span className="eyebrow" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#065F46" }}>
                 ግልፅነት / Rate Transparency
               </span>
-              <span className="badge badge-green">✓ Official Cooperative Rates</span>
+              <span className="badge badge--success">✓ Official Cooperative Rates</span>
             </div>
             <h3 style={{ margin: "0 0 0.25rem", fontSize: "18px", fontWeight: 800 }}>
               Artisan Piece Rates & Yarn Pricing / የአሸጋይ ክፍያ እና የክር ተመን
@@ -193,7 +193,7 @@ export function WeaverRatesTransparency() {
                         {formatDateDDMMYY(p.effectiveFrom)}
                       </td>
                       <td>
-                        <span className="badge badge-green">Active Rate</span>
+                        <span className="badge badge--success">Active Rate</span>
                       </td>
                     </tr>
                   );
@@ -258,7 +258,7 @@ export function WeaverRatesTransparency() {
                       {formatDateDDMMYY(yp.effectiveFrom)}
                     </td>
                     <td>
-                      <span className="badge badge-green">Active Rate</span>
+                      <span className="badge badge--success">Active Rate</span>
                     </td>
                   </tr>
                 ))

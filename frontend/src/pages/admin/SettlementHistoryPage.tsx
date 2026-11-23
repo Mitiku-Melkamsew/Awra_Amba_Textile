@@ -78,7 +78,7 @@ export function SettlementHistoryPage() {
           <p className="eyebrow">ሂሳብ / Past Settlements</p>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <h1 className="page-title">Settlement History</h1>
-            {rows && <span className="badge badge-gray">{rows.length} Batches</span>}
+            {rows && <span className="badge badge--neutral">{rows.length} Batches</span>}
           </div>
           <p className="page-subtitle">Every confirmed batch settlement, disbursement status, and official payroll receipts.</p>
         </div>
@@ -140,11 +140,11 @@ export function SettlementHistoryPage() {
                     <td style={{ textAlign: "right", fontWeight: 600 }}>{row.weaverCount} artisans</td>
                     <td>
                       {isPaid ? (
-                        <span className="badge badge-green">✓ Paid / የተከፈለ</span>
+                        <span className="badge badge--success">✓ Paid / የተከፈለ</span>
                       ) : isPartial ? (
-                        <span className="badge badge-blue">⚠️ Partial ({Math.round(row.paidTotal).toLocaleString()} ETB)</span>
+                        <span className="badge badge--info">⚠️ Partial ({Math.round(row.paidTotal).toLocaleString()} ETB)</span>
                       ) : (
-                        <span className="badge badge-yellow">⏳ Unpaid / ያልተከፈለ</span>
+                        <span className="badge badge--warning">⏳ Unpaid / ያልተከፈለ</span>
                       )}
                     </td>
                     <td style={{ textAlign: "right" }}>
@@ -158,7 +158,7 @@ export function SettlementHistoryPage() {
                       )}
                     </td>
                     <td>
-                      <span className="badge badge-gray">{row.paymentMethod ?? "Standard"}</span>
+                      <span className="badge badge--neutral">{row.paymentMethod ?? "Standard"}</span>
                     </td>
                     <td style={{ fontSize: "12.5px" }}>{row.confirmedBy}</td>
                     <td style={{ textAlign: "right" }}>
@@ -272,8 +272,8 @@ export function SettlementHistoryPage() {
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
-                  style={{ background: "#059669", borderColor: "#059669" }}
+                  className="btn btn-primary"
+                  style={{ background: "var(--green, #059669)", borderColor: "var(--green, #059669)" }}
                   disabled={isSubmittingPayout}
                 >
                   {isSubmittingPayout ? "Processing Payout…" : "✓ Confirm Disbursement / አጽድቅ"}

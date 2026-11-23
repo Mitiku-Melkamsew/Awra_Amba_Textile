@@ -40,6 +40,44 @@
     color: var(--blue-fg, #1E40AF);
   }
 
+  /* ── Legacy Alert Classes ────────────────────────────────── */
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+    padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+    border-radius: var(--radius-sm, 8px);
+    font-size: var(--text-sm, 14px);
+    margin-bottom: var(--space-4, 1rem);
+    border: 1px solid transparent;
+  }
+
+  .alert-success,
+  .success-banner {
+    background: var(--green-bg, #ECFDF5);
+    border-color: var(--green-border, #A7F3D0);
+    color: var(--green-fg, #065F46);
+  }
+
+  .alert-danger,
+  .alert-error {
+    background: var(--red-bg, #FEF2F2);
+    border-color: var(--red-border, #FECACA);
+    color: var(--red-fg, #991B1B);
+  }
+
+  .alert-warning {
+    background: var(--amber-bg, #FFFBEB);
+    border-color: var(--amber-border, #FDE68A);
+    color: var(--amber-fg, #92400E);
+  }
+
+  .alert-info {
+    background: var(--blue-bg, #EFF6FF);
+    border-color: var(--blue-border, #BFDBFE);
+    color: var(--blue-fg, #1E40AF);
+  }
+
   /* ── Legacy Inline Message Banners ───────────────────────── */
   .error-msg,
   .success-msg {

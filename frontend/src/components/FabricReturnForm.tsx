@@ -212,7 +212,7 @@ export function FabricReturnForm({
               >
                 {form.flooredAvg > 0 && (
                   <span
-                    className={`badge ${form.isCurrentUnderweight ? "badge-warning" : "badge-success"}`}
+                    className={`badge ${form.isCurrentUnderweight ? "badge--warning" : "badge--success"}`}
                     style={{ padding: "0.3rem 0.75rem", fontSize: "0.82rem" }}
                   >
                     {form.isCurrentUnderweight ? "⚠" : "✓"} Avg {form.flooredAvg} g per piece

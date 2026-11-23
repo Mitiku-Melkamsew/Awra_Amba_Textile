@@ -36,7 +36,7 @@ export function MerchantPricesPage() {
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <h1 className="page-title">Fabric Selling Prices</h1>
-            <span className="badge badge-gray">{prices.length} Active Rates</span>
+            <span className="badge badge--neutral">{prices.length} Active Rates</span>
           </div>
           <p className="page-subtitle">
             Cooperative-mandated selling price schedule for wholesale merchants and retail partners.
@@ -120,7 +120,7 @@ export function MerchantPricesPage() {
                     {formatDateDDMMYY(price.effectiveFrom)}
                   </td>
                   <td>
-                    <span className="badge badge-green">Active</span>
+                    <span className="badge badge--success">Active</span>
                   </td>
                 </tr>
               ))

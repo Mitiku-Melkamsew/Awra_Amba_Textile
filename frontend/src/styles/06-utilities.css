@@ -45,6 +45,7 @@
   }
 
   /* ── Typography & Alignment Helpers ───────────────────────── */
+  .muted,
   .text-muted { color: var(--text-muted, #64748B); }
   .text-subtle { color: var(--text-subtle, #94A3B8); }
   .text-brand { color: var(--brand, #C2410C); }

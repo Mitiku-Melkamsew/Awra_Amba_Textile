@@ -1,13 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
 import { weaversApi, type Weaver } from "../../../api";
 
 export function useWeaversManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const rawTab = searchParams.get("tab");
-  const tab: "roster" | "rates" | "calculator" =
-    rawTab === "rates" || rawTab === "calculator" ? rawTab : "roster";
-
   const [weavers, setWeavers] = useState<Weaver[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"name" | "id">(() =>
@@ -58,36 +52,29 @@ export function useWeaversManager() {
       const combinedFullName = `${trimmedFirst} ${trimmedLast}`.trim();
       if (!combinedFullName) {
         setAddError("First and last name are required");
+        setSaving(false);
         return;
       }
+
       await weaversApi.create({
         fullName: combinedFullName,
-        firstName: trimmedFirst,
-        lastName: trimmedLast,
         phone: phone.trim() || undefined,
       });
+
+      setShowAdd(false);
       setFirstName("");
       setLastName("");
       setPhone("");
       setBankAccount("");
-      setShowAdd(false);
       await load();
-    } catch (err) {
-      setAddError(
-        err instanceof Error ? err.message : "Failed to create weaver"
-      );
+    } catch (err: any) {
+      setAddError(err.message || "Failed to add weaver");
     } finally {
       setSaving(false);
     }
   }
 
-  function handleTabChange(newTab: "roster" | "rates" | "calculator") {
-    setSearchParams(newTab === "roster" ? {} : { tab: newTab });
-  }
-
   return {
-    tab,
-    handleTabChange,
     weavers,
     search,
     setSearch,

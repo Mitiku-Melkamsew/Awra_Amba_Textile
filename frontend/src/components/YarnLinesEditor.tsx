@@ -199,7 +199,7 @@ export function YarnLinesEditor({
                 {!singleLine && lines.length > 1 && (
                   <button
                     type="button"
-                    className="btn-link danger"
+                    className="btn-link text-danger"
                     onClick={() => removeLine(line.id)}
                     style={{ fontSize: "12px", color: "var(--red, #dc2626)", cursor: "pointer", background: "none", border: "none" }}
                   >

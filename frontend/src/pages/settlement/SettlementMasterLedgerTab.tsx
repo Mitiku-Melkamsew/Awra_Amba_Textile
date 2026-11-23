@@ -97,10 +97,10 @@ export function SettlementMasterLedgerTab({
                     <span
                       className={`badge ${
                         zig.status === "reconciled"
-                          ? "badge-success"
+                          ? "badge--success"
                           : zig.status === "returned"
-                          ? "badge-warning"
-                          : "badge-neutral"
+                          ? "badge--warning"
+                          : "badge--neutral"
                       }`}
                     >
                       {zig.status}
@@ -127,13 +127,13 @@ export function SettlementMasterLedgerTab({
                   <td style={{ textAlign: "right" }}>
                     {zig.settlement ? (
                       <div>
-                        <span className="badge badge-success">Batch #{zig.settlement.batchId}</span>
+                        <span className="badge badge--success">Batch #{zig.settlement.batchId}</span>
                         <div style={{ fontWeight: 700, marginTop: "0.2rem" }}>
                           {zig.settlement.amount?.toLocaleString()} ETB
                         </div>
                       </div>
                     ) : zig.status === "returned" ? (
-                      <span className="badge badge-warning">Ready to Settle</span>
+                      <span className="badge badge--warning">Ready to Settle</span>
                     ) : (
                       <span style={{ fontSize: "12px", color: "var(--color-text-muted, #64748b)" }}>In Progress</span>
                     )}

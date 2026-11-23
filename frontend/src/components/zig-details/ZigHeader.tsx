@@ -31,15 +31,15 @@ export function ZigHeader({
   function getBadgeClass(status: string) {
     switch (status) {
       case "in_progress":
-        return "badge-primary";
+        return "badge--brand";
       case "returned":
-        return "badge-warning";
+        return "badge--warning";
       case "reconciled":
-        return "badge-success";
+        return "badge--success";
       case "cancelled":
-        return "badge-danger";
+        return "badge--danger";
       default:
-        return "badge-neutral";
+        return "badge--neutral";
     }
   }
 

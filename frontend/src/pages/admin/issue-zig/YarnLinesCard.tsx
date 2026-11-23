@@ -186,21 +186,21 @@ export function YarnLinesCard({
                     <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted, #94a3b8)" }}>—</span>
                   ) : isInvalidQty ? (
                     <span
-                      className="badge badge-neutral"
+                      className="badge badge--neutral"
                       style={{ fontSize: "12px", padding: "0.25rem 0.6rem" }}
                     >
                       {stock} in stock
                     </span>
                   ) : !isExceeded ? (
                     <span
-                      className="badge badge-success"
+                      className="badge badge--success"
                       style={{ fontSize: "12px", padding: "0.25rem 0.65rem", display: "inline-flex", gap: "0.25rem" }}
                     >
                       <span>✓</span> {stock} → {stockAfterNum}
                     </span>
                   ) : (
                     <span
-                      className="badge badge-danger"
+                      className="badge badge--danger"
                       style={{ fontSize: "12px", padding: "0.25rem 0.65rem", display: "inline-flex", gap: "0.25rem" }}
                     >
                       <span>⚠</span> {stock > 0 ? `Only ${stock} in stock` : "0 in stock"}

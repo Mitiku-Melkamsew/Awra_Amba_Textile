@@ -18,9 +18,19 @@ export function WeaverRosterToolbar({
   count,
 }: WeaverRosterToolbarProps) {
   return (
-    <div className="toolbar" style={{ alignItems: "center" }}>
-      {/* Search Box */}
-      <div style={{ flex: 1, minWidth: 260, position: "relative" }}>
+    <div
+      className="toolbar"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.75rem",
+        flexWrap: "nowrap",
+        overflowX: "auto",
+        marginBottom: "1.25rem",
+      }}
+    >
+      {/* Search Box - constrained so controls stay on one line */}
+      <div style={{ flex: "0 1 320px", minWidth: 200, maxWidth: 360, position: "relative" }}>
         <span
           style={{
             position: "absolute",
@@ -66,6 +76,8 @@ export function WeaverRosterToolbar({
           border: sort === "name" ? "1.5px solid var(--accent, #EA580C)" : "1px solid var(--border)",
           color: sort === "name" ? "var(--brand, #C2410C)" : "var(--text-muted)",
           fontWeight: sort === "name" ? 700 : 500,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
         }}
       >
         Sort A–Z
@@ -79,6 +91,8 @@ export function WeaverRosterToolbar({
           border: sort === "id" ? "1.5px solid var(--accent, #EA580C)" : "1px solid var(--border)",
           color: sort === "id" ? "var(--brand, #C2410C)" : "var(--text-muted)",
           fontWeight: sort === "id" ? 700 : 500,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
         }}
       >
         Sort by ID
@@ -94,6 +108,8 @@ export function WeaverRosterToolbar({
           fontSize: "13.5px",
           fontWeight: 600,
           color: "var(--text)",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
         }}
       >
         <option value="active">Active Only</option>
@@ -109,6 +125,7 @@ export function WeaverRosterToolbar({
           fontWeight: 500,
           whiteSpace: "nowrap",
           marginLeft: "auto",
+          flexShrink: 0,
         }}
       >
         {count} weavers

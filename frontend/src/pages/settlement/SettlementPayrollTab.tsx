@@ -271,9 +271,9 @@ export function SettlementPayrollTab({
                   Batch #{committedPreviewId} Summary
                 </h3>
                 {isBatchPaid ? (
-                  <span className="badge badge-success">✓ Fully Disbursed / የተከፈለ</span>
+                  <span className="badge badge--success">✓ Fully Disbursed / የተከፈለ</span>
                 ) : (
-                  <span className="badge badge-warning">⏳ Unpaid — Ready for Disbursement / ክፍያ ይጠብቃል</span>
+                  <span className="badge badge--warning">⏳ Unpaid — Ready for Disbursement / ክፍያ ይጠብቃል</span>
                 )}
               </div>
               <p style={{ margin: "0.35rem 0 0", fontSize: "13px", color: "var(--color-text-muted, #64748b)" }}>
@@ -330,11 +330,11 @@ export function SettlementPayrollTab({
                       <td style={{ fontWeight: 600 }}>{p.weaverName}</td>
                       <td>
                         {p.status === "cancelled" ? (
-                          <span className="badge badge-danger">Cancelled (Disputed)</span>
+                          <span className="badge badge--danger">Cancelled (Disputed)</span>
                         ) : isPaid ? (
-                          <span className="badge badge-success">✓ Disbursed</span>
+                          <span className="badge badge--success">✓ Disbursed</span>
                         ) : (
-                          <span className="badge badge-warning">⏳ Pending Payout</span>
+                          <span className="badge badge--warning">⏳ Pending Payout</span>
                         )}
                       </td>
                       <td

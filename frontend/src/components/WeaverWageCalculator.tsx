@@ -107,7 +107,7 @@ export function WeaverWageCalculator() {
           <span className="eyebrow" style={{ background: "rgba(234, 88, 12, 0.15)", color: "#C2410C" }}>
             ስሌት / Quality Wage Calculator
           </span>
-          <span className="badge badge-green">Live Database Specs</span>
+          <span className="badge badge--success">Live Database Specs</span>
         </div>
         <h3 style={{ margin: "0 0 0.25rem", fontSize: "18px", fontWeight: 800 }}>
           Fabric Quality Deduction & Artisan Wage Calculator / የሂሳብ ማስተካከያ ማስያ

@@ -32,11 +32,28 @@
     letter-spacing: -0.02em;
   }
 
+  .dashboard-section {
+    margin-bottom: var(--space-8, 2rem);
+  }
+
   .dashboard-section-title {
     font-size: var(--text-base, 15px);
     font-weight: var(--font-bold, 700);
     color: var(--text, #0F172A);
     margin: 0 0 var(--space-4, 1rem);
+  }
+
+  .attention-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2, 0.5rem);
+    margin-bottom: var(--space-1, 4px);
+  }
+
+  .attention-card-action {
+    margin-top: auto;
+    padding-top: var(--space-4, 1rem);
   }
 
   .attention-grid {

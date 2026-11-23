@@ -93,7 +93,7 @@ export function QualityRulesTable({
                       {rule.isActive !== false ? (
                         <span className="badge badge--success">✓ Active</span>
                       ) : (
-                        <span className="badge badge--gray">Closed</span>
+                        <span className="badge badge--neutral">Closed</span>
                       )}
                     </td>
                     <td style={{ textAlign: "right" }}>

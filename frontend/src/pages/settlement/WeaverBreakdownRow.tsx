@@ -25,9 +25,9 @@ export function WeaverBreakdownRow({
         </td>
         <td>
           {weaver.isBlocked ? (
-            <span className="badge badge-danger">Blocked</span>
+            <span className="badge badge--danger">Blocked</span>
           ) : (
-            <span className="badge badge-success">Valid</span>
+            <span className="badge badge--success">Valid</span>
           )}
         </td>
         <td style={{ textAlign: "right" }}>

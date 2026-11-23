@@ -82,7 +82,7 @@ export function FabricPricesTable({
                         {item.earlierPrice.period}
                       </td>
                       <td>
-                        <span className="badge badge--gray">Closed</span>
+                        <span className="badge badge--neutral">Closed</span>
                       </td>
                       <td></td>
                     </tr>

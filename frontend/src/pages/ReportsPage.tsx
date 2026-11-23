@@ -124,10 +124,41 @@ export function ReportsPage() {
 
   return (
     <div className="page reports-page">
-      {/* Header */}
-      <h1 className="stock-page-title">
-        Reports <span className="title-amharic">· ሪፖርቶች</span>
-      </h1>
+      {/* ── Page Header & Navigation ── */}
+      <div className="page-header" style={{ marginBottom: "1.25rem" }}>
+        <div>
+          <p className="eyebrow">ሪፖርቶች · REPORTS & ANALYTICS</p>
+          <h1 className="page-title">
+            Reports <span className="title-amharic">· ሪፖርቶች</span>
+          </h1>
+          <p className="page-subtitle">
+            Financial performance, revenues, expenses, and artisan balances
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <Link
+            to="/admin/reports/production"
+            className="btn btn-secondary"
+            style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <span>🏭</span> Production & WIP Ledger →
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Section Tabs ── */}
+      <div className="tab-bar">
+        <span className="tab-pill active">
+          Financial Overview
+        </span>
+        <Link
+          to="/admin/reports/production"
+          className="tab-pill"
+          style={{ textDecoration: "none" }}
+        >
+          Production & WIP Ledger
+        </Link>
+      </div>
 
       {/* Period Filter Chips */}
       <div className="reports-period-row">

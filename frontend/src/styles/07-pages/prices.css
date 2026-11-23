@@ -92,27 +92,19 @@
     cursor: pointer;
   }
 
-  .price-row {
-    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
-    cursor: pointer;
-    transition: background 0.15s ease;
-  }
-
-  .price-row:hover td {
-    background: var(--surface-hover, #F8FAFC);
-  }
-
-  .price-row-selected td {
-    background: var(--brand-light, #FFF7ED) !important;
-  }
-
-  .price-row-selected td:first-child {
-    border-left: 3px solid var(--brand, #EA580C) !important;
-  }
-
+  /* `.price-row` selection/cursor lives in 05-components/tables.css.
+     Only the page-specific cell metrics live here. */
   .price-row td {
     padding: var(--space-3, 12px) var(--space-4, 16px);
     vertical-align: middle;
+  }
+
+  .price-delta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1, 4px);
+    font-size: var(--text-xs, 12px);
+    line-height: var(--leading-tight, 1.25);
   }
 
   .price-item-name {
@@ -168,8 +160,7 @@
     margin-top: 2px;
   }
 
-  .price-now-banner,
-  .price-current-infobox {
+  .price-now-banner {
     width: 100%;
     box-sizing: border-box;
     background: var(--bg-subtle, #F8FAFC);
@@ -179,26 +170,16 @@
     margin-bottom: var(--space-4, 1rem);
   }
 
-  .price-now-line,
-  .infobox-rates {
+  .price-now-line {
     font-size: var(--text-xs, 13px);
     color: var(--text, #0F172A);
     margin: 0 0 2px;
   }
 
-  .price-now-sub,
-  .infobox-since {
+  .price-now-sub {
     font-size: var(--text-xs, 11.5px);
     color: var(--text-muted, #64748B);
     margin: 0;
-  }
-
-  .price-edit-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4, 1rem);
-    width: 100%;
-    box-sizing: border-box;
   }
 
   .price-form-group {
@@ -231,29 +212,6 @@
   .price-form-input:focus {
     border-color: var(--accent, #EA580C);
     box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.14);
-  }
-
-  .price-form-helper {
-    font-size: var(--text-xs, 12px);
-    margin-top: 2px;
-  }
-
-  .text-helper-up {
-    color: var(--blue, #0284C7);
-    font-weight: var(--font-semibold, 600);
-  }
-
-  .text-helper-neutral {
-    color: var(--text-muted, #64748B);
-  }
-
-  .price-status-feedback {
-    background: var(--green-bg, #ECFDF5);
-    color: var(--green-fg, #065F46);
-    padding: var(--space-2, 8px) var(--space-3, 12px);
-    border-radius: var(--radius-sm, 6px);
-    font-size: var(--text-sm, 13px);
-    font-weight: var(--font-medium, 500);
   }
 
   .price-edit-actions {

@@ -89,7 +89,7 @@ export function MerchantFabricsPage() {
               style={{ width: "100%", padding: "0.55rem 0.85rem", fontSize: "13.5px" }}
             />
           </div>
-          <span className="badge badge-gray" style={{ fontSize: "12.5px" }}>
+          <span className="badge badge--neutral" style={{ fontSize: "12.5px" }}>
             {filteredFabrics.length} {filteredFabrics.length === 1 ? "Variant" : "Variants"} Available
           </span>
         </div>
@@ -147,7 +147,7 @@ export function MerchantFabricsPage() {
                   >
                     SKU: {fabric.sku}
                   </span>
-                  <span className="badge badge-green" style={{ fontSize: "11px" }}>
+                  <span className="badge badge--success" style={{ fontSize: "11px" }}>
                     Standard Spec
                   </span>
                 </div>

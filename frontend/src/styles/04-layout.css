@@ -1,6 +1,7 @@
 /* ─────────────────────────────────────────────────────────────
    AWRA AMBA TEXTILE - LAYOUT & APP SHELL
-   Macro layout containers, sidebars, main content viewport, and page headers.
+   Macro layout containers, main content viewport, page headers.
+   Sidebar anatomy and themes live in 05-components/navigation.css.
    ───────────────────────────────────────────────────────────── */
 
 @layer layout {
@@ -15,14 +16,16 @@
   .sidebar {
     width: var(--sidebar-w, 256px);
     flex-shrink: 0;
+    background: var(--sidebar-bg, #0B132B);
+    color: var(--sidebar-fg, #F8FAFC);
     display: flex;
     flex-direction: column;
     height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
+    border-right: 1px solid var(--sidebar-border, rgba(255, 255, 255, 0.08));
     position: relative;
     z-index: 40;
-    box-sizing: border-box;
   }
 
   /* Main viewport */
@@ -98,6 +101,15 @@
     flex-direction: column;
   }
 
+  .weaver-page {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5, 1.25rem);
+  }
+
   .page-title {
     margin: 0 0 0.25rem;
     font-size: var(--text-2xl, 24px);
@@ -127,11 +139,6 @@
     background: var(--brand-light, #FFEDD5);
     padding: 0.15rem 0.55rem;
     border-radius: var(--radius-full, 9999px);
-  }
-
-  .eyebrow--success {
-    background: var(--green-bg, #ECFDF5);
-    color: var(--green-fg, #065F46);
   }
 
   .section-title {
@@ -165,7 +172,7 @@
   }
 
   /* ── Responsive Shell ────────────────────────────────────── */
-  @media (max-width: 768px) {
+  @media (max-width: 960px) {
     .app-shell {
       flex-direction: column;
       height: auto;
@@ -184,7 +191,30 @@
       top: 0;
       z-index: 40;
       border-right: none;
-      border-bottom: 1px solid var(--sidebar-border, #E2E8F0);
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .sidebar-brand-info,
+    .sidebar-footer,
+    .sidebar-nav-label {
+      display: none;
+    }
+
+    .sidebar-nav {
+      flex-direction: row;
+      padding: 0.5rem 0.75rem;
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .nav-item {
+      padding: 0.5rem 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .nav-item.active {
+      border-left: none;
+      border-bottom: 3px solid var(--sidebar-active-border);
     }
 
     .main-content {

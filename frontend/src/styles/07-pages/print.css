@@ -3,6 +3,53 @@
    ───────────────────────────────────────────────────────────── */
 
 @layer pages {
+  /* ── HISAB Statement (screen) ────────────────────────────── */
+  .hisab-print {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hisab-print-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3, 0.75rem);
+    align-items: center;
+  }
+
+  .hisab-print-header {
+    text-align: center;
+  }
+
+  .hisab-print-footer {
+    margin-top: var(--space-8, 2rem);
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+  }
+
+  .hisab-amharic {
+    font-family: "Noto Sans Ethiopic", "Nyala", sans-serif;
+    line-height: 1.6;
+  }
+
+  .hisab-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm, 13px);
+  }
+
+  .hisab-table th,
+  .hisab-table td {
+    border: 1px solid var(--border, #CBD5E1);
+    padding: var(--space-2, 6px) var(--space-3, 10px);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .hisab-table th {
+    background: var(--bg-subtle, #F1F5F9);
+    font-weight: var(--font-semibold, 600);
+  }
+
   @media print {
     .no-print,
     .sidebar,

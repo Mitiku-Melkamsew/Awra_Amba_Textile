@@ -121,6 +121,26 @@
     width: 100%;
   }
 
+  .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: var(--radius-sm, 6px);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted, #64748B);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .btn-icon:hover:not(:disabled) {
+    background: var(--surface-active, #F1F5F9);
+    color: var(--text, #0F172A);
+  }
+
   /* ── Anchor Button States (ensure high contrast) ──────────── */
   a.btn,
   a.btn:link,

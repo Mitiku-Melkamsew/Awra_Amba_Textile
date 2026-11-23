@@ -126,7 +126,7 @@ export function GroupedReturnsCard({
 
             {group.deductionTotal > 0 && (
               <div style={{ margin: "0.15rem 0 0.4rem 1.35rem" }}>
-                <span className="badge badge-danger">
+                <span className="badge badge--danger">
                   Total deductions: -{group.deductionTotal.toLocaleString()} ETB
                 </span>
               </div>
@@ -235,7 +235,7 @@ export function GroupedReturnsCard({
                           {rDeductions.map((d, dIdx) => (
                             <span
                               key={dIdx}
-                              className="badge badge-danger"
+                              className="badge badge--danger"
                               style={{ padding: "1px 5px", fontSize: "0.72rem" }}
                             >
                               {d.factor}: -{d.perPiece}/pc

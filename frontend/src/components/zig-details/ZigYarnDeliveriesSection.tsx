@@ -69,7 +69,7 @@ export function ZigYarnDeliveriesSection({
             Yarn deliveries
           </h3>
           <span
-            className="badge badge-neutral"
+            className="badge badge--neutral"
             style={{ fontSize: "0.75rem", padding: "2px 7px" }}
           >
             {order.yarnGiven.length}

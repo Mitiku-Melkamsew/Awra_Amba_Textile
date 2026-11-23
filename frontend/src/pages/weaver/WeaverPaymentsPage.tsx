@@ -41,7 +41,7 @@ export function WeaverPaymentsPage() {
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <h1 className="page-title">My Settled Payments</h1>
-            <span className="badge badge-green">{payments.length} Settlements</span>
+            <span className="badge badge--success">{payments.length} Settlements</span>
           </div>
           <p className="page-subtitle">
             All confirmed batch payroll distributions and downloadable official HISAB receipts.
@@ -108,7 +108,7 @@ export function WeaverPaymentsPage() {
                     {formatDateDDMMYY(payment.paymentDate)}
                   </td>
                   <td>
-                    <span className="badge badge-gray">
+                    <span className="badge badge--neutral">
                       {payment.paymentMethod ?? "Cash / Bank Transfer"}
                     </span>
                   </td>

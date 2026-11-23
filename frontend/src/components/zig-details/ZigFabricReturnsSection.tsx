@@ -56,7 +56,7 @@ export function ZigFabricReturnsSection({
             Fabric returns
           </h3>
           <span
-            className="badge badge-neutral"
+            className="badge badge--neutral"
             style={{ fontSize: "0.75rem", padding: "2px 7px" }}
           >
             {order.fabricReturns.length}
@@ -262,7 +262,7 @@ export function ZigFabricReturnsSection({
                     {retDeductions.map((d, dIdx) => (
                       <span
                         key={dIdx}
-                        className="badge badge-danger"
+                        className="badge badge--danger"
                         style={{ padding: "1px 5px", fontSize: "0.72rem" }}
                       >
                         {d.factor}: -{d.perPiece}/pc

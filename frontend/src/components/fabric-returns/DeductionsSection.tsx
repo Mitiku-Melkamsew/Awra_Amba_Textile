@@ -73,7 +73,7 @@ export function DeductionsSection({
             Quality Deductions
           </span>
           <span
-            className={`badge ${deductions.length > 0 ? "badge-danger" : "badge-neutral"}`}
+            className={`badge ${deductions.length > 0 ? "badge--danger" : "badge--neutral"}`}
             style={{ fontSize: "0.75rem", padding: "1px 7px" }}
           >
             {deductions.length}

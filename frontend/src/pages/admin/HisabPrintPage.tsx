@@ -67,7 +67,7 @@ export function HisabPrintPage() {
         </Link>
         <button
           type="button"
-          className="btn-primary"
+          className="btn btn-primary"
           onClick={() => window.print()}
         >
           🖨 Print / PDF Receipt

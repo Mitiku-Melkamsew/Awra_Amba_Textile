@@ -121,6 +121,16 @@
     align-items: center;
   }
 
+  .public-hero-left {
+    min-width: 0;
+  }
+
+  .public-hero-right {
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+  }
+
   .public-badge-pill {
     display: inline-block;
     background: #FEEAD8;
@@ -476,5 +486,71 @@
     font-weight: 700;
     color: #0F172A;
     margin: 2px 0 0;
+  }
+
+  @media (max-width: 960px) {
+    .public-navbar-inner,
+    .public-hero-section,
+    .public-fabrics-section,
+    .public-steps-section,
+    .public-footer-section {
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+    }
+
+    .public-nav-links {
+      display: none;
+    }
+
+    .public-hero-inner,
+    .footer-cards-grid {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .public-hero-heading {
+      font-size: 32px;
+    }
+
+    .fabrics-grid,
+    .steps-three-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .public-section-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .public-hero-section,
+    .public-fabrics-section,
+    .public-steps-section,
+    .public-footer-section {
+      padding-top: 2.5rem;
+      padding-bottom: 2.5rem;
+    }
+
+    .public-hero-heading {
+      font-size: 26px;
+    }
+
+    .public-hero-cta,
+    .public-hero-checks {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .fabrics-grid,
+    .steps-three-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .category-filter-chips {
+      flex-wrap: wrap;
+    }
   }
 }

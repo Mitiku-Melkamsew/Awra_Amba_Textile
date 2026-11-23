@@ -1,45 +1,97 @@
 /* ─────────────────────────────────────────────────────────────
    AWRA AMBA TEXTILE - SETTLEMENT PAGE
+   Settlement stepper and settlement summary primitives.
    ───────────────────────────────────────────────────────────── */
 
 @layer pages {
-  .settlement-weaver-block {
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--border-subtle);
+  /* ── Settlement Stepper ──────────────────────────────────── */
+  .settlement-steps {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+    margin-bottom: var(--space-6, 1.5rem);
+    flex-wrap: wrap;
   }
 
-  .settlement-weaver-block:last-child {
-    border-bottom: none;
+  .step-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    border-radius: var(--radius-full, 9999px);
+    background: var(--bg-subtle, #F1F5F9);
+    color: var(--text-muted, #64748B);
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-medium, 500);
   }
 
-  .settlement-weaver-name {
-    font-weight: 700;
-    font-size: 15px;
-    margin: 0 0 2px;
-    color: var(--text);
+  .step-item.active {
+    background: var(--brand-light, #FFEDD5);
+    color: var(--accent-active, #9A3412);
+    font-weight: var(--font-semibold, 600);
   }
 
-  .settlement-weaver-meta {
-    font-size: 12.5px;
-    color: var(--text-muted);
-    margin: 0 0 0.5rem;
+  .step-item.done {
+    background: var(--green-bg, #ECFDF5);
+    color: var(--green-fg, #065F46);
   }
 
-  .settlement-net {
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--green);
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--surface, #FFFFFF);
+    color: inherit;
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-bold, 700);
+    flex-shrink: 0;
+  }
+
+  .step-label {
+    white-space: nowrap;
+  }
+
+  .step-divider {
+    flex: 0 1 40px;
+    min-width: 16px;
+    height: 2px;
+    background: var(--border, #E2E8F0);
+    border-radius: var(--radius-full, 9999px);
+  }
+
+  /* ── Settlement Summary Amounts ──────────────────────────── */
+  .settlement-net,
+  .net-amount {
+    font-size: var(--text-base, 16px);
+    font-weight: var(--font-extrabold, 800);
+    color: var(--green, #059669);
     font-variant-numeric: tabular-nums;
   }
 
   .net-amount {
-    font-size: 1.35rem;
-    font-weight: 800;
-    color: var(--green);
-    font-variant-numeric: tabular-nums;
+    font-size: var(--text-xl, 20px);
   }
 
   .net-amount.negative {
-    color: var(--red);
+    color: var(--red, #DC2626);
+  }
+
+  @media (max-width: 640px) {
+    .settlement-steps {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: var(--space-2, 0.5rem);
+    }
+
+    .step-divider {
+      display: none;
+    }
+
+    .step-label {
+      white-space: normal;
+    }
   }
 }

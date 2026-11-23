@@ -18,6 +18,7 @@
 @import "./05-components/modals.css";
 @import "./05-components/navigation.css";
 @import "./05-components/feedback.css";
+@import "./05-components/panels.css";
 @import "./06-utilities.css";
 @import "./07-pages/auth.css";
 @import "./07-pages/dashboard.css";

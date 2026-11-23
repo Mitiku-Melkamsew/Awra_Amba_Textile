@@ -3,12 +3,12 @@
    ───────────────────────────────────────────────────────────── */
 
 @layer pages {
-  .auth-page, .auth-wrapper {
+  .auth-page {
     min-height: 100vh;
     display: grid;
     place-items: center;
-    background: radial-gradient(circle at 50% 0%, #FFF7ED 0%, #F8FAFC 70%);
-    padding: 2rem 1.5rem;
+    background: radial-gradient(circle at 50% 0%, var(--brand-light, #FFF7ED) 0%, var(--bg, #F8FAFC) 70%);
+    padding: var(--space-8, 2rem) var(--space-6, 1.5rem);
     position: relative;
   }
 
@@ -18,10 +18,10 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-xl, 16px);
     padding: 2.25rem 2rem;
-    box-shadow: var(--shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.08));
+    box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--space-5, 1.25rem);
     position: relative;
     box-sizing: border-box;
   }
@@ -39,7 +39,7 @@
   }
 
   .auth-card label span {
-    font-size: var(--text-xs, 12.5px);
+    font-size: var(--text-xs, 12px);
     font-weight: var(--font-semibold, 600);
     color: var(--text, #334155);
   }
@@ -56,15 +56,16 @@
     height: 56px;
     border-radius: var(--radius-lg);
     background: var(--brand-gradient);
-    color: #fff;
+    color: var(--text-inverse, #FFFFFF);
     font-size: 26px;
     margin-bottom: 0.85rem;
-    box-shadow: 0 4px 16px rgba(234, 88, 12, 0.35);
+    box-shadow: 0 4px 16px var(--accent-glow);
   }
 
-  .auth-title, .auth-card h1 {
-    font-size: 22px;
-    font-weight: 800;
+  .auth-title,
+  .auth-card h1 {
+    font-size: var(--text-2xl, 22px);
+    font-weight: var(--font-extrabold, 800);
     margin: 0 0 4px;
     text-align: center;
     color: var(--text);
@@ -72,99 +73,22 @@
   }
 
   .auth-subtitle {
-    font-size: 13.5px;
+    font-size: var(--text-sm, 14px);
     color: var(--text-muted);
     margin: 0;
     text-align: center;
   }
 
-  .auth-footer, .auth-card .alt {
+  .auth-footer {
     text-align: center;
-    font-size: 13px;
+    font-size: var(--text-sm, 14px);
     color: var(--text-muted);
     margin: 0;
   }
 
-  /* Split auth/marketing page layout */
-  .public-page {
-    min-height: 100vh;
-    display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
-    overflow-y: auto;
-    overflow-x: hidden;
-    background: #F8FAFC;
-  }
-
-  .public-left {
-    background: linear-gradient(145deg, #0B132B 0%, #172554 100%);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 4.5rem 4rem;
-    color: #FFFFFF;
-    position: relative;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .public-left::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 10% 20%, rgba(234, 88, 12, 0.18) 0%, transparent 60%);
-    pointer-events: none;
-  }
-
-  .public-tagline {
-    font-size: 44px;
-    font-weight: 800;
-    line-height: 1.15;
-    margin: 0.75rem 0 1.25rem;
-    color: #FFFFFF;
-    letter-spacing: -0.03em;
-  }
-
-  .public-desc {
-    font-size: 16px;
-    color: rgba(248, 250, 252, 0.8);
-    line-height: 1.6;
-    margin: 0 0 2.5rem;
-    max-width: 44ch;
-  }
-
-  .public-feature-list {
-    display: grid;
-    gap: 1rem;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .public-feature {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 14.5px;
-    color: rgba(248, 250, 252, 0.9);
-  }
-
-  .public-feature-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: var(--radius-sm);
-    background: rgba(234, 88, 12, 0.25);
-    display: grid;
-    place-items: center;
-    font-size: 14px;
-    flex-shrink: 0;
-    border: 1px solid rgba(234, 88, 12, 0.4);
-  }
-
-  .public-right {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #F8FAFC;
-    padding: 3.5rem 2.5rem;
+  @media (max-width: 640px) {
+    .auth-card {
+      padding: var(--space-6, 1.5rem) var(--space-5, 1.25rem);
+    }
   }
 }

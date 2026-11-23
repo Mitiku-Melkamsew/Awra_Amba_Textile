@@ -179,7 +179,7 @@ export function IssueZigFabricModal({
                     {title}
                   </span>
                   {isCurrent && (
-                    <span className="badge badge-success" style={{ fontSize: "11px", padding: "0.15rem 0.55rem" }}>
+                    <span className="badge badge--success" style={{ fontSize: "11px", padding: "0.15rem 0.55rem" }}>
                       Current
                     </span>
                   )}

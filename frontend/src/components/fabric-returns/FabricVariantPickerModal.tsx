@@ -201,7 +201,7 @@ export function FabricVariantPickerModal({
                     {label}
                   </span>
                   {isCurrent && (
-                    <span className="badge badge-success">
+                    <span className="badge badge--success">
                       Current
                     </span>
                   )}

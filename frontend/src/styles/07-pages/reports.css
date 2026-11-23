@@ -123,11 +123,22 @@
     margin-bottom: var(--space-6, 1.5rem);
   }
 
+  .breakdown-col {
+    min-width: 0;
+  }
+
   .breakdown-col-title {
     font-size: var(--text-base, 15px);
     font-weight: var(--font-bold, 700);
     color: var(--text, #0F172A);
     margin: 0 0 var(--space-4, 1rem);
+  }
+
+  .breakdown-row-left {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2, 0.5rem);
+    min-width: 0;
   }
 
   .breakdown-row {
@@ -245,10 +256,18 @@
     flex-direction: column;
   }
 
+  .owed-card-header,
   .owed-card-title-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .owed-item-left {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
 
   .owed-card-title {

@@ -232,14 +232,14 @@ export function TransactionLineItemsTable({
                 <div style={{ marginTop: "0.5rem" }}>
                   {isSale && afterStock < 0 ? (
                     <span
-                      className="badge badge-danger"
+                      className="badge badge--danger"
                       style={{ padding: "0.2rem 0.6rem", display: "inline-flex", gap: "0.25rem", fontSize: "12px" }}
                     >
                       ⚠️ Only [{currentStock}] in stock (shortage of [{requestedQty - currentStock}])
                     </span>
                   ) : (
                     <span
-                      className="badge badge-success"
+                      className="badge badge--success"
                       style={{ padding: "0.2rem 0.6rem", display: "inline-flex", gap: "0.25rem", fontSize: "12px" }}
                     >
                       ✓ [{currentStock}] in stock → [{afterStock}] after
