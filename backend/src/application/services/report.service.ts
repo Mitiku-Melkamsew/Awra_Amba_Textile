@@ -1,5 +1,6 @@
 import { DirectTxnType, UserRole } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
+import { formatUserFullName } from "../../utils/user-name.js";
 import {
   buildHisabReportByPaymentId,
   buildHisabReportBySettlementId,
@@ -13,7 +14,7 @@ export class ReportService {
       take: 500,
       include: {
         settlement: {
-          include: { weaver: { select: { userId: true, fullName: true } } },
+          include: { weaver: { select: { userId: true, firstName: true, lastName: true } } },
         },
       },
     });
@@ -26,7 +27,9 @@ export class ReportService {
       weaver: {
         weaverUserId: payment.settlement.weaver.userId,
         userId: payment.settlement.weaver.userId,
-        fullName: payment.settlement.weaver.fullName,
+        firstName: payment.settlement.weaver.firstName,
+        lastName: payment.settlement.weaver.lastName,
+        fullName: formatUserFullName(payment.settlement.weaver),
       },
     }));
   }
@@ -162,8 +165,8 @@ export class ReportService {
         roles: { some: { role: UserRole.weaver } },
         isActive: true,
       },
-      select: { userId: true, fullName: true, username: true, phone: true },
-      orderBy: { fullName: "asc" },
+      select: { userId: true, firstName: true, lastName: true, username: true, phone: true },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     });
 
     const report = [];
@@ -191,7 +194,9 @@ export class ReportService {
 
       report.push({
         weaverUserId: w.userId,
-        fullName: w.fullName,
+        firstName: w.firstName,
+        lastName: w.lastName,
+        fullName: formatUserFullName(w),
         username: w.username,
         phone: w.phone,
         directPurchasePayable: Number(directPayable.toFixed(2)),
@@ -211,8 +216,8 @@ export class ReportService {
         roles: { some: { role: UserRole.merchant } },
         isActive: true,
       },
-      select: { userId: true, fullName: true, username: true, phone: true },
-      orderBy: { fullName: "asc" },
+      select: { userId: true, firstName: true, lastName: true, username: true, phone: true },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     });
 
     const report = [];
@@ -234,7 +239,9 @@ export class ReportService {
 
       report.push({
         merchantUserId: m.userId,
-        fullName: m.fullName,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        fullName: formatUserFullName(m),
         username: m.username,
         phone: m.phone,
         outstandingReceivable: Number(outstandingReceivable.toFixed(2)),

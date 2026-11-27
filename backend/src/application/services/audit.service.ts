@@ -55,7 +55,8 @@ export class AuditService {
             select: {
               userId: true,
               username: true,
-              fullName: true,
+              firstName: true,
+              lastName: true,
             },
           },
         },

@@ -6,15 +6,13 @@ export interface LoginResponse {
   user: AuthUser;
 }
 
-/** Client may still collect first/last for UX; we always send fullName to API. */
+/** Auth signup payload aligned with User model (firstName + optional lastName). */
 export interface SignupDto {
   username: string;
   password: string;
-  fullName?: string;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName?: string | null;
   phone?: string;
-  companyName?: string;
   role?: UserRole;
 }
 
@@ -27,17 +25,13 @@ export const authService = {
   },
 
   async signup(data: SignupDto): Promise<LoginResponse> {
-    const fullName =
-      (data.fullName && data.fullName.trim()) ||
-      (data.companyName && data.companyName.trim()) ||
-      [data.firstName, data.lastName].filter(Boolean).join(" ").trim();
-
     return request<LoginResponse>("/auth/signup", {
       method: "POST",
       body: JSON.stringify({
         username: data.username,
         password: data.password,
-        fullName,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName?.trim() || null,
         phone: data.phone ?? null,
         role: data.role ?? "weaver",
       }),
@@ -49,7 +43,8 @@ export const authService = {
   },
 
   async updateProfile(data: {
-    fullName: string;
+    firstName: string;
+    lastName?: string | null;
     username: string;
     phone?: string | null;
   }): Promise<LoginResponse> {

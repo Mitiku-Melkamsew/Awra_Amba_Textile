@@ -3,6 +3,8 @@ export type UserRole = "admin" | "weaver" | "merchant";
 export interface AuthUser {
   userId: number;
   username: string;
+  firstName?: string;
+  lastName?: string | null;
   fullName?: string;
   phone?: string | null;
   email?: string | null;
@@ -14,6 +16,8 @@ export interface AuthUser {
 export interface UserSummary {
   userId: number;
   username: string;
+  firstName: string;
+  lastName?: string | null;
   fullName: string;
   phone: string | null;
   email?: string | null;
@@ -29,6 +33,8 @@ export interface UserSummary {
  */
 export interface Weaver {
   userId: number;
+  firstName?: string;
+  lastName?: string | null;
   fullName: string;
   phone: string | null;
   email?: string | null;
@@ -46,6 +52,8 @@ export interface Weaver {
 
 export interface Merchant {
   userId: number;
+  firstName?: string;
+  lastName?: string | null;
   companyName?: string;
   contactPhone?: string | null;
   fullName?: string;

@@ -28,7 +28,7 @@ function settlementFixture(overrides: Record<string, unknown> = {}) {
     createdAt: new Date("2026-11-16T10:00:00.000Z"),
     paidAt: null,
     netAmount: 1500,
-    weaver: { userId: 10, fullName: "Kassahun Tadesse", phone: "0911000000" },
+    weaver: { userId: 10, firstName: "Kassahun", lastName: "Tadesse", phone: "0911000000" },
     workOrders: [
       {
         zigId: "ZIG-1",

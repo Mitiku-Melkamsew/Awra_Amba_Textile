@@ -49,15 +49,15 @@ export function useWeaversManager() {
     try {
       const trimmedFirst = firstName.trim();
       const trimmedLast = lastName.trim();
-      const combinedFullName = `${trimmedFirst} ${trimmedLast}`.trim();
-      if (!combinedFullName) {
-        setAddError("First and last name are required");
+      if (!trimmedFirst) {
+        setAddError("First name is required");
         setSaving(false);
         return;
       }
 
       await weaversApi.create({
-        fullName: combinedFullName,
+        firstName: trimmedFirst,
+        lastName: trimmedLast || undefined,
         phone: phone.trim() || undefined,
       });
 

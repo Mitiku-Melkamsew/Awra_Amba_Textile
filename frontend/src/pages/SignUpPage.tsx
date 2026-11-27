@@ -27,7 +27,8 @@ export function SignUpPage() {
   const initialRole = searchParams.get("role") === "merchant" ? "merchant" : "weaver";
 
   const [role, setRole] = useState<"weaver" | "merchant">(initialRole);
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -51,12 +52,13 @@ export function SignUpPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const trimmedName = fullName.trim();
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
     const trimmedUsername = username.trim();
     const trimmedPhone = phone.trim();
 
-    if (!trimmedName) {
-      setError("Full name is required.");
+    if (!trimmedFirst) {
+      setError(role === "merchant" ? "Business / First name is required." : "First name is required.");
       return;
     }
     if (trimmedUsername.length < 3) {
@@ -76,7 +78,8 @@ export function SignUpPage() {
     setError("");
     try {
       const authUser = await signup({
-        fullName: trimmedName,
+        firstName: trimmedFirst,
+        lastName: trimmedLast || undefined,
         phone: trimmedPhone || undefined,
         username: trimmedUsername,
         password,
@@ -151,16 +154,27 @@ export function SignUpPage() {
         </div>
 
         <div className="form">
-          <label>
-            <span>{role === "merchant" ? "Company / Business Name (የድርጅት ስም)" : "Full Name / ሙሉ ስም"}</span>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder={role === "merchant" ? "e.g. Merkato Textile Wholesalers" : "e.g. Abebe Alemu"}
-              autoFocus
-              required
-            />
-          </label>
+          <div className="form-row">
+            <label>
+              <span>{role === "merchant" ? "Business / First Name" : "First Name / ስም"}</span>
+              <input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder={role === "merchant" ? "e.g. Merkato Textile" : "e.g. Abebe"}
+                autoFocus
+                required
+              />
+            </label>
+
+            <label>
+              <span>Last Name / የአባት ስም (Optional)</span>
+              <input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder={role === "merchant" ? "e.g. Wholesalers" : "e.g. Alemu"}
+              />
+            </label>
+          </div>
 
           <label>
             <span style={{ display: "flex", justifyContent: "space-between" }}>

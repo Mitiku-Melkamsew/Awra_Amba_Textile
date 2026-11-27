@@ -10,7 +10,13 @@ async function main() {
 
   const username = process.env.ADMIN_USERNAME?.trim() || "admin";
   let password = process.env.ADMIN_PASSWORD;
-  let fullName = process.env.ADMIN_FULLNAME?.trim() || "System Administrator";
+  let firstName = process.env.ADMIN_FIRSTNAME?.trim() || "System";
+  let lastName: string | null = process.env.ADMIN_LASTNAME?.trim() || "Administrator";
+  if (process.env.ADMIN_FULLNAME?.trim()) {
+    const parts = process.env.ADMIN_FULLNAME.trim().split(/\s+/).filter(Boolean);
+    firstName = parts[0] || "System";
+    lastName = parts.length > 1 ? parts.slice(1).join(" ") : null;
+  }
   let phone = process.env.ADMIN_PHONE?.trim() || "0911000000";
   let email = process.env.ADMIN_EMAIL?.trim() || "admin@awraamba.local";
 
@@ -47,7 +53,8 @@ async function main() {
       where: { userId: existingUser.userId },
       data: {
         passwordHash,
-        fullName,
+        firstName,
+        lastName,
         phone,
         email,
         isActive: true,
@@ -68,7 +75,8 @@ async function main() {
     await prisma.user.create({
       data: {
         username,
-        fullName,
+        firstName,
+        lastName,
         phone,
         email,
         passwordHash,

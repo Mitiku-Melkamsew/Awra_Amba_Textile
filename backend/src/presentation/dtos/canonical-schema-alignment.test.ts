@@ -17,9 +17,10 @@ import {
 
 describe("Canonical Schema Alignment Tests", () => {
   describe("SignupSchema", () => {
-    it("accepts canonical fullName", () => {
+    it("accepts firstName and optional lastName", () => {
       const res = SignupSchema.safeParse({
-        fullName: "Almaz Ayana",
+        firstName: "Almaz",
+        lastName: "Ayana",
         username: "almaz",
         password: "Password123!",
         role: "weaver",
@@ -27,9 +28,18 @@ describe("Canonical Schema Alignment Tests", () => {
       expect(res.success).toBe(true);
     });
 
-    it("rejects when fullName is omitted", () => {
+    it("accepts firstName without lastName", () => {
       const res = SignupSchema.safeParse({
-        firstName: "Almaz",
+        firstName: "Merkato",
+        username: "merkato",
+        password: "Password123!",
+        role: "merchant",
+      });
+      expect(res.success).toBe(true);
+    });
+
+    it("rejects when firstName is omitted", () => {
+      const res = SignupSchema.safeParse({
         lastName: "Ayana",
         username: "almaz",
         password: "Password123!",

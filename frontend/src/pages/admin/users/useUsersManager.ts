@@ -62,9 +62,12 @@ export function useUsersManager() {
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       const q = search.toLowerCase().trim();
+      const combined = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.fullName;
       return (
         !q ||
-        u.fullName.toLowerCase().includes(q) ||
+        combined.toLowerCase().includes(q) ||
+        (u.firstName && u.firstName.toLowerCase().includes(q)) ||
+        (u.lastName && u.lastName.toLowerCase().includes(q)) ||
         u.username.toLowerCase().includes(q) ||
         (u.phone && u.phone.includes(q))
       );

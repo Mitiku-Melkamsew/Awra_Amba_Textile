@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { numberToAmharicWords } from "../../utils/amharic-words.js";
 import { formatDateDDMMYY } from "../../utils/format-date.js";
+import { formatUserFullName } from "../../utils/user-name.js";
 
 export interface HisabRow {
   weaverId: string | number;
@@ -58,7 +59,7 @@ export async function buildHisabReport(settlementId: number) {
   }
 
   const rows: HisabRow[] = [];
-  const weaverName = settlement.weaver.fullName;
+  const weaverName = formatUserFullName(settlement.weaver);
   let firstWeaverRow = true;
 
   // Flatten lines from workOrders
@@ -261,7 +262,14 @@ export async function buildHisabReport(settlementId: number) {
     paymentId: settlement.payments[0]?.settlementPaymentId ?? null,
     settlementId: settlement.settlementId,
     paymentDate,
-    weaver: settlement.weaver,
+    weaver: {
+      userId: settlement.weaver.userId,
+      username: settlement.weaver.username,
+      firstName: settlement.weaver.firstName,
+      lastName: settlement.weaver.lastName,
+      fullName: weaverName,
+      phone: settlement.weaver.phone,
+    },
     amount: grandNet,
     amharicAmountInWords: amharicAmount,
     rows,

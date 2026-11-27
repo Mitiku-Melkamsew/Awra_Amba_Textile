@@ -12,11 +12,9 @@ import type { AuthUser, UserRole } from "../domain/models";
 interface SignupData {
   username: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
-  fullName?: string;
+  firstName: string;
+  lastName?: string | null;
   phone?: string;
-  companyName?: string;
   role?: UserRole;
 }
 
@@ -30,7 +28,8 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<AuthUser>;
   signup: (data: SignupData) => Promise<AuthUser>;
   updateProfile: (data: {
-    fullName: string;
+    firstName: string;
+    lastName?: string | null;
     username: string;
     phone?: string | null;
   }) => Promise<AuthUser>;
@@ -75,7 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return result.user;
       },
       async updateProfile(data: {
-        fullName: string;
+        firstName: string;
+        lastName?: string | null;
         username: string;
         phone?: string | null;
       }) {

@@ -30,7 +30,8 @@ export function AccountMenu() {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Profile details state
-  const [fullNameInput, setFullNameInput] = useState("");
+  const [firstNameInput, setFirstNameInput] = useState("");
+  const [lastNameInput, setLastNameInput] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -84,7 +85,11 @@ export function AccountMenu() {
 
   const handleOpenProfile = () => {
     setMenuOpen(false);
-    setFullNameInput(user?.fullName || "");
+    const fallbackParts = (user?.fullName || "").trim().split(/\s+/).filter(Boolean);
+    setFirstNameInput(user?.firstName ?? fallbackParts[0] ?? "");
+    setLastNameInput(
+      user?.lastName ?? (fallbackParts.length > 1 ? fallbackParts.slice(1).join(" ") : "")
+    );
     setUsernameInput(user?.username || "");
     setPhoneInput(user?.phone || "");
     setProfileError("");
@@ -102,12 +107,13 @@ export function AccountMenu() {
     setProfileError("");
     setProfileSuccess("");
 
-    const trimmedName = fullNameInput.trim();
+    const trimmedFirst = firstNameInput.trim();
+    const trimmedLast = lastNameInput.trim();
     const trimmedUsername = usernameInput.trim();
     const trimmedPhone = phoneInput.trim();
 
-    if (!trimmedName) {
-      setProfileError("Full name is required.");
+    if (!trimmedFirst) {
+      setProfileError("First name is required.");
       return;
     }
     if (trimmedUsername.length < 3) {
@@ -118,7 +124,8 @@ export function AccountMenu() {
     setSavingProfile(true);
     try {
       await updateProfile({
-        fullName: trimmedName,
+        firstName: trimmedFirst,
+        lastName: trimmedLast || null,
         username: trimmedUsername,
         phone: trimmedPhone || null,
       });
@@ -263,16 +270,28 @@ export function AccountMenu() {
               </Alert>
             )}
 
-            <label className="form-field">
-              <span className="form-label">Full name</span>
-              <input
-                type="text"
-                className="input"
-                value={fullNameInput}
-                onChange={(e) => setFullNameInput(e.target.value)}
-                required
-              />
-            </label>
+            <div className="form-row">
+              <label className="form-field">
+                <span className="form-label">First name</span>
+                <input
+                  type="text"
+                  className="input"
+                  value={firstNameInput}
+                  onChange={(e) => setFirstNameInput(e.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="form-field">
+                <span className="form-label">Last name (optional)</span>
+                <input
+                  type="text"
+                  className="input"
+                  value={lastNameInput}
+                  onChange={(e) => setLastNameInput(e.target.value)}
+                />
+              </label>
+            </div>
 
             <div className="form-row">
               <label className="form-field">

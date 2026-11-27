@@ -13,7 +13,14 @@ export const CreateUserSchema = z.object({
     .optional()
     .nullable()
     .transform((val) => (val && val.trim() ? val.trim() : undefined)),
-  fullName: z.string().min(1, "Full name is required").max(120),
+  firstName: z.string().trim().min(1, "First name is required").max(60),
+  lastName: z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .nullable()
+    .transform((val) => (val && val.length > 0 ? val : null)),
   phone: z
     .string()
     .max(30)
@@ -32,7 +39,14 @@ export const CreateUserSchema = z.object({
 });
 
 export const UpdateUserSchema = z.object({
-  fullName: z.string().min(1).max(120).optional(),
+  firstName: z.string().trim().min(1).max(60).optional(),
+  lastName: z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .nullable()
+    .transform((val) => (val === undefined ? undefined : val && val.length > 0 ? val : null)),
   phone: z.string().max(30).optional().nullable(),
   email: z.string().email().optional().nullable(),
   isActive: z.boolean().optional(),

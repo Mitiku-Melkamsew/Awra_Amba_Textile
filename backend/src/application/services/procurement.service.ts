@@ -9,7 +9,7 @@ const purchaseInclude = {
       yarnVariant: { include: { yarn: true, color: true } },
     },
   },
-  createdBy: { select: { userId: true, username: true, fullName: true } },
+  createdBy: { select: { userId: true, username: true, firstName: true, lastName: true } },
 };
 
 export class ProcurementService {

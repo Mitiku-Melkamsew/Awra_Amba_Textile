@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import type { Prisma } from "@prisma/client";
 import { AuditService } from "./audit.service.js";
 import { formatAmharicAmount } from "../../utils/amharic-words.js";
+import { formatUserFullName } from "../../utils/user-name.js";
 import {
   NotFoundError,
   ConflictError,
@@ -127,7 +128,7 @@ export class SettlementService {
     return prisma.workOrder.findMany({
       where: whereClause,
       include: {
-        weaver: { select: { userId: true, fullName: true, phone: true } },
+        weaver: { select: { userId: true, firstName: true, lastName: true, phone: true } },
         fabricVariant: { include: fabricVariantInclude },
         fabricReturns: {
           include: { fabricVariant: { include: fabricVariantInclude } },
@@ -245,9 +246,11 @@ export class SettlementService {
       weaverYarnCost = roundCurrency(weaverYarnCost);
       const netSettlement = roundCurrency(weaverGross - weaverDeductions - weaverYarnCost);
 
+      const weaverFullName = formatUserFullName(weaver);
+
       if (weaverYarnCost > weaverGross - weaverDeductions) {
         blockReasons.push(
-          `Total yarn cost (${weaverYarnCost} ETB) exceeds net fabric value (${weaverGross - weaverDeductions} ETB) for ${weaver.fullName}`,
+          `Total yarn cost (${weaverYarnCost} ETB) exceeds net fabric value (${weaverGross - weaverDeductions} ETB) for ${weaverFullName}`,
         );
       }
 
@@ -255,7 +258,7 @@ export class SettlementService {
 
       bundles.push({
         weaverUserId,
-        weaverName: weaver.fullName,
+        weaverName: weaverFullName,
         weaverPhone: weaver.phone,
         zigIds,
         returnIds: fabricLines.map((line) => line.returnId),
@@ -295,13 +298,13 @@ export class SettlementService {
                 ? { zigId: { notIn: [...includedZigIds] } }
                 : {}),
             },
-            include: { weaver: { select: { userId: true, fullName: true } } },
+            include: { weaver: { select: { userId: true, firstName: true, lastName: true } } },
             orderBy: [{ dateReturned: "asc" }, { zigId: "asc" }],
           })
         ).map((order) => ({
           zigId: order.zigId,
           weaverUserId: order.weaver.userId,
-          weaverName: order.weaver.fullName,
+          weaverName: formatUserFullName(order.weaver),
           firstReturnDate: (order.dateReturned ?? new Date()).toISOString(),
         }))
       : [];
@@ -397,7 +400,7 @@ export class SettlementService {
             paidAt,
           },
           include: {
-            weaver: { select: { userId: true, fullName: true, phone: true } },
+            weaver: { select: { userId: true, firstName: true, lastName: true, phone: true } },
           },
         });
 
@@ -615,10 +618,10 @@ export class SettlementService {
   static async listBatches() {
     return prisma.settlementBatch.findMany({
       include: {
-        createdBy: { select: { userId: true, fullName: true, username: true } },
+        createdBy: { select: { userId: true, firstName: true, lastName: true, username: true } },
         settlements: {
           include: {
-            weaver: { select: { userId: true, fullName: true, phone: true } },
+            weaver: { select: { userId: true, firstName: true, lastName: true, phone: true } },
             payments: true,
             workOrders: { select: { zigId: true } },
           },
@@ -639,10 +642,10 @@ export class SettlementService {
     const batch = await prisma.settlementBatch.findUnique({
       where: { batchId },
       include: {
-        createdBy: { select: { userId: true, fullName: true, username: true } },
+        createdBy: { select: { userId: true, firstName: true, lastName: true, username: true } },
         settlements: {
           include: {
-            weaver: { select: { userId: true, fullName: true, phone: true } },
+            weaver: { select: { userId: true, firstName: true, lastName: true, phone: true } },
             payments: true,
             workOrders: {
               include: {
@@ -656,7 +659,7 @@ export class SettlementService {
         },
         workOrders: {
           include: {
-            weaver: { select: { userId: true, fullName: true, phone: true } },
+            weaver: { select: { userId: true, firstName: true, lastName: true, phone: true } },
             fabricVariant: { include: fabricVariantInclude },
             fabricReturns: true,
             yarnGiven: { include: { yarnVariant: { include: yarnVariantInclude } } },
@@ -680,7 +683,7 @@ export class SettlementService {
     const settlement = await prisma.settlement.findUnique({
       where: { settlementId },
       include: {
-        weaver: { select: { userId: true, fullName: true, username: true, phone: true } },
+        weaver: { select: { userId: true, firstName: true, lastName: true, username: true, phone: true } },
         batch: true,
         payments: { orderBy: { paymentDate: "desc" } },
         workOrders: {
@@ -761,7 +764,7 @@ export class SettlementService {
     const orders = await prisma.workOrder.findMany({
       where,
       include: {
-        weaver: { select: { userId: true, fullName: true, phone: true } },
+        weaver: { select: { userId: true, firstName: true, lastName: true, phone: true } },
         fabricVariant: { include: fabricVariantInclude },
         yarnGiven: true,
         fabricReturns: true,
@@ -791,7 +794,7 @@ export class SettlementService {
       return {
         zigId: order.zigId,
         weaverUserId: order.weaverUserId,
-        weaverName: order.weaver.fullName,
+        weaverName: formatUserFullName(order.weaver),
         weaverPhone: order.weaver.phone,
         status: order.status,
         dateIssued: order.dateIssued,

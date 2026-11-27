@@ -18,7 +18,8 @@ export function IssueZigPromptModal({ isOpen, onClose }: IssueZigPromptModalProp
 
   // Inline create weaver state
   const [showCreate, setShowCreate] = useState(false);
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -55,15 +56,16 @@ export function IssueZigPromptModal({ isOpen, onClose }: IssueZigPromptModalProp
 
   const handleCreateWeaver = async (e: FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim()) {
-      setCreateError("Weaver full name is required.");
+    if (!firstName.trim()) {
+      setCreateError("Weaver first name is required.");
       return;
     }
     setCreating(true);
     setCreateError("");
     try {
       const res = await weaversApi.create({
-        fullName: fullName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim() || undefined,
         phone: phone.trim() || undefined,
       });
       onClose();
@@ -106,19 +108,31 @@ export function IssueZigPromptModal({ isOpen, onClose }: IssueZigPromptModalProp
                 ⚠️ {createError}
               </div>
             )}
-            <div className="form-field">
-              <label className="form-label">
-                Full Name (ሙሉ ስም) <span className="text-danger">*</span>
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="e.g. Almaz Bekele"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                autoFocus
-              />
+            <div className="form-row">
+              <div className="form-field">
+                <label className="form-label">
+                  First Name (ስም) <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="e.g. Almaz"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="form-field">
+                <label className="form-label">Last Name (የአባት ስም)</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="e.g. Bekele"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
             </div>
             <div className="form-field">
               <label className="form-label">Phone Number (ስልክ ቁጥር)</label>

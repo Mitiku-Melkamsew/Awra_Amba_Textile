@@ -248,8 +248,8 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
       include: {
         lines: true,
         payments: true,
-        weaver: { select: { userId: true, fullName: true, username: true } },
-        merchant: { select: { userId: true, fullName: true, username: true } },
+        weaver: { select: { userId: true, firstName: true, lastName: true, username: true } },
+        merchant: { select: { userId: true, firstName: true, lastName: true, username: true } },
       },
     });
   });
@@ -369,9 +369,9 @@ export async function cancelDirectTransaction(transactionId: number, actorUserId
 }
 
 const txnInclude = {
-  weaver: { select: { userId: true, username: true, fullName: true, phone: true } },
-  merchant: { select: { userId: true, username: true, fullName: true, phone: true } },
-  createdBy: { select: { userId: true, username: true, fullName: true } },
+  weaver: { select: { userId: true, username: true, firstName: true, lastName: true, phone: true } },
+  merchant: { select: { userId: true, username: true, firstName: true, lastName: true, phone: true } },
+  createdBy: { select: { userId: true, username: true, firstName: true, lastName: true } },
   lines: {
     include: {
       fabricVariant: {
@@ -384,7 +384,7 @@ const txnInclude = {
   },
   payments: {
     include: {
-      recordedBy: { select: { userId: true, username: true, fullName: true } },
+      recordedBy: { select: { userId: true, username: true, firstName: true, lastName: true } },
     },
     orderBy: { paymentDate: "asc" as const },
   },
@@ -399,7 +399,7 @@ const yarnPurchaseInclude = {
       },
     },
   },
-  createdBy: { select: { userId: true, username: true, fullName: true } },
+  createdBy: { select: { userId: true, username: true, firstName: true, lastName: true } },
 };
 
 export function normalizeYarnPurchase(p: any) {

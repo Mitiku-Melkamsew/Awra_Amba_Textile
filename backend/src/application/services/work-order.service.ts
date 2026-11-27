@@ -99,7 +99,7 @@ export class WorkOrderService {
         where,
         include: {
           weaver: {
-            select: { userId: true, fullName: true, username: true, phone: true, isActive: true },
+            select: { userId: true, firstName: true, lastName: true, username: true, phone: true, isActive: true },
           },
           fabricVariant: { include: fabricVariantInclude },
           _count: {
@@ -123,8 +123,8 @@ export class WorkOrderService {
     const order = await prisma.workOrder.findUnique({
       where: { zigId },
       include: {
-        weaver: { select: { userId: true, fullName: true, username: true, phone: true } },
-        issuedBy: { select: { userId: true, fullName: true, username: true } },
+        weaver: { select: { userId: true, firstName: true, lastName: true, username: true, phone: true } },
+        issuedBy: { select: { userId: true, firstName: true, lastName: true, username: true } },
         fabricVariant: { include: fabricVariantInclude },
         settlement: true,
         settlementBatch: true,
@@ -215,7 +215,7 @@ export class WorkOrderService {
           issuedByUserId: actorUserId,
         },
         include: {
-          weaver: { select: { userId: true, fullName: true, username: true } },
+          weaver: { select: { userId: true, firstName: true, lastName: true, username: true } },
           fabricVariant: { include: fabricVariantInclude },
         },
       });

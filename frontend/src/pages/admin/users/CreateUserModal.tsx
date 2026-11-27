@@ -23,7 +23,8 @@ export function CreateUserModal({
   onUserCreated,
   onRefreshList,
 }: CreateUserModalProps) {
-  const [newFullName, setNewFullName] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -35,7 +36,8 @@ export function CreateUserModal({
   const [createBusy, setCreateBusy] = useState(false);
 
   const resetForm = () => {
-    setNewFullName("");
+    setNewFirstName("");
+    setNewLastName("");
     setNewUsername("");
     setNewPhone("");
     setNewPassword("");
@@ -52,13 +54,13 @@ export function CreateUserModal({
     }
   }, [isOpen]);
 
-  const handleFullNameChange = (val: string) => {
-    setNewFullName(val);
+  const syncDerivedCredentials = (first: string, last: string) => {
+    const combined = `${first} ${last}`.trim();
     if (!isCustomUsername) {
-      setNewUsername(deriveUsername(val));
+      setNewUsername(deriveUsername(combined));
     }
     if (!isCustomPassword) {
-      setNewPassword(derivePassword(val));
+      setNewPassword(derivePassword(combined));
     }
   };
 
@@ -70,7 +72,8 @@ export function CreateUserModal({
     try {
       const created = await userService.createUser({
         username: newUsername.trim() || undefined,
-        fullName: newFullName.trim(),
+        firstName: newFirstName.trim(),
+        lastName: newLastName.trim() || undefined,
         phone: newPhone.trim() || undefined,
         password: newPassword.trim() || undefined,
         roles: newRoles,
@@ -109,16 +112,36 @@ export function CreateUserModal({
       )}
 
       <form onSubmit={handleSubmit} className="stack">
-        <FormField label="Full Name (የተጠቃሚ ሙሉ ስም)" required>
-          <input
-            type="text"
-            className="input"
-            required
-            placeholder="e.g. Almaz Kebede"
-            value={newFullName}
-            onChange={(e) => handleFullNameChange(e.target.value)}
-          />
-        </FormField>
+        <div className="form-row">
+          <FormField label="First Name (ስም)" required>
+            <input
+              type="text"
+              className="input"
+              required
+              placeholder="e.g. Almaz"
+              value={newFirstName}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNewFirstName(val);
+                syncDerivedCredentials(val, newLastName);
+              }}
+            />
+          </FormField>
+
+          <FormField label="Last Name (የአባት ስም)">
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g. Kebede"
+              value={newLastName}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNewLastName(val);
+                syncDerivedCredentials(newFirstName, val);
+              }}
+            />
+          </FormField>
+        </div>
 
         <FormField label="Username (መለያ ስም)">
           <input

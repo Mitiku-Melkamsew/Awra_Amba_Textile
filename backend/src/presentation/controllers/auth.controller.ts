@@ -3,6 +3,7 @@ import { UserRole } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { PasswordService } from "../../infrastructure/auth/password.js";
 import { signToken } from "../../utils/jwt.js";
+import { formatUserFullName } from "../../utils/user-name.js";
 import {
   UnauthorizedError,
   ConflictError,
@@ -39,7 +40,9 @@ export class AuthController {
         user: {
           userId: user.userId,
           username: user.username,
-          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: formatUserFullName(user),
           phone: user.phone,
           email: user.email,
           roles,
@@ -62,16 +65,17 @@ export class AuthController {
 
       const passwordHash = await PasswordService.hash(body.password);
       const chosenRole = body.role === "merchant" ? UserRole.merchant : UserRole.weaver;
-      // Schema uses fullName only (no firstName/lastName columns).
-      const fullName = String(body.fullName ?? "").trim();
-      if (!fullName) {
-        throw new ValidationError("fullName is required");
+      const firstName = String(body.firstName ?? "").trim();
+      const lastName = body.lastName ? String(body.lastName).trim() || null : null;
+      if (!firstName) {
+        throw new ValidationError("firstName is required");
       }
 
       const user = await prisma.user.create({
         data: {
           username,
-          fullName,
+          firstName,
+          lastName,
           phone: body.phone ? String(body.phone).trim() || null : null,
           passwordHash,
           roles: {
@@ -93,7 +97,9 @@ export class AuthController {
         user: {
           userId: user.userId,
           username: user.username,
-          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: formatUserFullName(user),
           phone: user.phone,
           roles,
           isActive: user.isActive,
@@ -121,7 +127,9 @@ export class AuthController {
         user: {
           userId: user.userId,
           username: user.username,
-          fullName: user.fullName,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: formatUserFullName(user),
           phone: user.phone,
           email: user.email,
           roles: user.roles.map((r) => r.role),
@@ -167,12 +175,13 @@ export class AuthController {
         throw new UnauthorizedError("User not found or account is deactivated");
       }
 
-      const fullName = String(req.body.fullName ?? "").trim();
+      const firstName = String(req.body.firstName ?? "").trim();
+      const lastName = req.body.lastName ? String(req.body.lastName).trim() || null : null;
       const username = String(req.body.username ?? "").trim();
       const phone = req.body.phone ? String(req.body.phone).trim() || null : null;
 
-      if (!fullName) {
-        throw new ValidationError("Full name is required");
+      if (!firstName) {
+        throw new ValidationError("First name is required");
       }
       if (username.length < 3) {
         throw new ValidationError("Username must be at least 3 characters");
@@ -187,7 +196,7 @@ export class AuthController {
 
       const updated = await prisma.user.update({
         where: { userId: currentUser.userId },
-        data: { fullName, username, phone },
+        data: { firstName, lastName, username, phone },
         include: { roles: true },
       });
 
@@ -203,7 +212,9 @@ export class AuthController {
         user: {
           userId: updated.userId,
           username: updated.username,
-          fullName: updated.fullName,
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          fullName: formatUserFullName(updated),
           phone: updated.phone,
           email: updated.email,
           roles,

@@ -14,12 +14,24 @@ export const LoginSchema = z.object({
 });
 
 /**
- * Signup aligned with User model: fullName (not firstName/lastName).
- * Password rules kept from production security hardening.
+ * Signup aligned with User model: firstName (required) + lastName (optional).
  */
 export const SignupSchema = z.object({
-  fullName: z.string().trim().min(1, "Full name is required").max(120),
-  phone: z.string().trim().max(30).optional().nullable(),
+  firstName: z.string().trim().min(1, "First name is required").max(60),
+  lastName: z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .nullable()
+    .transform((val) => (val && val.length > 0 ? val : null)),
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .nullable()
+    .transform((val) => (val && val.length > 0 ? val : null)),
   username: z.string().trim().min(3, "Username must be at least 3 characters").max(60),
   password: passwordSchema,
   role: z.enum(["weaver", "merchant"]).default("weaver"),
@@ -31,7 +43,20 @@ export const ChangePasswordSchema = z.object({
 });
 
 export const UpdateProfileSchema = z.object({
-  fullName: z.string().trim().min(1, "Full name is required").max(120),
+  firstName: z.string().trim().min(1, "First name is required").max(60),
+  lastName: z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .nullable()
+    .transform((val) => (val && val.length > 0 ? val : null)),
   username: z.string().trim().min(3, "Username must be at least 3 characters").max(60),
-  phone: z.string().trim().max(30).optional().nullable(),
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .nullable()
+    .transform((val) => (val && val.length > 0 ? val : null)),
 });

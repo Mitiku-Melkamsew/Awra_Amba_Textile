@@ -4,7 +4,8 @@ import type { UserSummary, UserRole, Weaver } from "../../domain/models";
 export interface CreateUserDto {
   username?: string;
   password?: string;
-  fullName: string;
+  firstName: string;
+  lastName?: string | null;
   phone?: string;
   roles?: UserRole[];
   role?: UserRole;
@@ -12,7 +13,8 @@ export interface CreateUserDto {
 }
 
 export interface UpdateUserDto {
-  fullName?: string;
+  firstName?: string;
+  lastName?: string | null;
   phone?: string;
   companyName?: string;
 }
@@ -39,12 +41,12 @@ export const userService = {
     const res = await request<any>(`/users?${params.toString()}`);
     const users: UserSummary[] = Array.isArray(res) ? res : (res.users ?? []);
     return users.map((u) => {
-      const parts = u.fullName.split(" ");
+      const fullName = u.fullName || [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
       return {
         userId: u.userId,
-        firstName: parts[0] || u.fullName,
-        lastName: parts.slice(1).join(" ") || "",
-        fullName: u.fullName,
+        firstName: u.firstName || fullName,
+        lastName: u.lastName ?? "",
+        fullName,
         phone: u.phone,
         email: u.email ?? null,
         isActive: u.isActive,

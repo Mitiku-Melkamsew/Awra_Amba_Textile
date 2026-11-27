@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { PasswordService } from "../../infrastructure/auth/password.js";
 import { AuditService } from "./audit.service.js";
 import { NotFoundError, ConflictError, ValidationError } from "../../domain/errors/domain-errors.js";
+import { formatUserFullName } from "../../utils/user-name.js";
 
 export interface ListUsersFilter {
   role?: UserRole;
@@ -15,7 +16,8 @@ export interface ListUsersFilter {
 export interface CreateUserInput {
   username?: string | null;
   password?: string | null;
-  fullName: string;
+  firstName: string;
+  lastName?: string | null;
   phone?: string | null;
   email?: string | null;
   roles?: UserRole[];
@@ -53,7 +55,8 @@ export function generatePasswordFromName(fullName: string): string {
 }
 
 export interface UpdateUserInput {
-  fullName?: string;
+  firstName?: string;
+  lastName?: string | null;
   phone?: string;
   email?: string;
   isActive?: boolean;
@@ -77,7 +80,8 @@ export class UserService {
       const q = filter.query.trim();
       where.OR = [
         { username: { contains: q, mode: "insensitive" } },
-        { fullName: { contains: q, mode: "insensitive" } },
+        { firstName: { contains: q, mode: "insensitive" } },
+        { lastName: { contains: q, mode: "insensitive" } },
         { phone: { contains: q, mode: "insensitive" } },
         { email: { contains: q, mode: "insensitive" } },
       ];
@@ -102,7 +106,9 @@ export class UserService {
       users: users.map((u) => ({
         userId: u.userId,
         username: u.username,
-        fullName: u.fullName,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        fullName: formatUserFullName(u),
         phone: u.phone,
         email: u.email,
         isActive: u.isActive,
@@ -128,7 +134,9 @@ export class UserService {
     return {
       userId: user.userId,
       username: user.username,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: formatUserFullName(user),
       phone: user.phone,
       email: user.email,
       isActive: user.isActive,
@@ -138,10 +146,12 @@ export class UserService {
   }
 
   static async createUser(input: CreateUserInput, actorUserId: number) {
-    if (!input.fullName || !input.fullName.trim()) {
-      throw new ValidationError("Full name is required");
+    if (!input.firstName || !input.firstName.trim()) {
+      throw new ValidationError("First name is required");
     }
-    const fullName = input.fullName.trim();
+    const firstName = input.firstName.trim();
+    const lastName = input.lastName ? input.lastName.trim() || null : null;
+    const fullName = formatUserFullName({ firstName, lastName });
 
     // 1. Resolve roles (default to weaver if none provided)
     let roles = input.roles;
@@ -192,7 +202,8 @@ export class UserService {
       const created = await tx.user.create({
         data: {
           username,
-          fullName,
+          firstName,
+          lastName,
           phone: input.phone?.trim() || null,
           email: input.email?.trim() || null,
           passwordHash,
@@ -213,7 +224,9 @@ export class UserService {
           entityId: created.userId,
           details: {
             username: created.username,
-            fullName: created.fullName,
+            firstName: created.firstName,
+            lastName: created.lastName,
+            fullName: formatUserFullName(created),
             roles,
           },
         },
@@ -226,7 +239,9 @@ export class UserService {
     return {
       userId: user.userId,
       username: user.username,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: formatUserFullName(user),
       phone: user.phone,
       email: user.email,
       isActive: user.isActive,
@@ -243,7 +258,11 @@ export class UserService {
       const res = await tx.user.update({
         where: { userId },
         data: {
-          fullName: input.fullName !== undefined ? input.fullName.trim() : undefined,
+          firstName: input.firstName !== undefined ? input.firstName.trim() : undefined,
+          lastName:
+            input.lastName !== undefined
+              ? input.lastName?.trim() || null
+              : undefined,
           phone: input.phone !== undefined ? input.phone.trim() || null : undefined,
           email: input.email !== undefined ? input.email.trim() || null : undefined,
           isActive: input.isActive ?? undefined,
@@ -270,7 +289,9 @@ export class UserService {
     return {
       userId: updated.userId,
       username: updated.username,
-      fullName: updated.fullName,
+      firstName: updated.firstName,
+      lastName: updated.lastName,
+      fullName: formatUserFullName(updated),
       phone: updated.phone,
       email: updated.email,
       isActive: updated.isActive,

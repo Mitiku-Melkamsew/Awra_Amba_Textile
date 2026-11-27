@@ -46,12 +46,11 @@ export const weaversApi = {
   get: async (id: number) => {
     try {
       const user = await userService.getUser(id);
-      const fullName = user.fullName || `Weaver #${id}`;
-      const parts = fullName.split(" ");
+      const fullName = user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || `Weaver #${id}`;
       return {
         userId: user.userId,
-        firstName: parts[0] || fullName,
-        lastName: parts.slice(1).join(" ") || "",
+        firstName: user.firstName || fullName,
+        lastName: user.lastName ?? "",
         fullName,
         phone: user.phone,
         email: user.email ?? null,
@@ -81,16 +80,20 @@ export const weaversApi = {
     phone?: string;
     username?: string;
   }) => {
-    const resolvedName = (
-      data.fullName ||
-      `${data.firstName || ""} ${data.lastName || ""}`.trim()
-    ).trim();
-    if (!resolvedName) {
-      throw new Error("Full name is required");
+    let firstName = (data.firstName ?? "").trim();
+    let lastName = (data.lastName ?? "").trim();
+    if (!firstName && data.fullName) {
+      const parts = data.fullName.trim().split(/\s+/).filter(Boolean);
+      firstName = parts[0] || "";
+      lastName = parts.slice(1).join(" ");
+    }
+    if (!firstName) {
+      throw new Error("First name is required");
     }
     return userService.createUser({
       username: data.username || data.phone || undefined,
-      fullName: resolvedName,
+      firstName,
+      lastName: lastName || undefined,
       phone: data.phone || undefined,
       roles: ["weaver"],
     });
@@ -105,16 +108,22 @@ export const merchantsApi = {
     });
     return users.map((u) => ({
       userId: u.userId,
+      firstName: u.firstName,
+      lastName: u.lastName ?? null,
       companyName: u.fullName,
       contactPhone: u.phone ?? "",
       contactEmail: null,
       isActive: u.isActive,
     }));
   },
-  create: async (data: { companyName?: string; contactPhone: string; contactEmail?: string }) => {
+  create: async (data: { companyName?: string; firstName?: string; lastName?: string; contactPhone: string; contactEmail?: string }) => {
+    const parts = (data.companyName || "New Merchant").trim().split(/\s+/).filter(Boolean);
+    const firstName = (data.firstName ?? parts[0] ?? "Merchant").trim();
+    const lastName = (data.lastName ?? parts.slice(1).join(" ")).trim();
     const u = await userService.createUser({
       username: data.contactPhone || `merchant_${Date.now()}`,
-      fullName: data.companyName || "New Merchant",
+      firstName,
+      lastName: lastName || undefined,
       phone: data.contactPhone,
       roles: ["merchant"],
     });

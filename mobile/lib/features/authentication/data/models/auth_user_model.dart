@@ -30,7 +30,10 @@ class AuthUserModel extends AuthUserEntity {
           ? json['userId']
           : int.tryParse(json['userId']?.toString() ?? '') ?? 0,
       username: json['username'] ?? '',
-      fullName: json['fullName']?.toString(),
+      fullName: json['fullName']?.toString() ??
+          ('${json['firstName'] ?? ''} ${json['lastName'] ?? ''}'.trim().isNotEmpty
+              ? '${json['firstName'] ?? ''} ${json['lastName'] ?? ''}'.trim()
+              : null),
       phone: json['phone']?.toString(),
       email: json['email']?.toString(),
       role: primaryRole,

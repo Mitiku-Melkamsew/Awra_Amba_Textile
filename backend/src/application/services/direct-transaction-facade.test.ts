@@ -39,7 +39,7 @@ describe("DirectTransactionService & Procurement Facade", () => {
         notes: "First batch",
         createdByUserId: 1,
         supplier: { supplierId: 4, name: "Arba Minch Cotton" },
-        createdBy: { userId: 1, username: "admin", fullName: "Admin User" },
+        createdBy: { userId: 1, username: "admin", firstName: "Admin", lastName: "User" },
         lines: [
           {
             lineId: 101,
