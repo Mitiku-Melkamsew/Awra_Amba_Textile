@@ -1,7 +1,7 @@
 # Software Requirements Specification (SRS)
 ## Awra Amba Textile Cooperative Management Information System (MIS)
 
-**Document Version:** 2.0.0  
+**Document Version:** 2.1.0  
 **Status:** Approved & Implemented  
 **Date:** November 2026  
 **Authors:** Awra Amba Software Development Team & Systems Architecture Group  
@@ -30,12 +30,12 @@
    - 4.3 Detailed Entity Specifications
 5. [Detailed Functional Requirements & Domain Workflows](#5-detailed-functional-requirements--domain-workflows)
    - 5.1 Work Order (Zig - ዝግ) Lifecycle & Production Engine
-   - 5.2 Quality Weight Tolerance & Deductions Calculation
-   - 5.3 Batch Settlement & Artisan Payroll Engine
+   - 5.2 Quality Tolerance & Deductions Calculation
+   - 5.3 Batch Settlement & Weaver Payroll Engine
    - 5.4 Official HISAB Statements & Amharic Words Conversion
    - 5.5 Commercial Hub & Direct Transactions
    - 5.6 Master Catalog, Pricing Schedules & Stock Management
-   - 5.7 Artisan (Weaver) Web-First Portal
+   - 5.7 Weaver Web-First Portal
    - 5.8 Merchant Wholesale Catalog Portal
    - 5.9 Audit Trail & Immutable Logging
    - 5.10 Financial Reporting, Executive Analytics & Data Integrity
@@ -84,8 +84,8 @@ This web-based MIS digitizes and unifies the end-to-end cooperative textile work
 | **Netela (ነጠላ)** | Lightweight, delicate traditional scarf/shawl with decorative borders. |
 | **Tibeb (ጥበብ)** | Intricate decorative woven borders or patterns. |
 | **Geberdin (ገበርዲን)** | Diagonal twill weave pattern known for durability. |
-| **Stock Snapshot** | Real-time recorded balance in inventory (`stock_snapshot` in DB; kilograms for yarn, pieces for fabric). |
-| **WIP (Work in Progress)** | Fabric currently being woven by artisans on assigned zigs that has not yet been inspected or returned. |
+| **Stock Snapshot** | Real-time recorded balance in inventory (`stock_snapshot` in DB; tracked in pieces for both yarn and fabric). |
+| **WIP (Work in Progress)** | Fabric currently being woven by weavers on assigned zigs that has not yet been inspected or returned. |
 
 ### 1.4 References
 - `docs/planned-business-and-database-update.md` — Domain design baseline and settlement overhaul.
@@ -130,15 +130,14 @@ flowchart TD
     Guest["Public / Guest"] --> Browse["Browse Catalog & Pricing"]
     Guest --> Auth["Sign In / Self-Register"]
     
-    Weaver["Artisan Weaver"] --> WPortal["Weaver Portal"]
+    Weaver["Weaver"] --> WPortal["Weaver Portal"]
     WPortal --> WZigs["Inspect Assigned Zigs"]
     WPortal --> WPay["Download HISAB Receipts"]
     WPortal --> WRates["View Piece Rates"]
     WPortal --> WCalc["Simulate Earnings"]
     
     Merchant["Commercial Merchant"] --> MPortal["Merchant Portal"]
-    MPortal --> MCatalog["Faceted Fabric Catalog"]
-    MPortal --> MPrices["Wholesale Price Schedule"]
+    MPortal --> MCatalog["Faceted Fabric Catalog & Pricing"]
     MPortal --> MTxns["View Commercial Purchases"]
     
     Admin["System Administrator / Staff"] --> AdminHub["Admin Console"]
@@ -161,13 +160,14 @@ flowchart TD
 ## 3. Security & Access Control Specification (RBAC & ABAC)
 
 ### 3.1 Authentication & Credential Management
-1. **User Identity:** Each user possesses an immutable `userId`, unique `username`, optional `phone`, and hashed password.
+1. **User Identity:** Each user possesses an immutable `userId`, unique `username`, `firstName` (required), optional `lastName`, optional `phone`, and hashed password.
 2. **Password Hashing:** Passwords are never stored in plaintext. They are hashed using `argon2id` with cryptographically secure salts.
 3. **Session Tokens:** Upon login, an authenticated JWT is issued containing:
    - `sub`: `userId`
    - `username`: Username string
    - `roles`: Array of assigned roles (`["admin"]`, `["weaver"]`, `["merchant"]`)
-4. **Session Lifetime:** Bearer tokens expire in 24 hours. Sign-out clears client storage and navigates the user back to the public landing page (`/`).
+4. **Profile Management & Portal Switching:** All portals expose a consistent top-right `AccountMenu` allowing users to update their own `firstName`, `lastName`, `username`, and `phone` (`PATCH /api/v1/auth/me`), change their password (`POST /api/v1/auth/change-password`), switch between portals when assigned multiple roles, and sign out.
+5. **Session Lifetime:** Bearer tokens expire in 24 hours. Sign-out clears client storage and navigates the user back to the public landing page (`/`).
 
 ### 3.2 Fine-Grained Capabilities
 Access to backend endpoints is protected by capability guards rather than raw role checks. Capabilities map to roles via `RbacService`:
@@ -253,7 +253,7 @@ erDiagram
 ### 4.3 Detailed Entity Specifications
 
 #### 1. Users & Security
-- `users`: `userId` (PK, int, auto), `username` (unique, varchar 60), `fullName` (varchar 120), `phone` (varchar 30), `email` (varchar 120), `passwordHash` (varchar 200), `isActive` (bool, default true), `createdAt`, `updatedAt`.
+- `users`: `userId` (PK, int, auto), `username` (unique, varchar 60), `firstName` (varchar 60, required), `lastName` (varchar 60, nullable), `phone` (varchar 30), `email` (varchar 120), `passwordHash` (varchar 200), `isActive` (bool, default true), `createdAt`, `updatedAt`.
 - `user_roles`: `userId` (FK), `role` (`UserRole`). Composite PK: `(userId, role)`.
 
 #### 2. Master Catalog
@@ -272,7 +272,7 @@ erDiagram
 
 #### 4. Production (Zigs)
 - `work_orders`: `zigId` (PK, varchar 20), `weaverUserId` (FK), `fabricVariantId` (FK), `status` (`WorkOrderStatus`, default `assigned`), `dateIssued` (timestamp), `dateReturned` (timestamp), `issuedByUserId` (FK), `netPayable` (decimal 12,2), `settlementId` (FK, nullable), `settlementBatchId` (FK, nullable).
-- `yarn_given`: `yarnGivenId` (PK), `zigId` (FK), `yarnVariantId` (FK), `quantity` (decimal 10,2, kg), `unitPrice` (decimal 12,2), `dateGiven` (timestamp), `recordedByUserId` (FK), `remark` (text).
+- `yarn_given`: `yarnGivenId` (PK), `zigId` (FK), `yarnVariantId` (FK), `quantity` (decimal 10,2, pieces), `unitPrice` (decimal 12,2), `dateGiven` (timestamp), `recordedByUserId` (FK), `remark` (text).
 - `fabric_returns`: `returnId` (PK), `zigId` (FK), `fabricVariantId` (FK), `quantityReturned` (int), `totalWeight` (decimal 10,2, grams), `lengthCm` (decimal 10,2), `widthCm` (decimal 10,2), `unitPrice` (decimal 12,2), `grossFabricValue` (decimal 12,2), `deductionAmount` (decimal 12,2), `deductions` (Json), `dateReturned` (timestamp), `recordedByUserId` (FK), `remark` (text).
 
 #### 5. Settlements & Payroll
@@ -319,8 +319,8 @@ stateDiagram-v2
    - Work order status updates to `returned`.
 3. **Locking & Immutability:** Once a work order is linked to a `settlementId`, it becomes strictly read-only. No further yarn disbursements or fabric return modifications are permitted unless the settlement run is formally cancelled.
 
-### 5.2 Quality Weight Tolerance & Deductions Calculation
-Artisans are paid piece rates for meeting cooperative fabric specifications. When fabric is woven too thin or below standard weight, yarn was under-utilized, requiring an automatic quality deduction:
+### 5.2 Quality Tolerance & Deductions Calculation
+Weavers are paid piece rates for meeting cooperative fabric specifications. Quality rules in `quality_rules` support arbitrary factors (`weight`, `length`, `width`, or custom factors) with configurable units (`g`, `cm`, etc.) and `deductionPerUnit`. Active rules are applied automatically by default on fabric returns (with the option to cancel/override per return), such as weight shortfall deductions:
 
 $$\text{average\_weight} = \frac{\text{total\_weight\_grams}}{\text{quantity\_returned}}$$
 
@@ -338,9 +338,9 @@ $$\text{net\_fabric\_value} = \text{gross\_fabric\_value} - \text{total\_deducti
 
 $$\text{zig\_net\_payable} = \text{net\_fabric\_value} - \text{total\_yarn\_cost}$$
 
-*Rule Constraint:* If $\text{deduction\_per\_piece} > \text{weaver\_piece\_rate}$, the deduction is capped at the unit piece rate; an artisan's fabric line cannot produce a negative fabric credit prior to yarn deductions.
+*Rule Constraint:* If $\text{deduction\_per\_piece} > \text{weaver\_piece\_rate}$, the deduction is capped at the unit piece rate; a weaver's fabric line cannot produce a negative fabric credit prior to yarn deductions.
 
-### 5.3 Batch Settlement & Artisan Payroll Engine
+### 5.3 Batch Settlement & Weaver Payroll Engine
 1. **Previewing Runs:** Admin specifies a `cutoffDate` (and optional extra zigs). The preview engine:
    - Queries all zigs with status `returned` where `settlementId IS NULL` and `dateReturned <= cutoffDate`.
    - Bundles work orders by `weaverUserId`.
@@ -368,15 +368,16 @@ Official settlement statements and payment receipts can be printed or exported t
 - **Amharic Currency Words Engine:** Payout totals are converted into official Amharic words (e.g., `54,180 ETB` $\rightarrow$ *"ሃምሳ አራት ሺህ አንድ መቶ ሰማንያ ብር ከ 00/100"*), fulfilling legal and cooperative audit standards in Ethiopia.
 
 ### 5.5 Commercial Hub & Direct Transactions
-The commercial engine manages wholesale sales, direct artisan sales, and supplier procurement:
+The commercial engine manages wholesale sales, direct weaver sales, and supplier procurement:
 1. **Fabric Sales to Merchants (`fabric_sale_to_merchant`):**
    - Validates that `fabric_variants.stock_snapshot >= quantity`.
    - Decrements stock on creation.
    - Reverses and restores stock if transaction is cancelled.
-2. **Yarn Sales to Artisans (`yarn_sale_to_weaver`):**
+2. **Yarn Sales to Weavers (`yarn_sale_to_weaver`):**
    - Decrements `yarn_variants.stock_snapshot`.
    - Reverses on cancellation.
 3. **Yarn Procurement (`yarn_purchase`):**
+   - Resolves the supplier automatically from the selected yarn variant (`yarnVariant.supplierId`).
    - Atomically increments raw yarn inventory snapshots upon supplier delivery.
 
 ### 5.6 Master Catalog, Pricing Schedules & Stock Management
@@ -386,27 +387,27 @@ The commercial engine manages wholesale sales, direct artisan sales, and supplie
   - **Deduplication Invariant:** The database enforces uniqueness on the variant attribute tuples. Attempting to create an existing active combination triggers an immediate domain conflict validation error.
 - **Time-Bound Price Schedules:** Prices possess `effectiveFrom` and `effectiveTo` timestamps. Active prices are resolved by current timestamp without overwriting historical transaction data.
 - **Real-Time Stock Auditing:**
-  - `totalYarnStockKg = sum(yarn_variants.stock_snapshot)`
+  - `totalYarnStockPieces = sum(yarn_variants.stock_snapshot)` (also exposed as `totalYarnStockKg` for API compatibility)
   - `totalFabricStockPieces = sum(fabric_variants.stock_snapshot)`
   - UI components must strictly reflect live stock snapshots with zero synthetic fallback rows.
 
-### 5.7 Artisan (Weaver) Web-First Portal
-Artisans access a dedicated, role-scoped workspace designed web-first for desktop while maintaining mobile responsiveness:
+### 5.7 Weaver Web-First Portal
+Weavers access a dedicated, role-scoped workspace designed web-first for desktop while maintaining mobile responsiveness:
 - **Home (`/weaver`):** Displays greeting, "Awaiting payment" highlight card with link to returned zigs, and 3 KPI stat cards (`Total zigs`, `In progress`, `Past payments`).
 - **My Zigs (`/weaver/zigs`):** Segmented filters (`[ All ] [ Open ] [ Returned ] [ Paid ]`), job cards with real-time status badges, yarn received, and fabric returned counts.
 - **Zig Detail (`/weaver/zigs/:zigId`):** Visual 4-step progress stepper (`Assigned` $\rightarrow$ `In progress` $\rightarrow$ `Returned` $\rightarrow$ `Paid`), yarn disbursement lines, and multi-return inspection logs.
 - **Settled Payments (`/weaver/payments`):** Mint highlight card displaying total earnings received, list of all batch disbursements, and one-click downloadable official HISAB receipts.
-- **Piece Rates Transparency (`/weaver/rates`):** Transparent lookup of current cooperative piece rates per fabric item and official yarn purchase prices.
-- **Wage & Deduction Calculator (`/weaver/calculator`):** Interactive simulation tool allowing artisans to test different return quantities and average weights to predict their net payout.
+- **Piece Rates Transparency (`/weaver/rates`):** Transparent lookup of currently active cooperative piece rates per fabric item and active yarn prices.
+- **Wage & Deduction Calculator (`/weaver/calculator`):** Interactive simulation tool allowing weavers to test different return quantities and average weights to predict their net payout.
 
 ### 5.8 Merchant Wholesale Catalog Portal
 Wholesale merchants access a specialized commercial portal:
-- **Top Brand Bar:** Clean layout with cooperative seal, user identification, and secure sign-out.
+- **Top Brand Bar:** Clean layout with cooperative seal and top-right `AccountMenu` (profile management, portal switcher if multi-role, and sign-out).
 - **Faceted Multi-Step Sidebar:**
   - `1 · FABRIC`: Filter by fabric style with variant counts.
   - `2 · WARP · ዋርፍ`: Dynamic color options filtered by selected fabric.
   - `3 · WEFT · ሸፋ`: Further narrowing by available weft colors.
-- **Catalog Grid:** Search bar, active dismissable filter pills, and product cards with woven swatch texture previews, technical dimensions, weight, and verified selling prices.
+- **Catalog Grid:** Search bar, active dismissable filter pills, and product cards with woven swatch texture previews, technical dimensions, weight, and verified selling prices (no separate price list page needed).
 - **Data Symmetry Invariant:** Available fabrics delivered via `/merchant/catalog` and `/catalog/public` must be resolved with official active selling prices from `fabric_prices`. When zero variants exist, authentic empty state feedback is displayed without generating dummy sample rows.
 
 ### 5.9 Audit Trail & Immutable Logging
@@ -434,11 +435,16 @@ The executive reporting engine computes real-time operational summaries across t
 | Method | Endpoint | Capability Guard | Controller Method | Description |
 |---|---|---|---|---|
 | `POST` | `/api/v1/auth/login` | *Public* | `AuthController.login` | Authenticate and issue JWT. |
-| `POST` | `/api/v1/auth/register` | *Public* | `AuthController.register` | Self-registration for merchants. |
+| `POST` | `/api/v1/auth/signup` | *Public* | `AuthController.signup` | Self-registration for weavers and merchants. |
+| `GET` | `/api/v1/auth/me` | *Authenticated* | `AuthController.me` | Fetch current authenticated user profile. |
+| `PATCH` | `/api/v1/auth/me` | *Authenticated* | `AuthController.updateProfile` | Update own `firstName`, `lastName`, `username`, and `phone`. |
+| `POST` | `/api/v1/auth/change-password` | *Authenticated* | `AuthController.changePassword` | Update own password. |
 | `GET` | `/api/v1/users` | `users.read` | `UserController.list` | List users filtered by role. |
 | `POST` | `/api/v1/users` | `users.manage` | `UserController.create` | Create cooperative user account. |
 | `PATCH` | `/api/v1/users/:id/status` | `users.manage` | `UserController.setStatus` | Activate / deactivate user. |
-| `POST` | `/api/v1/users/:id/roles` | `roles.manage` | `UserController.assignRole` | Assign security role. |
+| `POST` | `/api/v1/users/:id/roles` | `roles.manage` | `UserController.assignRole` | Assign a security role. |
+| `PUT` | `/api/v1/users/:id/roles` | `roles.manage` | `UserController.setRoles` | Replace/sync user security roles atomically. |
+| `POST` | `/api/v1/users/:id/reset-password` | `users.manage` | `UserController.resetPassword` | Admin password reset for a user. |
 | `GET` | `/api/v1/work-orders` | `work_orders.read_all \| read_own` | `WorkOrderController.list` | List work orders. |
 | `GET` | `/api/v1/work-orders/next-id`| `work_orders.manage` | `WorkOrderController.getNextZigId` | Generate sequential Zig identifier. |
 | `GET` | `/api/v1/work-orders/:zigId` | `work_orders.read_all \| read_own` | `WorkOrderController.getByZigId` | Work order details. |
