@@ -21,7 +21,6 @@ export function WeaverRosterTable({
       <div className="weavers-table-header">
         <span>Weaver · ሸማኔ</span>
         <span>Phone</span>
-        <span>Bank account</span>
         <span></span>
       </div>
 
@@ -82,12 +81,7 @@ export function WeaverRosterTable({
                 {weaver.phone || "—"}
               </div>
 
-              {/* Column 3: Bank account */}
-              <div className="weavers-cell-muted">
-                [account]
-              </div>
-
-              {/* Column 4: Issue zig action (no chevron icon, whole row navigates) */}
+              {/* Column 3: Issue zig action (no chevron icon, whole row navigates) */}
               <div className="weavers-actions-col">
                 {!isDeactivated && (
                   <Link

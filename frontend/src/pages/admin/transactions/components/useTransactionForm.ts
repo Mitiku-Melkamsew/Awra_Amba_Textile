@@ -155,8 +155,6 @@ export function useTransactionForm() {
         setFabricVariants(f || []);
         setYarnVariants(y || []);
 
-        if (lookup.suppliers?.[0])
-          setSupplierId(String(lookup.suppliers[0].supplierId));
         if (w?.[0]) setWeaverUserId(String(w[0].userId));
         if (m?.[0]) {
           setMerchantUserId(String(m[0].userId));
@@ -322,8 +320,16 @@ export function useTransactionForm() {
       return m ? m.companyName || `Merchant #${m.userId}` : "[merchant]";
     }
     if (category === "yarn_purchase") {
+      const firstLineYvId = Number(lines[0]?.variantId || 0);
+      const yv = yarnVariants.find((y) => y.yarnVariantId === firstLineYvId);
+      const resolvedSupId = yv?.supplierId ?? yv?.supplier?.supplierId;
+      if (yv?.supplier?.name) return yv.supplier.name;
+      if (resolvedSupId) {
+        const s = suppliers.find((x) => x.supplierId === Number(resolvedSupId));
+        if (s) return s.name;
+      }
       const s = suppliers.find((x) => String(x.supplierId) === supplierId);
-      return s ? s.name : "[supplier]";
+      return s ? s.name : "[supplier from variant]";
     }
     const w = weavers.find((x) => String(x.userId) === weaverUserId);
     return w ? w.fullName : "[weaver]";
@@ -335,6 +341,8 @@ export function useTransactionForm() {
     merchants,
     suppliers,
     weavers,
+    lines,
+    yarnVariants,
   ]);
 
   const categoryLabel = useMemo(() => {
@@ -616,14 +624,13 @@ export function useTransactionForm() {
 
       let effectiveSupplierId: number | undefined;
       if (category === "yarn_purchase") {
-        if (supplierId) {
+        const firstLineYvId = parsedLines[0]?.yarnVariantId;
+        const yv = yarnVariants.find((y) => y.yarnVariantId === firstLineYvId);
+        const variantSupplierId = yv?.supplierId ?? yv?.supplier?.supplierId;
+        if (variantSupplierId) {
+          effectiveSupplierId = Number(variantSupplierId);
+        } else if (supplierId) {
           effectiveSupplierId = Number(supplierId);
-        } else {
-          const firstLineYvId = parsedLines[0]?.yarnVariantId;
-          const yv = yarnVariants.find((y) => y.yarnVariantId === firstLineYvId);
-          if (yv?.supplierId) {
-            effectiveSupplierId = yv.supplierId;
-          }
         }
       }
 

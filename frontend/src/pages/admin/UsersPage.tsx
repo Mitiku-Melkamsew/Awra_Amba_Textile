@@ -77,16 +77,20 @@ export function UsersPage() {
         }
       />
 
-      {/* Global Alerts */}
-      {successMsg && (
-        <Alert variant="success" onClose={() => showSuccess("")}>
-          {successMsg}
-        </Alert>
-      )}
-      {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
+      {/* Floating Alerts (always visible regardless of scroll) */}
+      {(successMsg || error) && (
+        <div className="floating-toast-stack" role="status" aria-live="polite">
+          {successMsg && (
+            <Alert variant="success" onClose={() => showSuccess("")}>
+              {successMsg}
+            </Alert>
+          )}
+          {error && (
+            <Alert variant="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+        </div>
       )}
 
       {/* 2-Column Master-Detail Layout */}

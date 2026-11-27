@@ -71,6 +71,17 @@ export class UserController {
     }
   }
 
+  static async setRoles(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = Number(req.params.id);
+      const actorUserId = req.user!.userId;
+      const result = await UserService.setRoles(id, req.body.roles, actorUserId);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async revokeRole(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);

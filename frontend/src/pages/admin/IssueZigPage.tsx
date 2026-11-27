@@ -145,6 +145,7 @@ export function IssueZigPage() {
               yarnVariants={zig.yarnVariants}
               handleYarnVariantChange={zig.handleYarnVariantChange}
               handleQuantityChange={zig.handleQuantityChange}
+              handleUnitPriceChange={zig.handleUnitPriceChange}
               handleRemoveYarnLine={zig.handleRemoveYarnLine}
               handleAddYarnLine={zig.handleAddYarnLine}
               notes={zig.notes}

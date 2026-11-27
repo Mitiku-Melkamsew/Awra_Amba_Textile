@@ -14,7 +14,6 @@ export function useWeaversManager() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [bankAccount, setBankAccount] = useState("");
   const [error, setError] = useState("");
   const [addError, setAddError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,7 +64,6 @@ export function useWeaversManager() {
       setFirstName("");
       setLastName("");
       setPhone("");
-      setBankAccount("");
       await load();
     } catch (err: any) {
       setAddError(err.message || "Failed to add weaver");
@@ -90,8 +88,6 @@ export function useWeaversManager() {
     setLastName,
     phone,
     setPhone,
-    bankAccount,
-    setBankAccount,
     error,
     addError,
     setAddError,

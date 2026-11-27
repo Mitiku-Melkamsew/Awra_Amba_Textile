@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../infrastructure/http/api-client";
 import { authService } from "../../infrastructure/services";
@@ -24,6 +24,7 @@ function formatError(err: unknown, fallback: string): string {
 export function AccountMenu() {
   const { user, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -213,6 +214,52 @@ export function AccountMenu() {
             </div>
 
             <div className="account-dropdown-divider" />
+
+            {roles.length > 1 && (
+              <>
+                <div className="account-dropdown-section-label">Switch portal</div>
+                {roles.includes("admin") && (
+                  <button
+                    type="button"
+                    className={`account-dropdown-item ${pathname.startsWith("/admin") ? "is-active" : ""}`}
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate("/admin/dashboard");
+                    }}
+                  >
+                    <span>Admin Portal{pathname.startsWith("/admin") ? " ✓" : ""}</span>
+                  </button>
+                )}
+                {roles.includes("weaver") && (
+                  <button
+                    type="button"
+                    className={`account-dropdown-item ${pathname.startsWith("/weaver") ? "is-active" : ""}`}
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate("/weaver");
+                    }}
+                  >
+                    <span>Weaver Portal{pathname.startsWith("/weaver") ? " ✓" : ""}</span>
+                  </button>
+                )}
+                {roles.includes("merchant") && (
+                  <button
+                    type="button"
+                    className={`account-dropdown-item ${pathname.startsWith("/merchant") ? "is-active" : ""}`}
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate("/merchant");
+                    }}
+                  >
+                    <span>Merchant Portal{pathname.startsWith("/merchant") ? " ✓" : ""}</span>
+                  </button>
+                )}
+                <div className="account-dropdown-divider" />
+              </>
+            )}
 
             <button
               type="button"

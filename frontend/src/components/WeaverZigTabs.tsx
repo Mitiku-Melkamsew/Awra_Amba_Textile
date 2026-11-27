@@ -192,35 +192,13 @@ export function WeaverZigTabs({
                 fontWeight: 500,
               }}
             >
-              ID #{wid} · {weaver.phone || "No phone"} · Bank [account]
+              ID #{wid} · {weaver.phone || "No phone"}
             </p>
           </div>
         </div>
 
         {/* Right: Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() => {
-              setEditFullName(weaver.fullName ?? "");
-              setEditPhone(weaver.phone ?? "");
-              setEditError("");
-              setIsEditOpen(true);
-            }}
-            style={{
-              background: "#ffffff",
-              border: "1px solid #cbd5e1",
-              borderRadius: "8px",
-              padding: "0.55rem 1.15rem",
-              fontSize: "0.88rem",
-              fontWeight: 600,
-              color: "#334155",
-              cursor: "pointer",
-            }}
-          >
-            Edit details
-          </button>
-
           {issueZigLink && !isDeactivated && (
             <Link
               to={issueZigLink}

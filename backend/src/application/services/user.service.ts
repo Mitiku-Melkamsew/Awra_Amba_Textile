@@ -334,6 +334,50 @@ export class UserService {
     return { success: true, role };
   }
 
+  static async setRoles(userId: number, roles: UserRole[], actorUserId: number) {
+    const user = await prisma.user.findUnique({
+      where: { userId },
+      include: { roles: true },
+    });
+    if (!user) throw new NotFoundError(`User with ID ${userId} not found`);
+
+    const uniqueRoles = Array.from(new Set(roles));
+    if (uniqueRoles.length === 0) {
+      throw new ValidationError("At least one role is required");
+    }
+
+    const currentRoles = user.roles.map((r) => r.role);
+    const toRemove = currentRoles.filter((r) => !uniqueRoles.includes(r));
+    const toAdd = uniqueRoles.filter((r) => !currentRoles.includes(r));
+
+    await prisma.$transaction(async (tx) => {
+      if (toRemove.length > 0) {
+        await tx.userRoleAssignment.deleteMany({
+          where: { userId, role: { in: toRemove } },
+        });
+      }
+      if (toAdd.length > 0) {
+        await tx.userRoleAssignment.createMany({
+          data: toAdd.map((role) => ({ userId, role })),
+          skipDuplicates: true,
+        });
+      }
+
+      await AuditService.record(
+        {
+          actorUserId,
+          action: "user.roles_set",
+          entityType: "user",
+          entityId: userId,
+          details: { previousRoles: currentRoles, roles: uniqueRoles },
+        },
+        tx,
+      );
+    });
+
+    return { roles: uniqueRoles };
+  }
+
   static async revokeRole(userId: number, role: UserRole, actorUserId: number) {
     const user = await prisma.user.findUnique({
       where: { userId },

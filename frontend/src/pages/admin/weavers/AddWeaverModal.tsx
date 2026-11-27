@@ -11,8 +11,6 @@ export interface AddWeaverModalProps {
   setLastName: (val: string) => void;
   phone: string;
   setPhone: (val: string) => void;
-  bankAccount: string;
-  setBankAccount: (val: string) => void;
   addError: string;
   saving: boolean;
 }
@@ -27,8 +25,6 @@ export function AddWeaverModal({
   setLastName,
   phone,
   setPhone,
-  bankAccount,
-  setBankAccount,
   addError,
   saving,
 }: AddWeaverModalProps) {
@@ -73,24 +69,13 @@ export function AddWeaverModal({
           </div>
         </div>
 
-        <div className="form-group" style={{ marginBottom: "0.75rem" }}>
+        <div className="form-group mb-4">
           <label className="form-label">Phone number / ስልክ</label>
           <input
             type="tel"
             placeholder="+251 9xx xxx xxx"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="input"
-          />
-        </div>
-
-        <div className="form-group" style={{ marginBottom: "1.25rem" }}>
-          <label className="form-label">Bank account / የባንክ ሂሳብ (optional)</label>
-          <input
-            type="text"
-            placeholder="e.g. CBE 1000..."
-            value={bankAccount}
-            onChange={(e) => setBankAccount(e.target.value)}
             className="input"
           />
         </div>

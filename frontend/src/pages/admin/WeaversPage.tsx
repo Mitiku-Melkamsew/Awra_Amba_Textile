@@ -20,8 +20,6 @@ export function WeaversPage() {
     setLastName,
     phone,
     setPhone,
-    bankAccount,
-    setBankAccount,
     error,
     addError,
     setAddError,
@@ -83,8 +81,6 @@ export function WeaversPage() {
         setLastName={setLastName}
         phone={phone}
         setPhone={setPhone}
-        bankAccount={bankAccount}
-        setBankAccount={setBankAccount}
         addError={addError}
         saving={saving}
       />

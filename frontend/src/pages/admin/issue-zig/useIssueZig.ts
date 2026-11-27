@@ -263,6 +263,12 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     );
   }
 
+  function handleUnitPriceChange(lineId: string, priceStr: string) {
+    setYarnLines((prev) =>
+      prev.map((l) => (l.id === lineId ? { ...l, unitPrice: priceStr } : l))
+    );
+  }
+
   function openFabricModal() {
     setModalFabricId(fabricId);
     setModalWarpColorId(warpColorId);
@@ -463,6 +469,7 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     handleRemoveYarnLine,
     handleYarnVariantChange,
     handleQuantityChange,
+    handleUnitPriceChange,
     openFabricModal,
     isModalOpen,
     setIsModalOpen,

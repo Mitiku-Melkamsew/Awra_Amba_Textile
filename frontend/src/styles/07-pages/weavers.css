@@ -134,7 +134,7 @@
 
   .weavers-table-header {
     display: grid;
-    grid-template-columns: minmax(200px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) auto;
+    grid-template-columns: minmax(200px, 2fr) minmax(140px, 1.2fr) auto;
     align-items: center;
     border-bottom: 1px solid var(--border-subtle, #F1F5F9);
     padding: 0.85rem 1.5rem;
@@ -148,7 +148,7 @@
 
   .weavers-table-row {
     display: grid;
-    grid-template-columns: minmax(200px, 2fr) minmax(130px, 1.2fr) minmax(130px, 1.2fr) auto;
+    grid-template-columns: minmax(200px, 2fr) minmax(140px, 1.2fr) auto;
     align-items: center;
     border-bottom: 1px solid var(--border-subtle, #F1F5F9);
     padding: 0.85rem 1.5rem;

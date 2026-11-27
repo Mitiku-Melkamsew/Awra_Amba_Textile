@@ -9,6 +9,7 @@ import {
   UpdateUserSchema,
   SetUserStatusSchema,
   AssignRoleSchema,
+  SetRolesSchema,
   ResetPasswordSchema,
   ListUsersQuerySchema,
 } from "../dtos/user.dto.js";
@@ -62,6 +63,13 @@ usersRouter.post(
   requireCapability(Capability.ROLES_MANAGE),
   validateBody(AssignRoleSchema),
   UserController.assignRole,
+);
+
+usersRouter.put(
+  "/:id/roles",
+  requireCapability(Capability.ROLES_MANAGE),
+  validateBody(SetRolesSchema),
+  UserController.setRoles,
 );
 
 usersRouter.delete(

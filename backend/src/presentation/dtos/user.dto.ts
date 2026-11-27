@@ -60,6 +60,10 @@ export const AssignRoleSchema = z.object({
   role: z.nativeEnum(UserRole),
 });
 
+export const SetRolesSchema = z.object({
+  roles: z.array(z.nativeEnum(UserRole)).min(1, "At least one role is required"),
+});
+
 export const ResetPasswordSchema = z.object({
   newPassword: z.string().min(8).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, "Password must contain at least one uppercase letter, one lowercase letter, and one digit"),
 });

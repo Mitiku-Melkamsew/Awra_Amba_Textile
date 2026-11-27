@@ -5,6 +5,7 @@ import {
   workOrderService,
   directTransactionService,
   settlementService,
+  reportService,
 } from "../infrastructure/services";
 import { stockApi } from "../api";
 import { IssueZigPromptModal } from "./admin/dashboard/IssueZigPromptModal";
@@ -35,15 +36,25 @@ export function DashboardPage() {
   const [returnedZigs, setReturnedZigs] = useState<number>(0);
   const [reconciledZigs, setReconciledZigs] = useState<number>(0);
 
+  // Financial status summary
+  const [grossRevenue, setGrossRevenue] = useState<number>(0);
+  const [collectedRevenue, setCollectedRevenue] = useState<number>(0);
+  const [totalExpenses, setTotalExpenses] = useState<number>(0);
+  const [netProfit, setNetProfit] = useState<number>(0);
+  const [merchantReceivable, setMerchantReceivable] = useState<number>(0);
+
   useEffect(() => {
     async function loadStats() {
       try {
-        const [ordersRes, stockRes, txnsRes, pendingRes] = await Promise.allSettled([
-          workOrderService.listWorkOrders(),
-          stockApi.get(),
-          directTransactionService.listTransactions(),
-          settlementService.getPendingSummary(),
-        ]);
+        const [ordersRes, stockRes, txnsRes, pendingRes, commercialRes, merchantsBalRes] =
+          await Promise.allSettled([
+            workOrderService.listWorkOrders(),
+            stockApi.get(),
+            directTransactionService.listTransactions(),
+            settlementService.getPendingSummary(),
+            reportService.getCommercialSummary(),
+            reportService.getMerchantsBalance(),
+          ]);
 
         // 1. Zigs in production
         if (ordersRes.status === "fulfilled" && Array.isArray(ordersRes.value)) {
@@ -91,6 +102,36 @@ export function DashboardPage() {
             0
           );
           setUnpaidTxnAmount(sumDue);
+        }
+
+        // 5. Financial status summary
+        if (commercialRes.status === "fulfilled" && commercialRes.value) {
+          const c = commercialRes.value;
+          const rev =
+            c.revenue?.grossCommercialRevenue ??
+            (c.fabricSalesRevenue ?? 0) + (c.yarnSalesRevenue ?? 0);
+          const collected =
+            (c.revenue?.merchantFabricSalesCollected ?? 0) +
+            (c.revenue?.weaverYarnSalesCollected ?? 0);
+          const exp =
+            c.expenses?.totalExpenses ??
+            (c.expenses?.supplierYarnProcurementExpense ?? c.yarnProcurementExpense ?? 0) +
+              (c.weaverSettlementsExpense ?? 0) +
+              (c.fabricPurchasesExpense ?? 0);
+          const profit = c.profitability?.netOperatingProfit ?? rev - exp;
+
+          setGrossRevenue(rev);
+          setCollectedRevenue(collected);
+          setTotalExpenses(exp);
+          setNetProfit(profit);
+        }
+
+        if (merchantsBalRes.status === "fulfilled" && Array.isArray(merchantsBalRes.value)) {
+          const totalReceivable = merchantsBalRes.value.reduce(
+            (sum: number, m: any) => sum + Number(m.outstandingReceivable || 0),
+            0
+          );
+          setMerchantReceivable(totalReceivable);
         }
       } catch {
         // Keep fallback data if offline
@@ -219,12 +260,6 @@ export function DashboardPage() {
       <section className="dashboard-section">
         <div className="dashboard-section-header">
           <h2 className="dashboard-section-title">Zigs in production</h2>
-          <Link
-            to="/admin/production"
-            className="btn btn-secondary btn-sm dashboard-section-action"
-          >
-            <span>🏭</span> View Production & WIP Ledger →
-          </Link>
         </div>
         <div className="zigs-grid">
           {/* Assigned */}
@@ -269,6 +304,45 @@ export function DashboardPage() {
             <span className="zig-stat-label">Reconciled</span>
             <div className="zig-stat-num">{reconciledZigs}</div>
             <span className="zig-stat-sub">settled and paid</span>
+          </Link>
+        </div>
+      </section>
+
+      {/* Financial status */}
+      <section className="dashboard-section">
+        <div className="dashboard-section-header">
+          <h2 className="dashboard-section-title">Financial status</h2>
+        </div>
+        <div className="zigs-grid">
+          <Link to="/admin/reports" className="card zig-stat-card">
+            <span className="zig-stat-label">Gross revenue</span>
+            <div className="zig-stat-num">{grossRevenue.toLocaleString()}</div>
+            <span className="zig-stat-sub">
+              {collectedRevenue.toLocaleString()} ETB collected
+            </span>
+          </Link>
+
+          <Link to="/admin/reports" className="card zig-stat-card">
+            <span className="zig-stat-label">Total expenses</span>
+            <div className="zig-stat-num">{totalExpenses.toLocaleString()}</div>
+            <span className="zig-stat-sub">ETB yarn, wages & purchases</span>
+          </Link>
+
+          <Link
+            to="/admin/reports"
+            className={`card zig-stat-card ${netProfit >= 0 ? "" : "zig-stat-highlight"}`}
+          >
+            <span className="zig-stat-label">Net profit</span>
+            <div className={`zig-stat-num ${netProfit < 0 ? "text-highlight-rust" : ""}`}>
+              {netProfit.toLocaleString()}
+            </div>
+            <span className="zig-stat-sub">ETB operating balance</span>
+          </Link>
+
+          <Link to="/admin/transactions" className="card zig-stat-card">
+            <span className="zig-stat-label">Merchant receivables</span>
+            <div className="zig-stat-num">{merchantReceivable.toLocaleString()}</div>
+            <span className="zig-stat-sub">ETB outstanding due</span>
           </Link>
         </div>
       </section>

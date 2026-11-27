@@ -118,6 +118,8 @@ export function TransactionsHubPage() {
   const [payNotes] = useState("");
   const [payBusy, setPayBusy] = useState(false);
   const [payError, setPayError] = useState("");
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const loadTransactions = useCallback(async () => {
     try {
@@ -174,6 +176,7 @@ export function TransactionsHubPage() {
 
   // When selected transaction changes, prefill balance
   useEffect(() => {
+    setConfirmCancel(false);
     if (selectedTxn) {
       const total = parseFloat(String(selectedTxn.totalAmount || "0"));
       const paid = parseFloat(String(selectedTxn.amountPaid ?? "0"));
@@ -219,6 +222,23 @@ export function TransactionsHubPage() {
       setPayError(err.message || "Failed to record payment. Please try again.");
     } finally {
       setPayBusy(false);
+    }
+  };
+
+  const handleCancelTransaction = async () => {
+    if (!selectedTxn) return;
+    setCancelBusy(true);
+    setPayError("");
+    try {
+      await transactionsApi.cancel(String(selectedTxn.transactionId));
+      setConfirmCancel(false);
+      setSuccessMessage(`Transaction #${selectedTxn.transactionId} has been cancelled.`);
+      setTimeout(() => setSuccessMessage(""), 5000);
+      await loadTransactions();
+    } catch (err: any) {
+      setPayError(err.message || "Failed to cancel transaction.");
+    } finally {
+      setCancelBusy(false);
     }
   };
 
@@ -682,6 +702,47 @@ export function TransactionsHubPage() {
                   </div>
                 </form>
               )}
+
+              {/* Sidebar Footer: Full Details & Cancel */}
+              <div className="txn-sidebar-footer">
+                <Link
+                  to={`/admin/transactions/${selectedTxn.transactionId}`}
+                  className="btn btn-secondary btn-sm btn-full-width"
+                >
+                  See full details →
+                </Link>
+
+                {selectedTxn.status !== "cancelled" && (
+                  confirmCancel ? (
+                    <div className="txn-sidebar-cancel-row">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm txn-sidebar-cancel-btn"
+                        onClick={() => setConfirmCancel(false)}
+                        disabled={cancelBusy}
+                      >
+                        Keep
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm txn-sidebar-cancel-btn"
+                        onClick={handleCancelTransaction}
+                        disabled={cancelBusy}
+                      >
+                        {cancelBusy ? "Cancelling…" : "Confirm cancel"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm btn-full-width"
+                      onClick={() => setConfirmCancel(true)}
+                    >
+                      Cancel transaction
+                    </button>
+                  )
+                )}
+              </div>
             </>
           ) : (
             <div style={{ textAlign: "center", padding: "2rem 1rem", color: "#94a3b8", fontSize: "14px" }}>

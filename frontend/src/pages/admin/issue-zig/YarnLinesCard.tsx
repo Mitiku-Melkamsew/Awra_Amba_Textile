@@ -20,6 +20,7 @@ export interface YarnLinesCardProps {
   yarnVariants: any[];
   handleYarnVariantChange: (lineId: string, variantIdStr: string) => void;
   handleQuantityChange: (lineId: string, qtyStr: string) => void;
+  handleUnitPriceChange: (lineId: string, priceStr: string) => void;
   handleRemoveYarnLine: (id: string) => void;
   handleAddYarnLine: () => void;
   notes: string;
@@ -38,6 +39,7 @@ export function YarnLinesCard({
   yarnVariants,
   handleYarnVariantChange,
   handleQuantityChange,
+  handleUnitPriceChange,
   handleRemoveYarnLine,
   handleAddYarnLine,
   notes,
@@ -174,10 +176,15 @@ export function YarnLinesCard({
 
                 {/* Price Column */}
                 <div>
-                  <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--color-text, #1e293b)" }}>
-                    {item.price} ETB
-                  </div>
-                  <div style={{ fontSize: "0.72rem", color: "var(--color-text-muted, #94a3b8)" }}>price list</div>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={line.unitPrice}
+                    onChange={(e) => handleUnitPriceChange(line.id, e.target.value)}
+                    placeholder="ETB"
+                    className="input yarn-price-input"
+                  />
                 </div>
 
                 {/* Stock After Pill Indicator */}
