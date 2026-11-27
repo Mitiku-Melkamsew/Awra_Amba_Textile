@@ -29,6 +29,11 @@ interface AuthContextValue {
   hasRole: (role: UserRole) => boolean;
   login: (username: string, password: string) => Promise<AuthUser>;
   signup: (data: SignupData) => Promise<AuthUser>;
+  updateProfile: (data: {
+    fullName: string;
+    username: string;
+    phone?: string | null;
+  }) => Promise<AuthUser>;
   logout: () => void;
 }
 
@@ -65,6 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signup(data: SignupData) {
         const result = await authService.signup(data);
+        setToken(result.token);
+        setUser(result.user);
+        return result.user;
+      },
+      async updateProfile(data: {
+        fullName: string;
+        username: string;
+        phone?: string | null;
+      }) {
+        const result = await authService.updateProfile(data);
         setToken(result.token);
         setUser(result.user);
         return result.user;

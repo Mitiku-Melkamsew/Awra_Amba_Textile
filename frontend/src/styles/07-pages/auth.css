@@ -86,6 +86,12 @@
     margin: 0;
   }
 
+  .auth-hint {
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted);
+    margin: 0;
+  }
+
   @media (max-width: 640px) {
     .auth-card {
       padding: var(--space-6, 1.5rem) var(--space-5, 1.25rem);

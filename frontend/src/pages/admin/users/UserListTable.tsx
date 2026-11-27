@@ -11,7 +11,6 @@ export interface UserListTableProps {
   search: string;
   onSearchChange: (search: string) => void;
   onSelectUser: (user: UserSummary) => void;
-  onAddUser: () => void;
 }
 
 const ROLE_TABS = [
@@ -30,11 +29,10 @@ export function UserListTable({
   search,
   onSearchChange,
   onSelectUser,
-  onAddUser,
 }: UserListTableProps) {
   return (
     <div className="stack">
-      {/* Controls: Search and Filter Tabs + Add user button */}
+      {/* Controls: Search and Filter Tabs */}
       <div className="cluster-between">
         <div className="users-search-wrap">
           <span className="users-search-icon" aria-hidden="true">
@@ -63,13 +61,6 @@ export function UserListTable({
               </button>
             );
           })}
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={onAddUser}
-          >
-            + Add user
-          </button>
         </div>
       </div>
 

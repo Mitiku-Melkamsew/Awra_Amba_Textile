@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from "react";
 import type { UserSummary, UserRole } from "../../../domain/models";
+import { ApiError } from "../../../infrastructure/http/api-client";
 import { userService } from "../../../infrastructure/services";
 import { Badge, Button, Card } from "../../../components/common";
 import { toTitleCase } from "../../../utils/formatters";
+
+const PASSWORD_COMPLEXITY_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+
+function formatApiError(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && Array.isArray(err.details) && err.details.length > 0) {
+    const msgs = err.details
+      .map((d: unknown) =>
+        d && typeof d === "object" && "message" in d ? String((d as { message: unknown }).message) : ""
+      )
+      .filter(Boolean);
+    if (msgs.length > 0) return msgs.join(". ");
+  }
+  return err instanceof Error ? err.message : fallback;
+}
 
 export interface UserProfilePaneProps {
   user: UserSummary | null;
@@ -69,15 +84,20 @@ export function UserProfilePane({
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPasswordInput.trim()) return;
+    const trimmed = newPasswordInput.trim();
+    if (!trimmed) return;
+    if (trimmed.length < 8 || !PASSWORD_COMPLEXITY_RE.test(trimmed)) {
+      onError("Password must be at least 8 characters with uppercase, lowercase, and a number.");
+      return;
+    }
     setResettingPassword(true);
     try {
-      await userService.resetPassword(user.userId, newPasswordInput.trim());
+      await userService.resetPassword(user.userId, trimmed);
       showSuccess(`Password successfully updated for ${user.username}.`);
       setShowPasswordReset(false);
       setNewPasswordInput("");
-    } catch (err: any) {
-      onError(err.message || "Failed to reset password");
+    } catch (err: unknown) {
+      onError(formatApiError(err, "Failed to reset password"));
     } finally {
       setResettingPassword(false);
     }
@@ -202,11 +222,15 @@ export function UserProfilePane({
             <input
               type="text"
               className="input"
-              placeholder="Enter new password"
+              placeholder="Min 8 chars (A-z, 0-9)"
               value={newPasswordInput}
               onChange={(e) => setNewPasswordInput(e.target.value)}
+              minLength={8}
               required
             />
+            <p className="text-xs text-muted">
+              At least 8 characters with uppercase, lowercase, and a number.
+            </p>
             <div className="cluster gap-sm">
               <Button
                 type="button"

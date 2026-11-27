@@ -1,7 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { ApiError } from "../infrastructure/http/api-client";
 import { useAuth } from "../context/AuthContext";
+
+const PASSWORD_COMPLEXITY_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+
+function formatSignupError(err: unknown): string {
+  if (err instanceof ApiError && Array.isArray(err.details) && err.details.length > 0) {
+    const messages = err.details
+      .map((d: unknown) =>
+        d && typeof d === "object" && "message" in d ? String((d as { message: unknown }).message) : ""
+      )
+      .filter(Boolean);
+    if (messages.length > 0) {
+      return messages.join(". ");
+    }
+  }
+  return err instanceof Error ? err.message : "Sign up failed.";
+}
 
 export function SignUpPage() {
   const { user, signup, loading: authLoading } = useAuth();
@@ -18,26 +35,50 @@ export function SignUpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const paramRole = searchParams.get("role");
+    if (paramRole === "merchant" || paramRole === "weaver") {
+      setRole(paramRole);
+    }
+  }, [searchParams]);
+
   if (authLoading) return <div className="loading"><span>⏳</span> Loading…</div>;
   if (user) {
-    if (user.roles?.includes("admin") || user.role === "admin") return <Navigate to="/admin/weavers" replace />;
+    if (user.roles?.includes("admin") || user.role === "admin") return <Navigate to="/admin/dashboard" replace />;
     if (user.roles?.includes("merchant") || user.role === "merchant") return <Navigate to="/merchant" replace />;
     return <Navigate to="/weaver" replace />;
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    const trimmedName = fullName.trim();
+    const trimmedUsername = username.trim();
+    const trimmedPhone = phone.trim();
+
+    if (!trimmedName) {
+      setError("Full name is required.");
+      return;
+    }
+    if (trimmedUsername.length < 3) {
+      setError("Username must be at least 3 characters.");
+      return;
+    }
+    if (password.length < 8 || !PASSWORD_COMPLEXITY_RE.test(password)) {
+      setError("Password must be at least 8 characters and include uppercase, lowercase, and a number.");
+      return;
+    }
     if (password !== confirm) {
       setError("Passwords do not match. Please verify.");
       return;
     }
+
     setLoading(true);
     setError("");
     try {
       const authUser = await signup({
-        fullName: fullName.trim(),
-        phone: phone || undefined,
-        username,
+        fullName: trimmedName,
+        phone: trimmedPhone || undefined,
+        username: trimmedUsername,
         password,
         role,
       });
@@ -48,7 +89,7 @@ export function SignUpPage() {
         navigate("/weaver", { replace: true });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign up failed.");
+      setError(formatSignupError(err));
     } finally {
       setLoading(false);
     }
@@ -142,8 +183,9 @@ export function SignUpPage() {
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Choose a username"
+              placeholder="Choose a username (min 3 chars)"
               autoComplete="username"
+              minLength={3}
               required
             />
           </label>
@@ -155,10 +197,10 @@ export function SignUpPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min 6 chars"
+                placeholder="Min 8 chars (A-z, 0-9)"
                 autoComplete="new-password"
                 required
-                minLength={6}
+                minLength={8}
               />
             </label>
 
@@ -171,9 +213,13 @@ export function SignUpPage() {
                 placeholder="Repeat password"
                 autoComplete="new-password"
                 required
+                minLength={8}
               />
             </label>
           </div>
+          <p className="auth-hint">
+            Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.
+          </p>
         </div>
 
         {error && (

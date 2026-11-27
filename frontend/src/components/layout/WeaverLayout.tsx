@@ -1,5 +1,5 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { NavLink, Outlet } from "react-router-dom";
+import { AccountMenu } from "./AccountMenu";
 
 const links = [
   { to: "/weaver", label: "Home", amharic: "መነሻ", icon: "🏠", end: true },
@@ -10,22 +10,6 @@ const links = [
 ];
 
 export function WeaverLayout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = () => {
-    logout();
-    navigate("/", { replace: true });
-  };
-
-  const displayName = user?.fullName || user?.username || "Weaver";
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "WV";
-
   return (
     <div className="weaver-shell">
       {/* ── Top Navbar (Web-first) ── */}
@@ -60,18 +44,7 @@ export function WeaverLayout() {
 
           {/* User Profile & Sign Out */}
           <div className="weaver-nav-actions">
-            <div className="weaver-user-info">
-              <div className="weaver-user-avatar">{initials}</div>
-              <span className="weaver-user-name">{displayName}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="weaver-signout-btn"
-              title="Sign out"
-            >
-              Sign out / ውጣ
-            </button>
+            <AccountMenu />
           </div>
         </div>
       </header>

@@ -3,7 +3,7 @@ import { AuthController } from "../controllers/auth.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { validateBody } from "../middleware/validate.js";
 import { rateLimit } from "../middleware/rate-limit.js";
-import { LoginSchema, SignupSchema, ChangePasswordSchema } from "../dtos/auth.dto.js";
+import { LoginSchema, SignupSchema, ChangePasswordSchema, UpdateProfileSchema } from "../dtos/auth.dto.js";
 
 export const authRouter = Router();
 
@@ -26,6 +26,12 @@ const signupLimiter = rateLimit({
 authRouter.post("/login", loginLimiter, validateBody(LoginSchema), AuthController.login);
 authRouter.post("/signup", signupLimiter, validateBody(SignupSchema), AuthController.signup);
 authRouter.get("/me", authenticate, AuthController.me);
+authRouter.patch(
+  "/me",
+  authenticate,
+  validateBody(UpdateProfileSchema),
+  AuthController.updateProfile,
+);
 authRouter.post(
   "/change-password",
   authenticate,

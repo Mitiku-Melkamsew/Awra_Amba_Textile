@@ -9,7 +9,7 @@ const passwordSchema = z
   );
 
 export const LoginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  username: z.string().trim().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -18,9 +18,9 @@ export const LoginSchema = z.object({
  * Password rules kept from production security hardening.
  */
 export const SignupSchema = z.object({
-  fullName: z.string().min(1).max(120),
-  phone: z.string().max(30).optional().nullable(),
-  username: z.string().min(3).max(60),
+  fullName: z.string().trim().min(1, "Full name is required").max(120),
+  phone: z.string().trim().max(30).optional().nullable(),
+  username: z.string().trim().min(3, "Username must be at least 3 characters").max(60),
   password: passwordSchema,
   role: z.enum(["weaver", "merchant"]).default("weaver"),
 });
@@ -28,4 +28,10 @@ export const SignupSchema = z.object({
 export const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: passwordSchema,
+});
+
+export const UpdateProfileSchema = z.object({
+  fullName: z.string().trim().min(1, "Full name is required").max(120),
+  username: z.string().trim().min(3, "Username must be at least 3 characters").max(60),
+  phone: z.string().trim().max(30).optional().nullable(),
 });

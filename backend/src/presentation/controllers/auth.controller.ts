@@ -54,7 +54,8 @@ export class AuthController {
   static async signup(req: Request, res: Response, next: NextFunction) {
     try {
       const body = req.body;
-      const existing = await prisma.user.findUnique({ where: { username: body.username } });
+      const username = String(body.username ?? "").trim();
+      const existing = await prisma.user.findUnique({ where: { username } });
       if (existing) {
         throw new ConflictError("Username is already taken");
       }
@@ -69,9 +70,9 @@ export class AuthController {
 
       const user = await prisma.user.create({
         data: {
-          username: body.username,
+          username,
           fullName,
-          phone: body.phone ?? null,
+          phone: body.phone ? String(body.phone).trim() || null : null,
           passwordHash,
           roles: {
             create: [{ role: chosenRole }],
@@ -149,6 +150,66 @@ export class AuthController {
       });
 
       res.json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) throw new UnauthorizedError("Authentication required");
+
+      const currentUser = await prisma.user.findUnique({
+        where: { userId: req.user.userId },
+        include: { roles: true },
+      });
+      if (!currentUser || !currentUser.isActive) {
+        throw new UnauthorizedError("User not found or account is deactivated");
+      }
+
+      const fullName = String(req.body.fullName ?? "").trim();
+      const username = String(req.body.username ?? "").trim();
+      const phone = req.body.phone ? String(req.body.phone).trim() || null : null;
+
+      if (!fullName) {
+        throw new ValidationError("Full name is required");
+      }
+      if (username.length < 3) {
+        throw new ValidationError("Username must be at least 3 characters");
+      }
+
+      if (username !== currentUser.username) {
+        const existing = await prisma.user.findUnique({ where: { username } });
+        if (existing && existing.userId !== currentUser.userId) {
+          throw new ConflictError("Username is already taken");
+        }
+      }
+
+      const updated = await prisma.user.update({
+        where: { userId: currentUser.userId },
+        data: { fullName, username, phone },
+        include: { roles: true },
+      });
+
+      const roles = updated.roles.map((r) => r.role);
+      const token = signToken({
+        userId: updated.userId,
+        username: updated.username,
+        roles,
+      });
+
+      res.json({
+        token,
+        user: {
+          userId: updated.userId,
+          username: updated.username,
+          fullName: updated.fullName,
+          phone: updated.phone,
+          email: updated.email,
+          roles,
+          isActive: updated.isActive,
+        },
+      });
     } catch (error) {
       next(error);
     }

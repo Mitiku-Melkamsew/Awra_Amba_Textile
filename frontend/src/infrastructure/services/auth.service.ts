@@ -47,4 +47,25 @@ export const authService = {
   async getMe(): Promise<{ user: AuthUser }> {
     return request<{ user: AuthUser }>("/auth/me");
   },
+
+  async updateProfile(data: {
+    fullName: string;
+    username: string;
+    phone?: string | null;
+  }): Promise<LoginResponse> {
+    return request<LoginResponse>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
 };

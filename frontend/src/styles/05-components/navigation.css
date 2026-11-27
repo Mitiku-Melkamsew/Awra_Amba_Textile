@@ -494,4 +494,197 @@
     background: var(--brand-light, #FFEDD5);
     border-color: #FED7AA;
   }
+
+  /* ── Top-Right Account Bar & Dropdown Menu ─────────────────── */
+  .admin-topbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: var(--space-3, 0.75rem) var(--space-8, 2rem) 0;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 30;
+  }
+
+  .account-menu {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .account-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem 0.35rem 0.4rem;
+    border-radius: var(--radius-full, 9999px);
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    color: var(--text, #0F172A);
+    font-size: var(--text-sm, 13px);
+    font-weight: var(--font-semibold, 600);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .account-trigger:hover {
+    background: var(--surface-muted, #F8FAFC);
+    border-color: var(--border-strong, #CBD5E1);
+  }
+
+  .account-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--brand-gradient, linear-gradient(135deg, #EA580C 0%, #C2410C 100%));
+    color: var(--text-inverse, #FFFFFF);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .account-name {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-caret {
+    font-size: 11px;
+    color: var(--text-muted, #64748B);
+  }
+
+  .account-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 230px;
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: var(--shadow-lg, 0 10px 25px rgba(15, 23, 42, 0.12));
+    padding: 0.5rem;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .account-dropdown-header {
+    padding: 0.4rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .account-dropdown-title {
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+  }
+
+  .account-dropdown-sub {
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+  }
+
+  .account-dropdown-roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .account-dropdown-divider {
+    height: 1px;
+    background: var(--border, #E2E8F0);
+    margin: 0.25rem 0;
+  }
+
+  .account-dropdown-item {
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.65rem;
+    border: none;
+    border-radius: var(--radius-md, 8px);
+    background: transparent;
+    color: var(--text, #0F172A);
+    font-size: var(--text-sm, 13px);
+    font-weight: var(--font-medium, 500);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .account-dropdown-item:hover {
+    background: var(--bg-subtle, #F1F5F9);
+  }
+
+  .account-dropdown-item.is-danger {
+    color: var(--danger, #DC2626);
+  }
+
+  .account-dropdown-item.is-danger:hover {
+    background: #FEF2F2;
+  }
+
+  .account-profile-summary {
+    background: var(--bg-subtle, #F8FAFC);
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-md, 10px);
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .account-profile-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: var(--text-sm, 13px);
+  }
+
+  .account-profile-label {
+    color: var(--text-muted, #64748B);
+    font-weight: var(--font-medium, 500);
+  }
+
+  .account-profile-value {
+    color: var(--text, #0F172A);
+    font-weight: var(--font-semibold, 600);
+  }
+
+  .account-password-form {
+    padding-top: 0.25rem;
+  }
+
+  .account-section-title {
+    margin: 0;
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+  }
+
+  .account-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 640px) {
+    .admin-topbar {
+      padding: var(--space-3, 0.75rem) var(--space-4, 1rem) 0;
+    }
+
+    .account-name {
+      display: none;
+    }
+  }
 }

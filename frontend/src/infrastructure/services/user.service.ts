@@ -83,8 +83,8 @@ export const userService = {
   },
 
   async resetPassword(id: number, newPassword: string): Promise<{ message: string }> {
-    return request<{ message: string }>(`/users/${id}/password`, {
-      method: "PUT",
+    return request<{ message: string }>(`/users/${id}/reset-password`, {
+      method: "POST",
       body: JSON.stringify({ newPassword }),
     });
   },

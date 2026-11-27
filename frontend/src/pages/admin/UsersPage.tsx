@@ -100,7 +100,6 @@ export function UsersPage() {
           search={search}
           onSearchChange={setSearch}
           onSelectUser={(u) => setSelectedUserId(u.userId)}
-          onAddUser={() => setShowCreateModal(true)}
         />
 
         <UserProfilePane

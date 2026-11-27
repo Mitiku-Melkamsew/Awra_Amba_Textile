@@ -1,18 +1,7 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { NavLink, Outlet } from "react-router-dom";
+import { AccountMenu } from "./AccountMenu";
 
 export function MerchantLayout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = () => {
-    logout();
-    navigate("/", { replace: true });
-  };
-
-  const displayName = user?.fullName || user?.username || "Merchant 1";
-  const initial = displayName.charAt(0).toUpperCase() || "M";
-
   return (
     <div className="merchant-shell">
       {/* ── Top Navbar (Matching Image 6) ── */}
@@ -41,19 +30,7 @@ export function MerchantLayout() {
             </NavLink>
           </nav>
 
-          <div className="merchant-user-info">
-            <div className="merchant-user-avatar">{initial}</div>
-            <div className="merchant-user-meta">
-              <span className="merchant-user-name">{displayName}</span>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="merchant-signout-btn"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
+          <AccountMenu />
         </div>
       </header>
 

@@ -1,5 +1,5 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { NavLink, Outlet } from "react-router-dom";
+import { AccountMenu } from "./AccountMenu";
 
 // Clean stroke icons matching the design
 function DashboardIcon() {
@@ -120,14 +120,6 @@ function ActivityIcon() {
 }
 
 export function Layout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = () => {
-    logout();
-    navigate("/", { replace: true });
-  };
-
   return (
     <div className="app-shell">
       {/* ── Admin Sidebar ── */}
@@ -242,29 +234,13 @@ export function Layout() {
             <span>Activity log</span>
           </NavLink>
         </nav>
-
-        {/* Bottom User info */}
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-user-avatar">
-              {user?.username ? user.username.charAt(0).toUpperCase() : "A"}
-            </div>
-            <div className="sidebar-user-details">
-              <span className="sidebar-user-name">{user?.username ?? "Admin 1"}</span>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="sidebar-signout-btn"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* ── Main Content Area ── */}
       <main className="main-content">
+        <header className="admin-topbar">
+          <AccountMenu />
+        </header>
         <Outlet />
       </main>
     </div>
