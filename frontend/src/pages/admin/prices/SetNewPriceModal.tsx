@@ -120,7 +120,6 @@ export function SetNewPriceModal({
       <div
         className="modal-dialog card"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 460 }}
       >
         {tab === "fabricPrices" ? (
           <>
@@ -153,7 +152,7 @@ export function SetNewPriceModal({
                   />
                 </div>
 
-                <div className="price-form-group" style={{ marginTop: "1rem" }}>
+                <div className="price-form-group mt-4">
                   <label className="price-form-label">Weaver Rate (ETB)</label>
                   <input
                     type="number"
@@ -167,7 +166,7 @@ export function SetNewPriceModal({
                   />
                 </div>
 
-                <div className="price-form-group" style={{ marginTop: "1rem" }}>
+                <div className="price-form-group mt-4">
                   <label className="price-form-label">Selling Price (ETB)</label>
                   <input
                     type="number"
@@ -181,14 +180,7 @@ export function SetNewPriceModal({
                   />
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: "0.75rem",
-                    marginTop: "1.5rem",
-                  }}
-                >
+                <div className="modal-actions-cluster mt-6">
                   <button type="button" className="btn btn-secondary" onClick={onClose}>
                     Cancel
                   </button>
@@ -232,7 +224,7 @@ export function SetNewPriceModal({
                   />
                 </div>
 
-                <div className="price-form-group" style={{ marginTop: "1rem" }}>
+                <div className="price-form-group mt-4">
                   <label className="price-form-label">Supplier Name</label>
                   <input
                     type="text"
@@ -244,7 +236,7 @@ export function SetNewPriceModal({
                   />
                 </div>
 
-                <div className="price-form-group" style={{ marginTop: "1rem" }}>
+                <div className="price-form-group mt-4">
                   <label className="price-form-label">Purchase Price (ETB)</label>
                   <input
                     type="number"
@@ -258,7 +250,7 @@ export function SetNewPriceModal({
                   />
                 </div>
 
-                <div className="price-form-group" style={{ marginTop: "1rem" }}>
+                <div className="price-form-group mt-4">
                   <label className="price-form-label">Selling Price (ETB)</label>
                   <input
                     type="number"
@@ -272,14 +264,7 @@ export function SetNewPriceModal({
                   />
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: "0.75rem",
-                    marginTop: "1.5rem",
-                  }}
-                >
+                <div className="modal-actions-cluster mt-6">
                   <button type="button" className="btn btn-secondary" onClick={onClose}>
                     Cancel
                   </button>

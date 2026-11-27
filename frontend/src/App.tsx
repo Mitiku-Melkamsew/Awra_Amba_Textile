@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { HomeRedirect, ProtectedRoute, RoleRoute } from "./components/auth";
 import { Layout, MerchantLayout, WeaverLayout } from "./components/layout";
 import { AuthProvider } from "./context/AuthContext";
@@ -41,7 +41,6 @@ const WeaverZigDetailPage = lazy(() => import("./pages/weaver/WeaverZigDetailPag
 const WeaverRatesPage = lazy(() => import("./pages/weaver/WeaverRatesPage").then((m) => ({ default: m.WeaverRatesPage })));
 const WeaverCalculatorPage = lazy(() => import("./pages/weaver/WeaverCalculatorPage").then((m) => ({ default: m.WeaverCalculatorPage })));
 const MerchantFabricsPage = lazy(() => import("./pages/merchant/MerchantFabricsPage").then((m) => ({ default: m.MerchantFabricsPage })));
-const MerchantPricesPage = lazy(() => import("./pages/merchant/MerchantPricesPage").then((m) => ({ default: m.MerchantPricesPage })));
 
 function RouteLoadingFallback() {
   return (
@@ -91,6 +90,7 @@ function App() {
                   <Route path="settlement/preview/:previewId" element={<SettlementPreviewPage />} />
                   <Route path="reports/hisab/:type/:id" element={<HisabPrintPage />} />
                   <Route path="reports" element={<ReportsPage />} />
+                  <Route path="production" element={<ProductionReportPage />} />
                   <Route path="reports/production" element={<ProductionReportPage />} />
                   <Route path="audit-logs" element={<AuditLogsPage />} />
                 </Route>
@@ -113,7 +113,7 @@ function App() {
                 <Route element={<MerchantLayout />}>
                   <Route index element={<MerchantFabricsPage />} />
                   <Route path="fabrics" element={<MerchantFabricsPage />} />
-                  <Route path="prices" element={<MerchantPricesPage />} />
+                  <Route path="prices" element={<Navigate to="/merchant" replace />} />
                 </Route>
               </Route>
             </Route>

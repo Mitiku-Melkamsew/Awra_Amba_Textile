@@ -25,7 +25,7 @@ export function WeaverPortalPage() {
         setPayments(pays || []);
         setError("");
       })
-      .catch((err) => setError(err.message || "Failed to load artisan data"))
+      .catch((err) => setError(err.message || "Failed to load weaver data"))
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -158,7 +158,7 @@ export function WeaverPortalPage() {
                   </div>
                   <div className="weaver-zig-card-fabric">{fabricTitle}</div>
                   <div className="weaver-zig-card-meta">
-                    Yarn received {yarnQty > 0 ? `${yarnQty} kg` : "—"} · Fabric returned {fabricPcs} pcs
+                    Yarn received {yarnQty > 0 ? `${yarnQty} pcs` : "—"} · Fabric returned {fabricPcs} pcs
                   </div>
                 </Link>
               );

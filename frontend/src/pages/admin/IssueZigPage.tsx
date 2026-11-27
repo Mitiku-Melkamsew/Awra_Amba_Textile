@@ -15,7 +15,7 @@ export function IssueZigPage() {
     return (
       <div className="page" style={{ padding: "3rem 2rem", textAlign: "center" }}>
         <div style={{ fontSize: "1.2rem", color: "var(--color-text-muted, #64748b)" }}>
-          ⏳ Loading work order setup for artisan…
+          ⏳ Loading work order setup for weaver…
         </div>
       </div>
     );
@@ -32,7 +32,7 @@ export function IssueZigPage() {
 
   const lastZigFabricTitle = zig.lastZig
     ? zig.lastZig.fabricVariant
-      ? fabricVariantName(zig.lastZig.fabricVariant).split("-").join(" · ")
+      ? fabricVariantName(zig.lastZig.fabricVariant, " · ")
       : zig.lastZig.fabric?.name ?? "Fabric"
     : null;
 

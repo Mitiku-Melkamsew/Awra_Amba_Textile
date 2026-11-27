@@ -71,7 +71,7 @@ export function DisbursePayoutModal({
               Batch Reference: <strong>#{committedPreviewId}</strong>
             </div>
             <div>
-              Artisans Count: <strong>{committedWeaverCount} weavers</strong>
+              Weavers Count: <strong>{committedWeaverCount} weavers</strong>
             </div>
             <div>
               Total Payout: <strong>{Math.round(committedTotal).toLocaleString()} ETB</strong>

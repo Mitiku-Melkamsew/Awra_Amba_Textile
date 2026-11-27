@@ -75,15 +75,15 @@ export function FabricPriceDrawer({
             onChange={(e) => setNewWeaverRate(e.target.value)}
             required
           />
-          <div className="price-delta-badge" style={{ fontSize: "12px", marginTop: "4px" }}>
+          <div className="price-delta-badge">
             {diffWeaver === 0 ? (
-              <span style={{ color: "var(--text-muted)" }}>No change</span>
+              <span className="delta-no-change">No change</span>
             ) : diffWeaver > 0 ? (
-              <span style={{ color: "var(--brand, #C2410C)", fontWeight: 600 }}>
+              <span className="delta-up">
                 ↑ Up {diffWeaver} ({pctWeaver}%)
               </span>
             ) : (
-              <span style={{ color: "var(--blue, #0284C7)", fontWeight: 600 }}>
+              <span className="delta-down">
                 ↓ Down {Math.abs(diffWeaver)} ({Math.abs(Number(pctWeaver))}%)
               </span>
             )}
@@ -102,15 +102,15 @@ export function FabricPriceDrawer({
             onChange={(e) => setNewSellingPrice(e.target.value)}
             required
           />
-          <div className="price-delta-badge" style={{ fontSize: "12px", marginTop: "4px" }}>
+          <div className="price-delta-badge">
             {diffSelling === 0 ? (
-              <span style={{ color: "var(--text-muted)" }}>No change</span>
+              <span className="delta-no-change">No change</span>
             ) : diffSelling > 0 ? (
-              <span style={{ color: "var(--brand, #C2410C)", fontWeight: 600 }}>
+              <span className="delta-up">
                 ↑ Up {diffSelling}
               </span>
             ) : (
-              <span style={{ color: "var(--blue, #0284C7)", fontWeight: 600 }}>
+              <span className="delta-down">
                 ↓ Down {Math.abs(diffSelling)}
               </span>
             )}

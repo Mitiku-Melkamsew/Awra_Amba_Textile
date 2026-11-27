@@ -287,8 +287,8 @@ export const catalogApi = {
     catalogService.toggleYarnVariantStatus(id, data.isActive),
   deactivateYarnVariant: (id: number) => catalogService.toggleYarnVariantStatus(id, false),
 
-  fabricPrices: async (_fabricId?: number) => {
-    const list = await catalogService.listFabricPrices();
+  fabricPrices: async (params?: { fabricId?: number; activeOnly?: boolean } | number) => {
+    const list = await catalogService.listFabricPrices(params);
     return list.map((p) => ({
       fabricPriceId: p.fabricPriceId,
       fabricId: p.fabricId,
@@ -326,8 +326,8 @@ export const catalogApi = {
   updateFabricPrice: async (_id: number, _data: any) => {},
   deactivateFabricPrice: async (_id: number) => {},
 
-  yarnPrices: async () => {
-    const list = await catalogService.listYarnPrices();
+  yarnPrices: async (params?: { yarnId?: number; activeOnly?: boolean } | number) => {
+    const list = await catalogService.listYarnPrices(params);
     return list.map((p) => ({
       yarnPriceId: p.yarnPriceId,
       yarnId: p.yarnId,
@@ -790,6 +790,7 @@ export const stockApi = {
       yarnVariants: yarnList.map((y: any) => ({
         ...y,
         yarn: y.yarn,
+        currentStockPieces: Number(y.stockSnapshot ?? y.currentStockPieces ?? y.currentStockKg ?? 0),
         currentStockKg: Number(y.stockSnapshot ?? y.currentStockKg ?? 0),
       })),
     };

@@ -64,7 +64,7 @@ export function SettlementHeader({
           <div style={{ display: "flex", gap: "1.5rem", fontSize: "13px", color: "var(--color-blue-900, #1E3A8A)" }}>
             {pendingSummary.weaverCount !== undefined && (
               <div>
-                Ready Artisans: <strong>{pendingSummary.weaverCount}</strong>
+                Ready Weavers: <strong>{pendingSummary.weaverCount}</strong>
               </div>
             )}
             <div>

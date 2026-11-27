@@ -83,7 +83,7 @@ export function IssueZigFabricModal({
   const recentlyUsedPills = useMemo(() => {
     const list: Array<{ label: string; variant: FabricVariant }> = [];
     fabricVariants.slice(0, 3).forEach((v) => {
-      const label = fabricVariantName(v).split("-").join(" · ");
+      const label = fabricVariantName(v, " · ");
       list.push({ label, variant: v });
     });
     return list;
@@ -152,7 +152,7 @@ export function IssueZigFabricModal({
                 String(v.weftColorId ?? v.weftColor?.colorId) === modalWeftColorId &&
                 String(v.designId ?? v.design?.designId) === modalDesignId;
 
-              const title = fabricVariantName(v).split("-").join(" · ");
+              const title = fabricVariantName(v, " · ");
 
               return (
                 <div

@@ -285,7 +285,8 @@ export class CatalogController {
   static async listFabricPrices(req: Request, res: Response, next: NextFunction) {
     try {
       const fabricId = req.query.fabricId ? Number(req.query.fabricId) : undefined;
-      const prices = await CatalogService.listFabricPrices(fabricId);
+      const activeOnly = req.query.activeOnly === "true";
+      const prices = await CatalogService.listFabricPrices(fabricId, activeOnly);
       const sanitized = prices.map((p) => AbacService.maskForRole(req.user?.roles ?? [], p));
       res.json(sanitized);
     } catch (error) {
@@ -326,7 +327,8 @@ export class CatalogController {
   static async listYarnPrices(req: Request, res: Response, next: NextFunction) {
     try {
       const yarnId = req.query.yarnId ? Number(req.query.yarnId) : undefined;
-      const prices = await CatalogService.listYarnPrices(yarnId);
+      const activeOnly = req.query.activeOnly === "true";
+      const prices = await CatalogService.listYarnPrices(yarnId, activeOnly);
       res.json(prices);
     } catch (error) {
       next(error);

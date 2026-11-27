@@ -1,6 +1,7 @@
 import type { FabricVariant, YarnVariant } from "./index";
 
 export interface StockSummary {
+  totalYarnStockPieces?: number;
   totalYarnStockKg?: number;
   totalFabricStockPieces?: number;
   fabrics:
@@ -10,9 +11,10 @@ export interface StockSummary {
         variants: Array<FabricVariant & { currentStock: number; stockSnapshot?: string | number }>;
       };
   yarns:
-    | Array<YarnVariant & { stockSnapshot?: string | number; currentStockKg?: number }>
+    | Array<YarnVariant & { stockSnapshot?: string | number; currentStockPieces?: number; currentStockKg?: number }>
     | {
-        totalKg: number;
-        variants: Array<YarnVariant & { currentStockKg: number; stockSnapshot?: string | number }>;
+        totalPieces?: number;
+        totalKg?: number;
+        variants: Array<YarnVariant & { currentStockPieces?: number; currentStockKg?: number; stockSnapshot?: string | number }>;
       };
 }

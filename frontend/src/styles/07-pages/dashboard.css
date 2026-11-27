@@ -70,11 +70,37 @@
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-xs);
+    cursor: pointer;
+    transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+    user-select: none;
+    text-decoration: none;
+  }
+
+  .attention-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border-strong, #CBD5E1);
   }
 
   .attention-card-warning {
     background: var(--amber-bg, #FFFBEB);
     border-color: var(--amber-border, #FDE68A);
+  }
+
+  .attention-card-warning:hover {
+    border-color: var(--amber, #D97706);
+  }
+
+  .attention-card-arrow {
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text-muted, #64748B);
+    transition: color 150ms ease, transform 150ms ease;
+  }
+
+  .attention-card:hover .attention-card-arrow {
+    color: var(--brand, #C2410C);
+    transform: translateX(3px);
   }
 
   .attention-card-label {
@@ -100,6 +126,12 @@
     margin: 0 0 var(--space-5, 1.25rem);
   }
 
+  .attention-card-sub-compact {
+    font-size: var(--text-xs, 13px);
+    color: var(--text-muted, #64748B);
+    margin: 0;
+  }
+
   .text-warning-rust {
     color: var(--amber-fg, #92400E);
   }
@@ -109,6 +141,178 @@
     align-items: center;
     gap: var(--space-3, 0.75rem);
     flex-wrap: wrap;
+  }
+
+  /* ── Quick Action Prompt Modals ───────────────────────────── */
+  .quick-prompt-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4, 1rem);
+  }
+
+  .quick-prompt-description {
+    margin: 0;
+    font-size: var(--text-sm, 14px);
+    color: var(--text-muted, #64748B);
+    line-height: var(--leading-normal, 1.5);
+  }
+
+  .quick-prompt-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+  }
+
+  .quick-prompt-subtitle {
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+  }
+
+  .quick-prompt-list {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-md, 8px);
+    background: var(--surface, #FFFFFF);
+  }
+
+  .quick-prompt-empty {
+    padding: var(--space-8, 2rem);
+    text-align: center;
+    color: var(--text-muted, #64748B);
+    font-size: var(--text-sm, 14px);
+  }
+
+  .quick-prompt-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+    border-bottom: 1px solid var(--border-subtle, #F1F5F9);
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+
+  .quick-prompt-item:last-child {
+    border-bottom: none;
+  }
+
+  .quick-prompt-item:hover {
+    background: var(--surface-hover, #F8FAFC);
+  }
+
+  .quick-prompt-item-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3, 0.75rem);
+  }
+
+  .quick-prompt-item-primary {
+    font-weight: var(--font-semibold, 600);
+    color: var(--text, #0F172A);
+    font-size: var(--text-sm, 14px);
+  }
+
+  .quick-prompt-item-secondary {
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+  }
+
+  .quick-prompt-item-action {
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--brand, #C2410C);
+    white-space: nowrap;
+  }
+
+  .quick-prompt-item-tag {
+    font-family: var(--font-mono, monospace);
+    font-weight: var(--font-bold, 700);
+    font-size: var(--text-sm, 14px);
+    color: var(--text, #0F172A);
+    background: var(--bg-subtle, #F1F5F9);
+    padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+    border-radius: var(--radius-sm, 4px);
+  }
+
+  .quick-prompt-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3, 0.75rem);
+  }
+
+  .quick-prompt-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2, 0.5rem);
+    margin-top: var(--space-2, 0.5rem);
+  }
+
+  /* 2x2 Transaction Option Tiles */
+  .txn-tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4, 1rem);
+  }
+
+  .txn-tile {
+    border: 1px solid var(--border, #E2E8F0);
+    border-radius: var(--radius-lg, 12px);
+    padding: var(--space-4, 1rem);
+    background: var(--surface, #FFFFFF);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-3, 0.75rem);
+    transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  }
+
+  .txn-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--brand, #C2410C);
+  }
+
+  .txn-tile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-1, 0.25rem);
+  }
+
+  .txn-tile-icon {
+    font-size: var(--text-2xl, 24px);
+    line-height: 1;
+  }
+
+  .txn-tile-title {
+    margin: 0 0 var(--space-1, 0.25rem) 0;
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0F172A);
+  }
+
+  .txn-tile-title-am {
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    margin-bottom: var(--space-1, 0.25rem);
+  }
+
+  .txn-tile-desc {
+    margin: 0;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    line-height: var(--leading-normal, 1.4);
+  }
+
+  .txn-tile-action {
+    font-size: var(--text-xs, 12px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--brand, #C2410C);
+    text-align: right;
   }
 
   .dashboard-section-header {

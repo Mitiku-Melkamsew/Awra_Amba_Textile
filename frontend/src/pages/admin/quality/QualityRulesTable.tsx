@@ -1,4 +1,5 @@
 import type { QualityRuleRow } from "../../../api";
+import { toTitleCase } from "../../../utils/formatters";
 
 export interface QualityRulesTableProps {
   rules: QualityRuleRow[];
@@ -19,37 +20,23 @@ export function QualityRulesTable({
         <table className="data-table">
           <thead>
             <tr>
-              <th style={{ width: "32%" }}>Factor</th>
-              <th style={{ width: "30%" }}>Deduction</th>
-              <th style={{ width: "12%" }}>Unit</th>
-              <th style={{ width: "14%" }}>Status</th>
-              <th style={{ width: "12%", textAlign: "right" }}></th>
+              <th className="rule-col-factor">Factor</th>
+              <th className="rule-col-deduction">Deduction</th>
+              <th className="rule-col-unit">Unit</th>
+              <th className="rule-col-status">Status</th>
+              <th className="rule-col-action"></th>
             </tr>
           </thead>
           <tbody>
             {loading && rules.length === 0 ? (
               <tr>
-                <td
-                  colSpan={5}
-                  style={{
-                    padding: "2rem",
-                    textAlign: "center",
-                    color: "var(--text-muted, #64748B)",
-                  }}
-                >
+                <td colSpan={5} className="text-center text-muted p-8">
                   Loading quality rules…
                 </td>
               </tr>
             ) : rules.length === 0 ? (
               <tr>
-                <td
-                  colSpan={5}
-                  style={{
-                    padding: "2rem",
-                    textAlign: "center",
-                    color: "var(--text-muted, #64748B)",
-                  }}
-                >
+                <td colSpan={5} className="text-center text-muted p-8">
                   No rules configured.
                 </td>
               </tr>
@@ -63,7 +50,7 @@ export function QualityRulesTable({
                     ? "Length · ርዝመት"
                     : rule.factor.toLowerCase() === "width"
                     ? "Width · ስፋት"
-                    : rule.factor;
+                    : toTitleCase(rule.factor);
 
                 return (
                   <tr
@@ -72,22 +59,16 @@ export function QualityRulesTable({
                     onClick={() => onSelectRule(rule)}
                   >
                     <td>
-                      <span style={{ fontWeight: 600, color: "var(--text, #0F172A)" }}>
+                      <span className="font-semibold text-main">
                         {factorLabel}
                       </span>
                     </td>
-                    <td
-                      style={{
-                        fontSize: "13.5px",
-                        color: "var(--text, #0F172A)",
-                        fontWeight: 500,
-                      }}
-                    >
+                    <td className="text-sm font-medium">
                       <strong>{Number(rule.deductionPerUnit)} ETB</strong> per{" "}
-                      {rule.unit === "g" ? "gram short" : `${rule.unit} short`}
+                      {rule.unit === "g" ? "gram short" : `${toTitleCase(rule.unit)} short`}
                     </td>
-                    <td style={{ fontSize: "13.5px", color: "var(--text-muted, #64748B)" }}>
-                      {rule.unit}
+                    <td className="text-sm text-muted">
+                      {toTitleCase(rule.unit)}
                     </td>
                     <td>
                       {rule.isActive !== false ? (
@@ -96,17 +77,8 @@ export function QualityRulesTable({
                         <span className="badge badge--neutral">Closed</span>
                       )}
                     </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectRule(rule);
-                        }}
-                      >
-                        <span style={{ fontSize: "12px", opacity: 0.8 }}>✏️</span> Edit
-                      </button>
+                    <td className="text-right">
+                      <span className="row-chevron">›</span>
                     </td>
                   </tr>
                 );
@@ -118,3 +90,5 @@ export function QualityRulesTable({
     </div>
   );
 }
+
+export default QualityRulesTable;

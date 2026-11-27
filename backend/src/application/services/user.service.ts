@@ -154,23 +154,23 @@ export class UserService {
     }
     roles = Array.from(new Set(roles));
 
-    // 2. Resolve username (auto-generate from name if omitted/empty)
-    let username = input.username?.trim();
+    // 2. Resolve username (auto-generate from name if omitted/empty, canonical lowercase)
+    let username = input.username?.trim().toLowerCase();
     let isAutoUsername = false;
     if (!username) {
-      username = generateUsernameFromName(fullName);
+      username = generateUsernameFromName(fullName).toLowerCase();
       isAutoUsername = true;
     }
 
-    let existing = await prisma.user.findUnique({
-      where: { username },
+    let existing = await prisma.user.findFirst({
+      where: { username: { equals: username, mode: "insensitive" } },
     });
 
     if (existing) {
       if (isAutoUsername) {
         let counter = 1;
         let candidate = `${username}${counter}`;
-        while (await prisma.user.findUnique({ where: { username: candidate } })) {
+        while (await prisma.user.findFirst({ where: { username: { equals: candidate, mode: "insensitive" } } })) {
           counter++;
           candidate = `${username}${counter}`;
         }
@@ -243,9 +243,9 @@ export class UserService {
       const res = await tx.user.update({
         where: { userId },
         data: {
-          fullName: input.fullName ?? undefined,
-          phone: input.phone ?? undefined,
-          email: input.email ?? undefined,
+          fullName: input.fullName !== undefined ? input.fullName.trim() : undefined,
+          phone: input.phone !== undefined ? input.phone.trim() || null : undefined,
+          email: input.email !== undefined ? input.email.trim() || null : undefined,
           isActive: input.isActive ?? undefined,
         },
         include: {

@@ -3,10 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { paymentsApi } from "../api";
 import { reportService } from "../infrastructure/services";
 import { formatDateDDMMYY } from "../utils/formatDate";
+import { toTitleCase } from "../utils/formatters";
 
 export function ReportsPage() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<"month" | "30days" | "year" | "all" | "custom">("year");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   // Summary financials
   const [revenueBilled, setRevenueBilled] = useState<number>(0);
@@ -29,9 +34,33 @@ export function ReportsPage() {
   const [payments, setPayments] = useState<any[]>([]);
 
   useEffect(() => {
-    // 1. Fetch live commercial summary
+    let start: Date | undefined;
+    let end: Date | undefined;
+    const now = new Date();
+
+    if (period === "month") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = now;
+    } else if (period === "30days") {
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      end = now;
+    } else if (period === "year") {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = now;
+    } else if (period === "custom" && customStartDate) {
+      start = new Date(customStartDate);
+      end = customEndDate ? new Date(customEndDate) : now;
+    }
+
+    setLoading(true);
+    setError("");
+
+    // 1. Fetch live commercial summary with selected date bounds
     reportService
-      .getCommercialSummary()
+      .getCommercialSummary({
+        startDate: start?.toISOString(),
+        endDate: end?.toISOString(),
+      })
       .then((data) => {
         if (data) {
           const fabricRev = data.revenue?.merchantFabricSalesTotal ?? data.fabricSalesRevenue ?? 0;
@@ -57,8 +86,13 @@ export function ReportsPage() {
           setExpenses(totalExp);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load financial summary");
+      })
+      .finally(() => setLoading(false));
+  }, [period, customStartDate, customEndDate]);
 
+  useEffect(() => {
     // 2. Fetch live weavers balance report
     reportService
       .getWeaversBalance()
@@ -67,7 +101,7 @@ export function ReportsPage() {
           const active = balances
             .filter((w) => (w.netPayableBalance && w.netPayableBalance > 0) || w.unsettledPiecesCount > 0)
             .map((w) => ({
-              name: w.fullName,
+              name: toTitleCase(w.fullName),
               meta: w.unsettledPiecesCount > 0
                 ? `${w.unsettledPiecesCount} zigs ready to settle`
                 : "Ready for settlement",
@@ -79,7 +113,7 @@ export function ReportsPage() {
             const pending = balances
               .filter((w) => (w.estimatedPendingPayout || 0) > 0)
               .map((w) => ({
-                name: w.fullName,
+                name: toTitleCase(w.fullName),
                 meta: `${w.activeWorkOrdersCount || 0} zigs in progress`,
                 amount: `${Math.round(w.estimatedPendingPayout || 0).toLocaleString()} ETB`,
               }));
@@ -99,7 +133,7 @@ export function ReportsPage() {
           const mapped = balances
             .filter((m: any) => (m.totalReceivableBalance && m.totalReceivableBalance > 0) || m.unpaidSalesCount > 0)
             .map((m: any) => ({
-              name: m.fullName || m.username || "Merchant",
+              name: toTitleCase(m.fullName || m.username || "Merchant"),
               amount: `${Math.round(m.totalReceivableBalance || 0).toLocaleString()} ETB`,
             }));
           setMerchantsOwed(mapped.slice(0, 5));
@@ -129,26 +163,17 @@ export function ReportsPage() {
             Reports <span className="reports-title-amharic">· ሪፖርቶች</span>
           </h1>
           <p className="reports-subtitle">
-            Financial performance, revenues, expenses, and artisan balances
+            Financial performance, revenues, expenses, and weaver balances
           </p>
         </div>
+      </div>
 
-        <div className="reports-header-actions">
-          <Link to="/admin/reports/production" className="btn btn-secondary">
-            <span>🏭</span> Production & WIP Ledger →
-          </Link>
+      {/* ── Error Banner ── */}
+      {error && (
+        <div className="settlement-alert-error">
+          ⚠️ {error}
         </div>
-      </div>
-
-      {/* ── Section Segmented Navigation Tabs ── */}
-      <div className="reports-segmented-tabs">
-        <Link to="/admin/reports" className="reports-segmented-tab active">
-          Financial Overview
-        </Link>
-        <Link to="/admin/reports/production" className="reports-segmented-tab">
-          Production & WIP Ledger
-        </Link>
-      </div>
+      )}
 
       {/* ── Period Filter Chips ── */}
       <div className="reports-period-row">
@@ -190,26 +215,50 @@ export function ReportsPage() {
             Custom dates...
           </button>
         </div>
+
+        {period === "custom" && (
+          <div className="reports-custom-dates">
+            <input
+              type="date"
+              className="reports-custom-input"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              aria-label="Start date"
+            />
+            <span>to</span>
+            <input
+              type="date"
+              className="reports-custom-input"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              aria-label="End date"
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Top 3 Metric Cards ── */}
       <div className="reports-kpi-grid">
         <div className="reports-kpi-card">
           <span className="reports-kpi-label">Revenue (billed)</span>
-          <div className="reports-kpi-num">{revenueBilled.toLocaleString()}</div>
+          <div className="reports-kpi-num">
+            {loading ? "..." : revenueBilled.toLocaleString()}
+          </div>
           <span className="reports-kpi-sub">ETB total billed</span>
         </div>
 
         <div className="reports-kpi-card">
           <span className="reports-kpi-label">Expenses</span>
-          <div className="reports-kpi-num">{expenses.toLocaleString()}</div>
+          <div className="reports-kpi-num">
+            {loading ? "..." : expenses.toLocaleString()}
+          </div>
           <span className="reports-kpi-sub">ETB yarn, settlements & fabric</span>
         </div>
 
         <div className="reports-kpi-card reports-kpi-peach">
           <span className="reports-kpi-label">Net operating profit</span>
           <div className="reports-kpi-num rust">
-            {netOperatingProfit.toLocaleString()}
+            {loading ? "..." : netOperatingProfit.toLocaleString()}
           </div>
           <span className="reports-kpi-sub">ETB · revenue minus expenses</span>
         </div>
@@ -299,7 +348,7 @@ export function ReportsPage() {
                   <thead>
                     <tr>
                       <th className="reports-th">Ref #</th>
-                      <th className="reports-th">Artisan Weaver</th>
+                      <th className="reports-th">Weaver</th>
                       <th className="reports-th">Payment Date</th>
                       <th className="reports-th text-right">Amount</th>
                       <th className="reports-th text-right">Actions</th>
@@ -308,18 +357,18 @@ export function ReportsPage() {
                   <tbody>
                     {payments.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="reports-td text-center" style={{ color: "#64748B", padding: "2rem" }}>
+                        <td colSpan={5} className="reports-empty-box">
                           No recorded payments found.
                         </td>
                       </tr>
                     ) : (
                       payments.slice(0, 5).map((p) => (
                         <tr key={p.paymentId} className="reports-tr">
-                          <td className="reports-td" style={{ fontFamily: "monospace", fontWeight: 700 }}>
+                          <td className="reports-td reports-ref-num">
                             #{p.paymentId}
                           </td>
                           <td className="reports-td">
-                            {p.weaver?.fullName}
+                            {toTitleCase(p.weaver?.fullName)}
                           </td>
                           <td className="reports-td">
                             {formatDateDDMMYY(p.paymentDate)}
@@ -362,7 +411,7 @@ export function ReportsPage() {
 
             <div className="owed-list">
               {weaversOwed.length === 0 ? (
-                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-text-secondary, #666)", fontSize: "13px" }}>
+                <div className="reports-empty-box">
                   No outstanding weaver settlements pending.
                 </div>
               ) : (
@@ -399,7 +448,7 @@ export function ReportsPage() {
 
             <div className="owed-list">
               {merchantsOwed.length === 0 ? (
-                <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-text-secondary, #666)", fontSize: "13px" }}>
+                <div className="reports-empty-box">
                   No outstanding merchant receivables pending.
                 </div>
               ) : (

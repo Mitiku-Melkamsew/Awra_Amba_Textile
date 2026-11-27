@@ -1,5 +1,6 @@
 import React from "react";
 import { Badge, Button, Card, FormField } from "../../../../components/common";
+import { toTitleCase } from "../../../../utils/formatters";
 
 export interface SuppliersTabProps {
   suppliers: any[];
@@ -27,7 +28,7 @@ export function SuppliersTab({
   saving,
 }: SuppliersTabProps) {
   return (
-    <div className="master-detail" style={{ gridTemplateColumns: "minmax(0, 1fr) 340px" }}>
+    <div className="master-detail">
       {/* Left Column: Suppliers Table */}
       <div className="data-table-container">
         <table className="data-table">
@@ -36,13 +37,13 @@ export function SuppliersTab({
               <th>Supplier · አቅራቢ</th>
               <th>Contact phone</th>
               <th>Status</th>
-              <th className="text-right">Action</th>
+              <th className="text-right"></th>
             </tr>
           </thead>
           <tbody>
             {suppliers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center text-muted" style={{ padding: "var(--space-8)" }}>
+                <td colSpan={4} className="text-center text-muted catalog-empty-cell">
                   No suppliers recorded.
                 </td>
               </tr>
@@ -54,13 +55,10 @@ export function SuppliersTab({
                   <tr
                     key={s.supplierId}
                     onClick={() => onSelectSupplier(s)}
-                    style={{
-                      cursor: "pointer",
-                      background: isSelected ? "var(--orange-bg, #fff7ed)" : undefined,
-                    }}
+                    className={`selectable-row ${isSelected ? "selected" : ""}`}
                   >
                     <td>
-                      <strong className="text-brand text-base">{s.name}</strong>
+                      <strong className="text-brand text-base">{toTitleCase(s.name)}</strong>
                     </td>
                     <td className="text-muted">{s.contactPhone || "—"}</td>
                     <td>
@@ -69,16 +67,7 @@ export function SuppliersTab({
                       </Badge>
                     </td>
                     <td className="text-right">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectSupplier(s);
-                        }}
-                      >
-                        Configure
-                      </Button>
+                      <span className="row-chevron">›</span>
                     </td>
                   </tr>
                 );
@@ -90,13 +79,13 @@ export function SuppliersTab({
 
       {/* Right Column: Edit Supplier Card */}
       {selectedSupplier ? (
-        <Card style={{ position: "sticky", top: "1.5rem", padding: "var(--space-6)" }}>
-          <div className="cluster-between" style={{ marginBottom: "var(--space-4)" }}>
+        <Card className="catalog-edit-card">
+          <div className="cluster-between catalog-edit-header">
             <div>
-              <h3 className="text-lg font-bold" style={{ margin: 0 }}>
-                Edit supplier · {selectedSupplier.name}
+              <h3 className="text-lg font-bold">
+                Edit supplier · {toTitleCase(selectedSupplier.name)}
               </h3>
-              <p className="text-muted text-xs" style={{ margin: 0 }}>
+              <p className="text-muted text-xs">
                 Update vendor details and status
               </p>
             </div>
@@ -131,13 +120,13 @@ export function SuppliersTab({
               />
             </FormField>
 
-            <Button type="submit" variant="primary" isLoading={saving} style={{ width: "100%" }}>
+            <Button type="submit" variant="primary" isLoading={saving} className="btn-full-width">
               Save changes
             </Button>
           </form>
         </Card>
       ) : (
-        <Card style={{ padding: "var(--space-6)", textAlign: "center" }}>
+        <Card className="catalog-edit-placeholder">
           <p className="text-muted text-sm">Select a supplier to edit details</p>
         </Card>
       )}

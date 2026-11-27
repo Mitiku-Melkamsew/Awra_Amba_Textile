@@ -38,7 +38,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading && <span className="spinner spinner-sm" aria-hidden="true" />}
-        {!isLoading && icon && <span className="btn-icon" aria-hidden="true">{icon}</span>}
+        {!isLoading && icon && <span className="btn-addon" aria-hidden="true">{icon}</span>}
         {children}
       </button>
     );

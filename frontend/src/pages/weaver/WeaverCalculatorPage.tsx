@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { catalogApi, type Fabric, type QualityRuleRow, type FabricPriceRow } from "../../api";
+import { toTitleCase } from "../../utils/formatters";
 
 export function WeaverCalculatorPage() {
   const [fabrics, setFabrics] = useState<Fabric[]>([]);
@@ -16,13 +17,25 @@ export function WeaverCalculatorPage() {
     setLoading(true);
     Promise.all([
       catalogApi.fabrics().catch(() => []),
-      catalogApi.fabricPrices().catch(() => []),
+      catalogApi.fabricPrices({ activeOnly: true }).catch(() => []),
       catalogApi.qualityRules().catch(() => []),
     ])
       .then(([fList, pList, qrList]) => {
+        const now = new Date();
         const activeFabrics = fList.filter((f: any) => f.isActive !== false);
         setFabrics(activeFabrics);
-        setPrices(pList.filter((p: any) => p.isActive !== false));
+
+        const activePricesMap = new Map<number, FabricPriceRow>();
+        const sortedPrices = [...pList].sort(
+          (a, b) => new Date(b.effectiveFrom || 0).getTime() - new Date(a.effectiveFrom || 0).getTime()
+        );
+        for (const p of sortedPrices) {
+          const isNotExpired = !p.effectiveTo || new Date(p.effectiveTo) > now;
+          if (p.isActive !== false && isNotExpired && !activePricesMap.has(p.fabricId)) {
+            activePricesMap.set(p.fabricId, p);
+          }
+        }
+        setPrices(Array.from(activePricesMap.values()));
         setQualityRules(qrList.filter((r: any) => r.isActive !== false));
 
         if (activeFabrics.length > 0) {
@@ -123,7 +136,7 @@ export function WeaverCalculatorPage() {
             >
               {fabrics.map((f) => (
                 <option key={f.fabricId} value={f.fabricId}>
-                  {f.name}
+                  {toTitleCase(f.name)}
                 </option>
               ))}
             </select>

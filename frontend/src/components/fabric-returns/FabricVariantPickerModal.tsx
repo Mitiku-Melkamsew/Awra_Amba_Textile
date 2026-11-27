@@ -81,7 +81,7 @@ export function FabricVariantPickerModal({
     if (!q) return active.slice(0, 10);
     return active.filter((v) => {
       const name = fabricVariantName(v).toLowerCase();
-      const dotName = name.split("-").join(" ");
+      const dotName = fabricVariantName(v, " ").toLowerCase();
       const sku = (v.sku ?? "").toLowerCase();
       return name.includes(q) || dotName.includes(q) || sku.includes(q);
     });
@@ -90,7 +90,7 @@ export function FabricVariantPickerModal({
   const recentlyUsedPills = useMemo(() => {
     const list: Array<{ label: string; variant: FabricVariant }> = [];
     fabricVariants.slice(0, 3).forEach((v) => {
-      const label = fabricVariantName(v).split("-").join(" · ");
+      const label = fabricVariantName(v, " · ");
       list.push({ label, variant: v });
     });
     return list;
@@ -168,7 +168,7 @@ export function FabricVariantPickerModal({
             }}
           >
             {filteredModalVariants.map((v) => {
-              const label = fabricVariantName(v).split("-").join(" · ");
+              const label = fabricVariantName(v, " · ");
               const isCurrent = v.fabricVariantId === selectedVariantId;
               return (
                 <div

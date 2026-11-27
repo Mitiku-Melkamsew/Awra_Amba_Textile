@@ -179,7 +179,7 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     const warp = selectedWarpColor?.name;
     const weft = selectedWeftColor?.name;
     const des = selectedDesign?.name;
-    return fabricNameFromParts(prodName, warp, weft, des).split("-").join(" · ");
+    return fabricNameFromParts(prodName, warp, weft, des, " · ");
   }, [selectedFabric, selectedWarpColor, selectedWeftColor, selectedDesign]);
 
   const fabricSpecs = useMemo(() => {
@@ -374,7 +374,7 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!targetUserId) {
-      setError("Artisan / Weaver ID is missing.");
+      setError("Weaver ID is missing.");
       return;
     }
     if (validationProblems.length > 0) {

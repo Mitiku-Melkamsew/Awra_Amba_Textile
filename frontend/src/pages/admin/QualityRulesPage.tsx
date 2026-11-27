@@ -33,13 +33,13 @@ export function QualityRulesPage() {
   return (
     <div className="page">
       {/* ── Page Header ── */}
-      <div className="page-header" style={{ marginBottom: "1.25rem" }}>
+      <div className="page-header mb-5">
         <div>
           <h1 className="page-title">
-            Quality deduction rules <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "20px" }}>· ጥራት</span>
+            Quality deduction rules <span className="prices-title-amharic">· ጥራት</span>
           </h1>
           <p className="page-subtitle">
-            Deducted when a fabric's average weight is below its standard
+            Deducted when returned fabric measurements fall below standard or have recorded defects
           </p>
         </div>
 
@@ -56,15 +56,7 @@ export function QualityRulesPage() {
       </div>
 
       {/* ── Controls Row ── */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          marginBottom: "0.75rem",
-          maxWidth: selectedRule ? "calc(100% - 364px)" : "100%",
-        }}
-      >
+      <div className="quality-controls-row">
         <label className="checkbox-filter-label">
           <input
             type="checkbox"
@@ -77,12 +69,12 @@ export function QualityRulesPage() {
       </div>
 
       {statusMessage && (
-        <div className="success-msg" style={{ marginBottom: "1rem" }}>
+        <div className="success-msg mb-4">
           <span>✅</span> {statusMessage}
         </div>
       )}
       {errorMessage && (
-        <div className="error-msg" style={{ marginBottom: "1rem" }}>
+        <div className="error-msg mb-4">
           <span>⚠️</span> {errorMessage}
         </div>
       )}

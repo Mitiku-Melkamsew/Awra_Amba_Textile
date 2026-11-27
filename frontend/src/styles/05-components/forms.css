@@ -156,6 +156,21 @@
     color: var(--text-subtle, #94A3B8);
   }
 
+  .form-field-gap {
+    margin-top: var(--space-3, 0.75rem);
+  }
+
+  .info-callout-gap {
+    margin-top: var(--space-4, 1rem);
+  }
+
+  .modal-actions-right {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3, 0.75rem);
+    margin-top: var(--space-6, 1.5rem);
+  }
+
   .search-input {
     flex: 1;
     min-width: 240px;
@@ -241,5 +256,204 @@
     .form-row-3 {
       grid-template-columns: 1fr;
     }
+  }
+
+  /* ── Fabric Return Quality Deductions ───────────────────── */
+  .deductions-box {
+    background: var(--bg-subtle, #f8fafc);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: var(--radius-md, 10px);
+    padding: var(--space-4, 1rem);
+    margin-top: var(--space-5, 1.25rem);
+  }
+
+  .deductions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2, 0.5rem);
+  }
+
+  .deductions-header-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    font-size: var(--text-sm, 14px);
+    font-weight: var(--font-bold, 700);
+    color: var(--text, #0f172a);
+  }
+
+  .deductions-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2, 0.5rem);
+    margin-bottom: var(--space-3, 0.75rem);
+  }
+
+  .deduction-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--amber-border, #fed7aa);
+    border-radius: var(--radius-sm, 6px);
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    font-size: var(--text-xs, 12px);
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .deduction-item-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    flex-wrap: wrap;
+  }
+
+  .deduction-factor-tag {
+    background: var(--amber-bg, #ffedd5);
+    color: var(--amber-fg, #9a3412);
+    font-weight: var(--font-bold, 700);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    letter-spacing: 0.025em;
+  }
+
+  .deduction-rate {
+    font-weight: var(--font-semibold, 600);
+    color: var(--red, #dc2626);
+  }
+
+  .deduction-subtotal {
+    color: var(--text-muted, #64748b);
+    font-size: 11px;
+  }
+
+  .deduction-remark {
+    color: var(--text-muted, #64748b);
+    font-size: 11px;
+    font-style: italic;
+  }
+
+  .deduction-cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid var(--border, #cbd5e1);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--red, #dc2626);
+    font-size: 11px;
+    font-weight: var(--font-semibold, 600);
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .deduction-cancel-btn:hover {
+    background: var(--red-bg, #fef2f2);
+    border-color: var(--red, #dc2626);
+  }
+
+  .deductions-waived-section {
+    background: var(--surface, #ffffff);
+    border: 1px dashed var(--border, #cbd5e1);
+    border-radius: var(--radius-sm, 6px);
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    margin-bottom: var(--space-3, 0.75rem);
+  }
+
+  .deductions-waived-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    font-size: 11px;
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-muted, #64748b);
+    margin-bottom: var(--space-1, 4px);
+  }
+
+  .deduction-waived-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-1, 4px) 0;
+    font-size: 12px;
+    border-top: 1px dashed var(--border-subtle, #f1f5f9);
+    gap: var(--space-2, 0.5rem);
+  }
+
+  .deduction-waived-item:first-of-type {
+    border-top: none;
+  }
+
+  .deduction-restore-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid var(--accent, #ea580c);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--accent, #ea580c);
+    font-size: 11px;
+    font-weight: var(--font-semibold, 600);
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .deduction-restore-btn:hover {
+    background: var(--amber-bg, #fffbeb);
+  }
+
+  .deductions-empty {
+    margin: 0;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748b);
+    font-style: italic;
+  }
+
+  .deductions-totals {
+    border-top: 1px solid var(--border, #e2e8f0);
+    margin-top: var(--space-3, 0.75rem);
+    padding-top: var(--space-2, 0.5rem);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2, 0.5rem);
+    font-size: var(--text-xs, 12px);
+  }
+
+  .deductions-custom-form {
+    background: var(--surface, #ffffff);
+    border: 1px dashed var(--border, #cbd5e1);
+    border-radius: var(--radius-sm, 6px);
+    padding: var(--space-3, 0.75rem);
+    margin-top: var(--space-2, 0.5rem);
+  }
+
+  .deductions-custom-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: var(--space-2, 0.5rem);
+    margin-bottom: var(--space-2, 0.5rem);
+  }
+
+  .deductions-custom-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2, 0.5rem);
+    margin-top: var(--space-2, 0.5rem);
+  }
+
+  .quality-indicators-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 0.5rem);
+    margin-top: var(--space-2, 0.5rem);
+    flex-wrap: wrap;
   }
 }

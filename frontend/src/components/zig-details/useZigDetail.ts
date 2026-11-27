@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   catalogApi,
   workOrdersApi,
@@ -38,8 +39,17 @@ export function useZigDetail({
   const [editingYarnRemark, setEditingYarnRemark] = useState("");
 
   // Fabric return record / edit section state
-  const [recordReturnOpen, setRecordReturnOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const shouldOpenReturn =
+    searchParams.get("action") === "return" || searchParams.get("return") === "1";
+  const [recordReturnOpen, setRecordReturnOpen] = useState(shouldOpenReturn);
   const [editingFabricReturn, setEditingFabricReturn] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (shouldOpenReturn) {
+      setRecordReturnOpen(true);
+    }
+  }, [shouldOpenReturn]);
 
   // Cancel Confirmation Modal state
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -247,9 +257,9 @@ export function useZigDetail({
 
   const fabricDisplayName = useMemo(() => {
     if (order.fabricVariant) {
-      return fabricVariantName(order.fabricVariant).split("-").join(" · ");
+      return fabricVariantName(order.fabricVariant, " · ");
     }
-    return order.fabric?.name || "medebegna · biret · geberdin";
+    return order.fabric?.name || "Medebegna · Biret · Geberdin";
   }, [order.fabricVariant, order.fabric]);
 
   const weaverDisplayName =

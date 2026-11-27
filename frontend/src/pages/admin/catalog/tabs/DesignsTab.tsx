@@ -1,5 +1,6 @@
 import React from "react";
 import { Button, Card, FormField } from "../../../../components/common";
+import { toTitleCase } from "../../../../utils/formatters";
 
 export interface DesignsTabProps {
   designs: any[];
@@ -7,8 +8,8 @@ export interface DesignsTabProps {
   onSelectDesign: (d: any) => void;
   editName: string;
   onEditNameChange: (val: string) => void;
-  editDescription: string;
-  onEditDescriptionChange: (val: string) => void;
+  editDescription?: string;
+  onEditDescriptionChange?: (val: string) => void;
   onSaveSpecs: (e: React.FormEvent) => Promise<void>;
   saving: boolean;
 }
@@ -19,28 +20,25 @@ export function DesignsTab({
   onSelectDesign,
   editName,
   onEditNameChange,
-  editDescription,
-  onEditDescriptionChange,
   onSaveSpecs,
   saving,
 }: DesignsTabProps) {
   return (
-    <div className="master-detail" style={{ gridTemplateColumns: "minmax(0, 1fr) 340px" }}>
+    <div className="master-detail">
       {/* Left Column: Designs Table */}
       <div className="data-table-container">
         <table className="data-table">
           <thead>
             <tr>
               <th>Design pattern · ጥበብ/ስልት</th>
-              <th>Description</th>
               <th>ID</th>
-              <th className="text-right">Action</th>
+              <th className="text-right"></th>
             </tr>
           </thead>
           <tbody>
             {designs.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-center text-muted" style={{ padding: "var(--space-8)" }}>
+                <td colSpan={3} className="text-center text-muted catalog-empty-cell">
                   No designs recorded.
                 </td>
               </tr>
@@ -51,27 +49,14 @@ export function DesignsTab({
                   <tr
                     key={d.designId}
                     onClick={() => onSelectDesign(d)}
-                    style={{
-                      cursor: "pointer",
-                      background: isSelected ? "var(--orange-bg, #fff7ed)" : undefined,
-                    }}
+                    className={`selectable-row ${isSelected ? "selected" : ""}`}
                   >
                     <td>
-                      <strong className="text-brand text-base">{d.name}</strong>
+                      <strong className="text-brand text-base">{toTitleCase(d.name)}</strong>
                     </td>
-                    <td className="text-muted">{d.description || "—"}</td>
                     <td className="text-muted">#{d.designId}</td>
                     <td className="text-right">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectDesign(d);
-                        }}
-                      >
-                        Edit
-                      </Button>
+                      <span className="row-chevron">›</span>
                     </td>
                   </tr>
                 );
@@ -83,14 +68,14 @@ export function DesignsTab({
 
       {/* Right Column: Edit Design Card */}
       {selectedDesign ? (
-        <Card style={{ position: "sticky", top: "1.5rem", padding: "var(--space-6)" }}>
-          <div className="cluster-between" style={{ marginBottom: "var(--space-4)" }}>
+        <Card className="catalog-edit-card">
+          <div className="cluster-between catalog-edit-header">
             <div>
-              <h3 className="text-lg font-bold" style={{ margin: 0 }}>
-                Edit design · {selectedDesign.name}
+              <h3 className="text-lg font-bold">
+                Edit design · {toTitleCase(selectedDesign.name)}
               </h3>
-              <p className="text-muted text-xs" style={{ margin: 0 }}>
-                Update pattern details
+              <p className="text-muted text-xs">
+                Update pattern name
               </p>
             </div>
           </div>
@@ -106,23 +91,13 @@ export function DesignsTab({
               />
             </FormField>
 
-            <FormField label="Description · መግለጫ">
-              <input
-                type="text"
-                className="input"
-                value={editDescription}
-                onChange={(e) => onEditDescriptionChange(e.target.value)}
-                placeholder="Optional notes or motif description"
-              />
-            </FormField>
-
-            <Button type="submit" variant="primary" isLoading={saving} style={{ width: "100%" }}>
+            <Button type="submit" variant="primary" isLoading={saving} className="btn-full-width">
               Save changes
             </Button>
           </form>
         </Card>
       ) : (
-        <Card style={{ padding: "var(--space-6)", textAlign: "center" }}>
+        <Card className="catalog-edit-placeholder">
           <p className="text-muted text-sm">Select a design pattern to edit its details</p>
         </Card>
       )}

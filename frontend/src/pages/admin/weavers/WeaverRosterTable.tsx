@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import type { Weaver } from "../../../api";
+import { toTitleCase } from "../../../utils/formatters";
 
 export interface WeaverRosterTableProps {
   weavers: Weaver[];
@@ -34,12 +35,12 @@ export function WeaverRosterTable({
           <div className="weavers-empty-sub">
             {search
               ? "Try searching for a different name, phone, or ID."
-              : "Click '+ Add weaver' above to register the first artisan."}
+              : "Click '+ Add weaver' above to register the first weaver."}
           </div>
         </div>
       ) : (
         weavers.map((weaver, index) => {
-          const displayName = weaver.fullName || `Weaver #${weaver.userId}`;
+          const displayName = toTitleCase(weaver.fullName) || `Weaver #${weaver.userId}`;
           const isDeactivated = weaver.isActive === false || weaver.user?.isActive === false;
 
           return (

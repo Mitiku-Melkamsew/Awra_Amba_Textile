@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { UserSummary, UserRole } from "../../../domain/models";
 import { userService } from "../../../infrastructure/services";
 import { Badge, Button, Card } from "../../../components/common";
+import { toTitleCase } from "../../../utils/formatters";
 
 export interface UserProfilePaneProps {
   user: UserSummary | null;
@@ -36,8 +37,8 @@ export function UserProfilePane({
 
   if (!user) {
     return (
-      <Card style={{ position: "sticky", top: "1.5rem" }}>
-        <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--text-muted)" }}>
+      <Card className="user-profile-card">
+        <div className="user-profile-empty">
           Select a user to manage roles and account details.
         </div>
       </Card>
@@ -57,7 +58,7 @@ export function UserProfilePane({
     setSavingRoles(true);
     try {
       await userService.updateUserRoles(user.userId, paneRoles);
-      showSuccess(`Roles successfully updated for ${user.fullName}.`);
+      showSuccess(`Roles successfully updated for ${toTitleCase(user.fullName)}.`);
       onUserUpdated({ ...user, roles: paneRoles });
     } catch (err: any) {
       onError(err.message || "Failed to update roles");
@@ -85,7 +86,7 @@ export function UserProfilePane({
   const handleReactivate = async () => {
     try {
       await userService.toggleUserStatus(user.userId, true);
-      showSuccess(`${user.fullName} has been reactivated.`);
+      showSuccess(`${toTitleCase(user.fullName)} has been reactivated.`);
       onUserUpdated({ ...user, isActive: true });
     } catch (err: any) {
       onError(err.message || "Failed to update status");
@@ -93,28 +94,15 @@ export function UserProfilePane({
   };
 
   return (
-    <Card style={{ position: "sticky", top: "1.5rem", padding: "var(--space-6)" }}>
+    <Card className="user-profile-card">
       {/* User Header */}
-      <div className="cluster-between" style={{ marginBottom: "var(--space-6)" }}>
+      <div className="cluster-between user-profile-header">
         <div className="cluster">
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: "var(--brand-light, #ffedd5)",
-              color: "var(--brand, #c2410c)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 800,
-              fontSize: "18px",
-            }}
-          >
+          <div className="user-avatar-lg">
             {(user.fullName[0] || "U").toUpperCase()}
           </div>
           <div>
-            <h3 className="card-title">{user.fullName}</h3>
+            <h3 className="card-title">{toTitleCase(user.fullName)}</h3>
             <div className="text-sm text-muted">@{user.username}</div>
           </div>
         </div>
@@ -125,32 +113,24 @@ export function UserProfilePane({
       </div>
 
       {/* Roles Section */}
-      <div className="stack-sm" style={{ marginBottom: "var(--space-6)" }}>
+      <div className="stack-sm user-profile-section">
         <h4 className="text-sm font-bold">Roles & Permissions</h4>
 
         <div className="stack-sm">
           {/* Weaver Role Card */}
           <div
             onClick={() => handleToggleRole("weaver")}
-            className="cluster"
-            style={{
-              alignItems: "flex-start",
-              border: `1.5px solid ${paneRoles.includes("weaver") ? "var(--brand)" : "var(--border)"}`,
-              background: paneRoles.includes("weaver") ? "var(--orange-bg, #fffdf5)" : "var(--surface)",
-              borderRadius: "var(--radius-sm)",
-              padding: "var(--space-3)",
-              cursor: "pointer",
-            }}
+            className={`user-role-card ${paneRoles.includes("weaver") ? "selected" : ""}`}
           >
             <input
               type="checkbox"
               checked={paneRoles.includes("weaver")}
               onChange={() => {}}
-              style={{ marginTop: "3px", accentColor: "var(--brand)" }}
+              className="user-role-checkbox"
             />
-            <div style={{ flex: 1 }}>
-              <div className="font-bold text-sm">Weaver (ሸማኔ)</div>
-              <div className="text-xs text-muted" style={{ marginTop: "2px" }}>
+            <div className="user-role-content">
+              <div className="user-role-title">Weaver (ሸማኔ)</div>
+              <div className="user-role-desc">
                 Access to personal zigs, settlements, wage calculations and rates.
               </div>
             </div>
@@ -159,25 +139,17 @@ export function UserProfilePane({
           {/* Merchant Role Card */}
           <div
             onClick={() => handleToggleRole("merchant")}
-            className="cluster"
-            style={{
-              alignItems: "flex-start",
-              border: `1.5px solid ${paneRoles.includes("merchant") ? "var(--brand)" : "var(--border)"}`,
-              background: paneRoles.includes("merchant") ? "var(--orange-bg, #fffdf5)" : "var(--surface)",
-              borderRadius: "var(--radius-sm)",
-              padding: "var(--space-3)",
-              cursor: "pointer",
-            }}
+            className={`user-role-card ${paneRoles.includes("merchant") ? "selected" : ""}`}
           >
             <input
               type="checkbox"
               checked={paneRoles.includes("merchant")}
               onChange={() => {}}
-              style={{ marginTop: "3px", accentColor: "var(--brand)" }}
+              className="user-role-checkbox"
             />
-            <div style={{ flex: 1 }}>
-              <div className="font-bold text-sm">Merchant (ነጋዴ)</div>
-              <div className="text-xs text-muted" style={{ marginTop: "2px" }}>
+            <div className="user-role-content">
+              <div className="user-role-title">Merchant (ነጋዴ)</div>
+              <div className="user-role-desc">
                 Access to wholesale catalog and commercial orders.
               </div>
             </div>
@@ -186,25 +158,17 @@ export function UserProfilePane({
           {/* Admin Role Card */}
           <div
             onClick={() => handleToggleRole("admin")}
-            className="cluster"
-            style={{
-              alignItems: "flex-start",
-              border: `1.5px solid ${paneRoles.includes("admin") ? "var(--brand)" : "var(--border)"}`,
-              background: paneRoles.includes("admin") ? "var(--orange-bg, #fffdf5)" : "var(--surface)",
-              borderRadius: "var(--radius-sm)",
-              padding: "var(--space-3)",
-              cursor: "pointer",
-            }}
+            className={`user-role-card ${paneRoles.includes("admin") ? "selected" : ""}`}
           >
             <input
               type="checkbox"
               checked={paneRoles.includes("admin")}
               onChange={() => {}}
-              style={{ marginTop: "3px", accentColor: "var(--brand)" }}
+              className="user-role-checkbox"
             />
-            <div style={{ flex: 1 }}>
-              <div className="font-bold text-sm">Administrator</div>
-              <div className="text-xs text-muted" style={{ marginTop: "2px" }}>
+            <div className="user-role-content">
+              <div className="user-role-title">Administrator</div>
+              <div className="user-role-desc">
                 Full system control: users, prices, inventory, payroll settlements.
               </div>
             </div>
@@ -215,20 +179,21 @@ export function UserProfilePane({
           variant="primary"
           onClick={handleSaveRoles}
           isLoading={savingRoles}
-          style={{ width: "100%", marginTop: "var(--space-2)" }}
+          fullWidth
+          className="mt-2"
         >
           Save roles
         </Button>
       </div>
 
       {/* Password Management */}
-      <div className="stack-sm" style={{ marginBottom: "var(--space-6)" }}>
+      <div className="stack-sm user-profile-section">
         <h4 className="text-sm font-bold">Password</h4>
         {!showPasswordReset ? (
           <Button
             variant="secondary"
             onClick={() => setShowPasswordReset(true)}
-            style={{ width: "100%" }}
+            fullWidth
           >
             Reset password
           </Button>
@@ -242,7 +207,7 @@ export function UserProfilePane({
               onChange={(e) => setNewPasswordInput(e.target.value)}
               required
             />
-            <div className="cluster" style={{ gap: "var(--space-2)" }}>
+            <div className="cluster gap-sm">
               <Button
                 type="button"
                 variant="secondary"
@@ -251,7 +216,7 @@ export function UserProfilePane({
                   setShowPasswordReset(false);
                   setNewPasswordInput("");
                 }}
-                style={{ flex: 1 }}
+                fullWidth
               >
                 Cancel
               </Button>
@@ -260,7 +225,7 @@ export function UserProfilePane({
                 variant="primary"
                 size="sm"
                 isLoading={resettingPassword}
-                style={{ flex: 1 }}
+                fullWidth
               >
                 Update
               </Button>
@@ -278,11 +243,11 @@ export function UserProfilePane({
               variant="danger"
               size="sm"
               onClick={onOpenDeactivateModal}
-              style={{ width: "100%" }}
+              fullWidth
             >
               Deactivate user…
             </Button>
-            <p className="text-xs text-muted" style={{ marginTop: "var(--space-1)" }}>
+            <p className="text-xs text-muted mt-1">
               They will no longer be able to sign in. All historical records remain intact.
             </p>
           </div>
@@ -292,11 +257,11 @@ export function UserProfilePane({
               variant="secondary"
               size="sm"
               onClick={handleReactivate}
-              style={{ width: "100%", color: "var(--green)" }}
+              fullWidth
             >
               Reactivate user…
             </Button>
-            <p className="text-xs text-muted" style={{ marginTop: "var(--space-1)" }}>
+            <p className="text-xs text-muted mt-1">
               Restores login access for this user.
             </p>
           </div>

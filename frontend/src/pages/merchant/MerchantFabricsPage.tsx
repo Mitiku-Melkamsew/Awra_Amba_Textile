@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { merchantApi } from "../../api";
 import type { AvailableFabric } from "../../api";
+import { toTitleCase } from "../../utils/formatters";
 
 function derivePattern(design: string): "geberdin" | "zigzag" | "stripes" {
   const d = (design || "").toLowerCase();
@@ -172,7 +173,7 @@ export function MerchantFabricsPage() {
                     onChange={() => toggleFabric(f.name)}
                     className="merchant-filter-checkbox"
                   />
-                  <span>{f.name}</span>
+                  <span>{toTitleCase(f.name)}</span>
                 </div>
                 <span className="merchant-filter-count">{f.count}</span>
               </label>
@@ -197,7 +198,7 @@ export function MerchantFabricsPage() {
                     onChange={() => toggleWarp(w.name)}
                     className="merchant-filter-checkbox"
                   />
-                  <span>{w.name}</span>
+                  <span>{toTitleCase(w.name)}</span>
                 </div>
                 <span className="merchant-filter-count">{w.count}</span>
               </label>
@@ -223,7 +224,7 @@ export function MerchantFabricsPage() {
                     onChange={() => toggleWeft(w.name)}
                     className="merchant-filter-checkbox"
                   />
-                  <span>{w.name}</span>
+                  <span>{toTitleCase(w.name)}</span>
                 </div>
                 <span className="merchant-filter-count">{w.count}</span>
               </label>
@@ -260,7 +261,7 @@ export function MerchantFabricsPage() {
           <div className="merchant-active-chips">
             {selectedFabrics.map((f) => (
               <span key={f} className="merchant-filter-chip">
-                <span>Fabric: {f}</span>
+                <span>Fabric: {toTitleCase(f)}</span>
                 <button
                   type="button"
                   onClick={() => toggleFabric(f)}
@@ -273,7 +274,7 @@ export function MerchantFabricsPage() {
 
             {selectedWarps.map((w) => (
               <span key={w} className="merchant-filter-chip">
-                <span>Warp: {w}</span>
+                <span>Warp: {toTitleCase(w)}</span>
                 <button
                   type="button"
                   onClick={() => toggleWarp(w)}
@@ -286,7 +287,7 @@ export function MerchantFabricsPage() {
 
             {selectedWefts.map((w) => (
               <span key={w} className="merchant-filter-chip">
-                <span>Weft: {w}</span>
+                <span>Weft: {toTitleCase(w)}</span>
                 <button
                   type="button"
                   onClick={() => toggleWeft(w)}
@@ -340,14 +341,14 @@ export function MerchantFabricsPage() {
         ) : (
           <div className="merchant-fabrics-grid">
             {filteredFabrics.map((f) => {
-              const fname = (f.fabricName || "fabric").toLowerCase();
-              const warp = (f.warpColor || "natural").toLowerCase();
-              const weft = (f.weftColor || "natural").toLowerCase();
-              const design = (f.design || "standard").toLowerCase();
-              const patternType = derivePattern(design);
+              const fname = toTitleCase(f.fabricName || "Fabric");
+              const warp = toTitleCase(f.warpColor || "Natural");
+              const weft = toTitleCase(f.weftColor || "Natural");
+              const design = toTitleCase(f.design || "Standard");
+              const patternType = derivePattern(f.design || "");
 
               const title = `${fname} · ${warp} · ${design}`;
-              const patternDesc = `Pattern ${design} · warp ${warp} / weft ${weft}`;
+              const patternDesc = `Pattern ${design} · Warp ${warp} / Weft ${weft}`;
               const specs = `${f.standardWeightG ?? 64} g · ${f.standardLengthCm ?? 240} × ${
                 f.standardWidthCm ?? 150
               } cm`;

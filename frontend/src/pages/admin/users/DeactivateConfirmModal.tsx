@@ -26,12 +26,12 @@ export function DeactivateConfirmModal({
       maxWidth={440}
     >
       <div className="stack">
-        <p className="text-sm text-muted" style={{ lineHeight: 1.5 }}>
+        <p className="text-sm text-muted">
           They will no longer be able to sign in to the platform. All historical transactions,
           work orders, and payment records will remain completely intact.
         </p>
 
-        <div className="cluster" style={{ justifyContent: "flex-end", gap: "var(--space-2)" }}>
+        <div className="modal-actions-cluster">
           <Button variant="secondary" onClick={onClose} disabled={isProcessing}>
             Cancel
           </Button>

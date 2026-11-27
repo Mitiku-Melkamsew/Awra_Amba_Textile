@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import type { FabricPriceItem } from "./types";
+import { toTitleCase } from "../../../utils/formatters";
 
 export interface FabricPricesTableProps {
   items: FabricPriceItem[];
@@ -20,91 +21,75 @@ export function FabricPricesTable({
         <table className="data-table">
           <thead>
             <tr>
-              <th style={{ width: "24%" }}>Fabric · ጨርቅ</th>
-              <th style={{ width: "18%", textAlign: "right" }}>Weaver rate</th>
-              <th style={{ width: "18%", textAlign: "right" }}>Selling price</th>
-              <th style={{ width: "16%" }}>In effect since</th>
-              <th style={{ width: "12%" }}>Status</th>
-              <th style={{ width: "12%", textAlign: "right" }}></th>
+              <th className="fabric-col-name">Fabric · ጨርቅ</th>
+              <th className="fabric-col-rate">Weaver rate</th>
+              <th className="fabric-col-selling">Selling price</th>
+              <th className="fabric-col-date">In effect since</th>
+              <th className="fabric-col-status">Status</th>
+              <th className="fabric-col-action"></th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td
-                  colSpan={6}
-                  style={{
-                    textAlign: "center",
-                    padding: "2.5rem 1rem",
-                    color: "var(--text-muted, #64748B)",
-                    fontSize: "14px",
-                  }}
-                >
+                <td colSpan={6} className="text-center text-muted p-8">
                   No fabric prices found. Click "+ Set new price" to record official rates.
                 </td>
               </tr>
             ) : (
               items.map((item) => {
-              const isSelected = selectedItem?.id === item.id;
+                const isSelected = selectedItem?.id === item.id;
 
-              return (
-                <Fragment key={item.id}>
-                  {/* Current price row */}
-                  <tr
-                    className={`price-row ${isSelected ? "price-row-selected" : ""}`}
-                    onClick={() => onSelect(item)}
-                  >
-                    <td>
-                      <span className="price-item-name">{item.name}</span>
-                    </td>
-                    <td style={{ textAlign: "right", fontWeight: 700, fontSize: "14px" }}>
-                      {item.weaverRate.toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: "right", fontWeight: 700, fontSize: "14px" }}>
-                      {item.sellingPrice.toLocaleString()}
-                    </td>
-                    <td style={{ color: "var(--text-muted, #64748B)", fontSize: "13px" }}>
-                      {item.inEffectSince}
-                    </td>
-                    <td>
-                      <span className="badge badge--success">✓ Current</span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelect(item);
-                        }}
-                      >
-                        <span style={{ fontSize: "12px", opacity: 0.8 }}>✏️</span> Edit
-                      </button>
-                    </td>
-                  </tr>
-
-                  {/* Earlier price row */}
-                  {showClosed && item.earlierPrice && (
-                    <tr className="price-earlier-row">
-                      <td className="earlier-price-label">Earlier price</td>
-                      <td style={{ textAlign: "right", color: "var(--text-muted, #64748B)", fontSize: "13px" }}>
-                        {item.earlierPrice.weaverRate?.toLocaleString()}
+                return (
+                  <Fragment key={item.id}>
+                    {/* Current price row */}
+                    <tr
+                      className={`price-row selectable-row ${isSelected ? "price-row-selected selected" : ""}`}
+                      onClick={() => onSelect(item)}
+                    >
+                      <td>
+                        <span className="price-item-name">{toTitleCase(item.name)}</span>
                       </td>
-                      <td style={{ textAlign: "right", color: "var(--text-muted, #64748B)", fontSize: "13px" }}>
-                        {item.earlierPrice.sellingPrice?.toLocaleString()}
+                      <td className="text-right font-bold text-sm">
+                        {item.weaverRate.toLocaleString()}
                       </td>
-                      <td style={{ color: "var(--text-muted, #64748B)", fontSize: "12px" }}>
-                        {item.earlierPrice.period}
+                      <td className="text-right font-bold text-sm">
+                        {item.sellingPrice.toLocaleString()}
+                      </td>
+                      <td className="text-muted text-xs">
+                        {item.inEffectSince}
                       </td>
                       <td>
-                        <span className="badge badge--neutral">Closed</span>
+                        <span className="badge badge--success">✓ Current</span>
                       </td>
-                      <td></td>
+                      <td className="text-right">
+                        <span className="row-chevron">›</span>
+                      </td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            }))}
+
+                    {/* Earlier price row */}
+                    {showClosed && item.earlierPrice && (
+                      <tr className="price-earlier-row">
+                        <td className="earlier-price-label">Earlier price</td>
+                        <td className="text-right text-muted text-xs">
+                          {item.earlierPrice.weaverRate?.toLocaleString()}
+                        </td>
+                        <td className="text-right text-muted text-xs">
+                          {item.earlierPrice.sellingPrice?.toLocaleString()}
+                        </td>
+                        <td className="text-muted text-xs">
+                          {item.earlierPrice.period}
+                        </td>
+                        <td>
+                          <span className="badge badge--neutral">Closed</span>
+                        </td>
+                        <td></td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -115,3 +100,5 @@ export function FabricPricesTable({
     </div>
   );
 }
+
+export default FabricPricesTable;

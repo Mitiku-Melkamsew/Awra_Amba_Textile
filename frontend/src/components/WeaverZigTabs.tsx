@@ -262,7 +262,7 @@ export function WeaverZigTabs({
         >
           <span style={{ fontSize: "1.2rem" }}>⚠️</span>
           <span>
-            <strong>Account Deactivated:</strong> This artisan account is inactive.
+            <strong>Account Deactivated:</strong> This weaver account is inactive.
             Existing work orders and history remain viewable for reconciliation, but new zigs cannot be issued to this weaver.
           </span>
         </div>
@@ -471,8 +471,8 @@ export function WeaverZigTabs({
           ) : (
             filteredOrders.map((order: any) => {
               const fabricName = order.fabricVariant
-                ? fabricVariantName(order.fabricVariant).split("-").join(" · ")
-                : order.fabric?.name || "medebegna · biret · geberdin";
+                ? fabricVariantName(order.fabricVariant, " · ")
+                : order.fabric?.name || "Medebegna · Biret · Geberdin";
 
               const issuedDate = formatDateDDMMYY(order.dateIssued ?? new Date());
 

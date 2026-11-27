@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { formatDateDDMMYY } from "../../../utils/formatDate";
+import { toTitleCase } from "../../../utils/formatters";
 import type { ZigLedgerItem } from "./types";
 
 interface ProductionReportTableProps {
@@ -16,7 +17,7 @@ export function ProductionReportTable({ data, loading }: ProductionReportTablePr
         <thead>
           <tr>
             <th className="reports-th">Zig ID</th>
-            <th className="reports-th">Artisan Weaver</th>
+            <th className="reports-th">Weaver</th>
             <th className="reports-th">Fabric Spec</th>
             <th className="reports-th text-center">Status</th>
             <th className="reports-th">Yarn Issued</th>
@@ -73,7 +74,7 @@ export function ProductionReportTable({ data, loading }: ProductionReportTablePr
                       onClick={(e) => e.stopPropagation()}
                       className="reports-link-weaver"
                     >
-                      {d.weaverName}
+                      {toTitleCase(d.weaverName)}
                     </Link>
                     {d.weaverPhone && (
                       <div className="reports-subtext">{d.weaverPhone}</div>
@@ -82,9 +83,9 @@ export function ProductionReportTable({ data, loading }: ProductionReportTablePr
 
                   {/* Fabric Spec */}
                   <td className="reports-td">
-                    <div style={{ fontWeight: 600, color: "#334155" }}>{d.fabricName}</div>
+                    <div style={{ fontWeight: 600, color: "#334155" }}>{toTitleCase(d.fabricName)}</div>
                     <div className="reports-subtext">
-                      {[d.warpColor, d.weftColor, d.design].filter(Boolean).join(" · ")}
+                      {[d.warpColor, d.weftColor, d.design].filter(Boolean).map(toTitleCase).join(" · ")}
                     </div>
                   </td>
 
@@ -107,7 +108,7 @@ export function ProductionReportTable({ data, loading }: ProductionReportTablePr
 
                   {/* Yarn Issued */}
                   <td className="reports-td">
-                    <div>{d.yarn.issuedQuantity} kg</div>
+                    <div>{d.yarn.issuedQuantity} pcs</div>
                     <div className="reports-subtext">
                       {d.yarn.totalCost.toLocaleString()} ETB
                     </div>

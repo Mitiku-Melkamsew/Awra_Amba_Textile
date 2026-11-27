@@ -81,7 +81,7 @@ export function PricesPage() {
 
       {/* ── Tabs & Search Toolbar ── */}
       <div className="prices-toolbar">
-        <div className="tab-bar" style={{ marginBottom: 0, borderBottom: "none" }}>
+        <div className="tab-bar tab-bar--flush">
           <button
             type="button"
             className={`tab-pill ${tab === "fabricPrices" ? "active" : ""}`}
@@ -133,7 +133,7 @@ export function PricesPage() {
       </div>
 
       {statusMessage && (
-        <div className="success-msg" style={{ marginBottom: "1rem" }}>
+        <div className="success-msg mb-4">
           <span>✅</span> {statusMessage}
         </div>
       )}

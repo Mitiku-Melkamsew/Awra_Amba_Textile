@@ -363,7 +363,6 @@ export function useCatalogData() {
   const handleSelectColor = (c: any) => {
     setSelectedColorId(c.colorId);
     setEditColorName(c.name);
-    setEditColorHex(c.hexCode || "#000000");
     setStatusMessage("");
     setErrorMessage("");
   };
@@ -384,7 +383,7 @@ export function useCatalogData() {
       setStatusMessage(`Color "${name}" updated.`);
       setColors((prev) =>
         prev.map((c) =>
-          c.colorId === selectedColor.colorId ? { ...c, name, hexCode: editColorHex } : c
+          c.colorId === selectedColor.colorId ? { ...c, name } : c
         )
       );
     } catch (err: any) {
@@ -398,7 +397,6 @@ export function useCatalogData() {
   const handleSelectDesign = (d: any) => {
     setSelectedDesignId(d.designId);
     setEditDesignName(d.name);
-    setEditDesignDescription(d.description || "");
     setStatusMessage("");
     setErrorMessage("");
   };
@@ -419,9 +417,7 @@ export function useCatalogData() {
       setStatusMessage(`Design "${name}" updated.`);
       setDesigns((prev) =>
         prev.map((d) =>
-          d.designId === selectedDesign.designId
-            ? { ...d, name, description: editDesignDescription }
-            : d
+          d.designId === selectedDesign.designId ? { ...d, name } : d
         )
       );
     } catch (err: any) {
@@ -501,24 +497,25 @@ export function useCatalogData() {
     setErrorMessage("");
   };
 
-  const handleToggleFabricVariantStatus = async () => {
-    if (!selectedFabricVariant) return;
-    const nextActive = selectedFabricVariant.isActive === false;
+  const handleToggleFabricVariantStatus = async (targetFv?: any) => {
+    const fv = targetFv || selectedFabricVariant;
+    if (!fv) return;
+    const nextActive = fv.isActive === false;
     setSaving(true);
     setStatusMessage("");
     setErrorMessage("");
     try {
-      await catalogApi.updateFabricVariant(selectedFabricVariant.fabricVariantId, {
+      await catalogApi.updateFabricVariant(fv.fabricVariantId, {
         isActive: nextActive,
       });
       setStatusMessage(
-        `Fabric variant "${selectedFabricVariant.sku}" ${nextActive ? "reactivated" : "deactivated"}.`
+        `Fabric variant "${fv.sku}" ${nextActive ? "reactivated" : "deactivated"}.`
       );
       setFabricVariants((prev) =>
-        prev.map((fv) =>
-          fv.fabricVariantId === selectedFabricVariant.fabricVariantId
-            ? { ...fv, isActive: nextActive }
-            : fv
+        prev.map((item) =>
+          item.fabricVariantId === fv.fabricVariantId
+            ? { ...item, isActive: nextActive }
+            : item
         )
       );
     } catch (err: any) {
@@ -534,24 +531,25 @@ export function useCatalogData() {
     setErrorMessage("");
   };
 
-  const handleToggleYarnVariantStatus = async () => {
-    if (!selectedYarnVariant) return;
-    const nextActive = selectedYarnVariant.isActive === false;
+  const handleToggleYarnVariantStatus = async (targetYv?: any) => {
+    const yv = targetYv || selectedYarnVariant;
+    if (!yv) return;
+    const nextActive = yv.isActive === false;
     setSaving(true);
     setStatusMessage("");
     setErrorMessage("");
     try {
-      await catalogApi.updateYarnVariant(selectedYarnVariant.yarnVariantId, {
+      await catalogApi.updateYarnVariant(yv.yarnVariantId, {
         isActive: nextActive,
       });
       setStatusMessage(
-        `Yarn variant "${selectedYarnVariant.sku}" ${nextActive ? "reactivated" : "deactivated"}.`
+        `Yarn variant "${yv.sku}" ${nextActive ? "reactivated" : "deactivated"}.`
       );
       setYarnVariants((prev) =>
-        prev.map((yv) =>
-          yv.yarnVariantId === selectedYarnVariant.yarnVariantId
-            ? { ...yv, isActive: nextActive }
-            : yv
+        prev.map((item) =>
+          item.yarnVariantId === yv.yarnVariantId
+            ? { ...item, isActive: nextActive }
+            : item
         )
       );
     } catch (err: any) {

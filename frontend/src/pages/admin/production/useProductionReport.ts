@@ -92,7 +92,7 @@ export function useProductionReport() {
     const returnedZigs = data.filter((d) => d.status === "returned");
     const reconciledZigs = data.filter((d) => d.status === "reconciled");
 
-    const ongoingYarnKg = ongoingZigs.reduce((acc, d) => acc + (d.yarn?.issuedQuantity || 0), 0);
+    const ongoingYarnPieces = ongoingZigs.reduce((acc, d) => acc + (d.yarn?.issuedQuantity || 0), 0);
     const pendingLiability = returnedZigs.reduce((acc, d) => acc + (d.netPayable > 0 ? d.netPayable : 0), 0);
     const reconciledTotal = reconciledZigs.reduce((acc, d) => acc + (d.netPayable > 0 ? d.netPayable : 0), 0);
 
@@ -103,7 +103,8 @@ export function useProductionReport() {
 
     return {
       ongoingCount: ongoingZigs.length,
-      ongoingYarnKg,
+      ongoingYarnKg: ongoingYarnPieces,
+      ongoingYarnPieces,
       returnedCount: returnedZigs.length,
       pendingLiability,
       reconciledCount: reconciledZigs.length,
@@ -123,7 +124,7 @@ export function useProductionReport() {
       "Date Issued",
       "Date Returned",
       "Fabric",
-      "Yarn Issued (kg)",
+      "Yarn Issued (pieces)",
       "Yarn Cost (ETB)",
       "Fabric Pcs Returned",
       "Total Weight (g)",

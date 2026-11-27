@@ -60,6 +60,64 @@ export function calculatePieceDeduction(
   };
 }
 
+export interface DimensionalDeductionInput {
+  measuredValue: number;
+  standardValue: number;
+  deductionRatePerUnit?: number;
+  factor: "length" | "width" | string;
+  unit?: string;
+}
+
+export interface DimensionalDeductionOutput {
+  standardValue: number;
+  measuredValue: number;
+  deficit: number;
+  deductionPerPiece: number;
+  ruleApplied: "no_measurement" | "meets_threshold" | "below_threshold";
+  remark: string;
+}
+
+export function calculateDimensionalDeduction(
+  input: DimensionalDeductionInput,
+): DimensionalDeductionOutput {
+  const { measuredValue, standardValue, deductionRatePerUnit = 5, factor, unit = "cm" } = input;
+  const floored = Math.floor(measuredValue);
+
+  if (!measuredValue || measuredValue <= 0) {
+    return {
+      standardValue,
+      measuredValue: 0,
+      deficit: 0,
+      deductionPerPiece: 0,
+      ruleApplied: "no_measurement",
+      remark: `No ${factor} recorded; no deduction applied.`,
+    };
+  }
+
+  if (measuredValue >= standardValue) {
+    return {
+      standardValue,
+      measuredValue,
+      deficit: 0,
+      deductionPerPiece: 0,
+      ruleApplied: "meets_threshold",
+      remark: `${factor} ${floored}${unit} meets or exceeds standard ${standardValue}${unit}.`,
+    };
+  }
+
+  const deficit = Math.max(0, standardValue - floored);
+  const deductionPerPiece = deficit * deductionRatePerUnit;
+
+  return {
+    standardValue,
+    measuredValue,
+    deficit,
+    deductionPerPiece,
+    ruleApplied: "below_threshold",
+    remark: `${factor} ${floored}${unit} is ${deficit}${unit} below standard ${standardValue}${unit}; deduction ${deductionPerPiece} per piece.`,
+  };
+}
+
 export interface GroupedFabricLineCreditInput {
   totalQuantity: number;
   unitPrice: number;

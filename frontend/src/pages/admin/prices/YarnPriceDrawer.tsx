@@ -75,15 +75,15 @@ export function YarnPriceDrawer({
             onChange={(e) => setNewYarnPurchasePrice(e.target.value)}
             required
           />
-          <div className="price-delta-badge" style={{ fontSize: "12px", marginTop: "4px" }}>
+          <div className="price-delta-badge">
             {diffYarnPurchase === 0 ? (
-              <span style={{ color: "var(--text-muted)" }}>No change</span>
+              <span className="delta-no-change">No change</span>
             ) : diffYarnPurchase > 0 ? (
-              <span style={{ color: "var(--brand, #C2410C)", fontWeight: 600 }}>
+              <span className="delta-up">
                 ↑ Up {diffYarnPurchase}
               </span>
             ) : (
-              <span style={{ color: "var(--blue, #0284C7)", fontWeight: 600 }}>
+              <span className="delta-down">
                 ↓ Down {Math.abs(diffYarnPurchase)}
               </span>
             )}
@@ -102,15 +102,15 @@ export function YarnPriceDrawer({
             onChange={(e) => setNewYarnSellingPrice(e.target.value)}
             required
           />
-          <div className="price-delta-badge" style={{ fontSize: "12px", marginTop: "4px" }}>
+          <div className="price-delta-badge">
             {diffYarnSelling === 0 ? (
-              <span style={{ color: "var(--text-muted)" }}>No change</span>
+              <span className="delta-no-change">No change</span>
             ) : diffYarnSelling > 0 ? (
-              <span style={{ color: "var(--brand, #C2410C)", fontWeight: 600 }}>
+              <span className="delta-up">
                 ↑ Up {diffYarnSelling}
               </span>
             ) : (
-              <span style={{ color: "var(--blue, #0284C7)", fontWeight: 600 }}>
+              <span className="delta-down">
                 ↓ Down {Math.abs(diffYarnSelling)}
               </span>
             )}

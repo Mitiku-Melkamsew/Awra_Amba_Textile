@@ -7,10 +7,18 @@ import {
   settlementService,
 } from "../infrastructure/services";
 import { stockApi } from "../api";
+import { IssueZigPromptModal } from "./admin/dashboard/IssueZigPromptModal";
+import { NewTransactionPromptModal } from "./admin/dashboard/NewTransactionPromptModal";
+import { RecordFabricReturnPromptModal } from "./admin/dashboard/RecordFabricReturnPromptModal";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Quick operations modal states
+  const [showRecordReturnModal, setShowRecordReturnModal] = useState(false);
+  const [showIssueZigModal, setShowIssueZigModal] = useState(false);
+  const [showNewTxnModal, setShowNewTxnModal] = useState(false);
 
   // Attention stats
   const [readyToSettleCount, setReadyToSettleCount] = useState<number>(0);
@@ -108,15 +116,26 @@ export function DashboardPage() {
           <h1 className="dashboard-greeting">Good morning, {adminName}</h1>
         </div>
         <div className="dashboard-header-actions">
-          <Link to="/admin/reports/production" className="btn btn-secondary">
-            Production Ledger
-          </Link>
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() => navigate("/admin/weavers")}
+            onClick={() => setShowRecordReturnModal(true)}
+          >
+            + Record fabric return
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowIssueZigModal(true)}
           >
             + Issue zig
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowNewTxnModal(true)}
+          >
+            + New transaction
           </button>
         </div>
       </div>
@@ -126,67 +145,82 @@ export function DashboardPage() {
         <h2 className="dashboard-section-title">Needs your attention</h2>
         <div className="attention-grid">
           {/* Card 1: Ready to settle */}
-          <div className="card attention-card">
+          <div
+            className="card attention-card"
+            onClick={() => navigate("/admin/settlement")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") navigate("/admin/settlement");
+            }}
+            title="Click to review pending settlements"
+          >
             <div className="attention-card-header">
               <span className="attention-card-label">Ready to settle</span>
+              <span className="attention-card-arrow">→</span>
             </div>
             <div className="attention-card-stat">
               {readyToSettleCount} weavers
             </div>
-            <p className="attention-card-sub">
+            <p className="attention-card-sub-compact">
               {readyToSettleAmount.toLocaleString()} ETB from returned zigs
             </p>
-            <div className="attention-card-action">
-              <Link to="/admin/settlement" className="btn btn-secondary">
-                Review settlement
-              </Link>
-            </div>
           </div>
 
           {/* Card 2: Low or out of stock */}
-          <div className="card attention-card attention-card-warning">
+          <div
+            className="card attention-card attention-card-warning"
+            onClick={() => navigate("/admin/stock")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") navigate("/admin/stock");
+            }}
+            title="Click to view low inventory stock"
+          >
             <div className="attention-card-header">
               <span className="attention-card-label">Low or out of stock</span>
+              <span className="attention-card-arrow">→</span>
             </div>
             <div className="attention-card-stat text-warning-rust">
               {lowStockCount} items
             </div>
-            <p className="attention-card-sub">
+            <p className="attention-card-sub-compact">
               {lowStockYarnCount} yarn · {lowStockFabricCount} fabric
             </p>
-            <div className="attention-card-action">
-              <Link to="/admin/stock" className="btn btn-secondary">
-                See stock
-              </Link>
-            </div>
           </div>
 
           {/* Card 3: Unpaid transactions */}
-          <div className="card attention-card">
+          <div
+            className="card attention-card"
+            onClick={() => navigate("/admin/transactions")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") navigate("/admin/transactions");
+            }}
+            title="Click to open unpaid transactions"
+          >
             <div className="attention-card-header">
               <span className="attention-card-label">Unpaid transactions</span>
+              <span className="attention-card-arrow">→</span>
             </div>
             <div className="attention-card-stat">
               {unpaidTxnCount}
             </div>
-            <p className="attention-card-sub">
+            <p className="attention-card-sub-compact">
               {unpaidTxnAmount.toLocaleString()} ETB still due
             </p>
-            <div className="attention-card-action">
-              <Link to="/admin/transactions" className="btn btn-secondary">
-                Open transactions
-              </Link>
-            </div>
           </div>
         </div>
       </section>
 
       {/* Zigs in production */}
-      <section className="dashboard-section" style={{ marginTop: "2.5rem" }}>
+      <section className="dashboard-section">
         <div className="dashboard-section-header">
           <h2 className="dashboard-section-title">Zigs in production</h2>
           <Link
-            to="/admin/reports/production"
+            to="/admin/production"
             className="btn btn-secondary btn-sm dashboard-section-action"
           >
             <span>🏭</span> View Production & WIP Ledger →
@@ -195,7 +229,7 @@ export function DashboardPage() {
         <div className="zigs-grid">
           {/* Assigned */}
           <Link
-            to="/admin/reports/production?status=ongoing"
+            to="/admin/production?status=ongoing"
             className="card zig-stat-card"
             title="View ongoing zigs in production ledger"
           >
@@ -206,7 +240,7 @@ export function DashboardPage() {
 
           {/* In progress */}
           <Link
-            to="/admin/reports/production?status=ongoing"
+            to="/admin/production?status=ongoing"
             className="card zig-stat-card"
             title="View in-progress zigs in production ledger"
           >
@@ -217,7 +251,7 @@ export function DashboardPage() {
 
           {/* Returned (Active highlight) */}
           <Link
-            to="/admin/reports/production?status=returned"
+            to="/admin/production?status=returned"
             className="card zig-stat-card zig-stat-highlight"
             title="View returned zigs ready to settle"
           >
@@ -228,7 +262,7 @@ export function DashboardPage() {
 
           {/* Reconciled */}
           <Link
-            to="/admin/reports/production?status=reconciled"
+            to="/admin/production?status=reconciled"
             className="card zig-stat-card"
             title="View reconciled/settled zigs"
           >
@@ -238,6 +272,20 @@ export function DashboardPage() {
           </Link>
         </div>
       </section>
+
+      {/* Quick Operation Prompt Modals */}
+      <RecordFabricReturnPromptModal
+        isOpen={showRecordReturnModal}
+        onClose={() => setShowRecordReturnModal(false)}
+      />
+      <IssueZigPromptModal
+        isOpen={showIssueZigModal}
+        onClose={() => setShowIssueZigModal(false)}
+      />
+      <NewTransactionPromptModal
+        isOpen={showNewTxnModal}
+        onClose={() => setShowNewTxnModal(false)}
+      />
 
       {/* Footnote */}
       <div className="dashboard-footnote">

@@ -35,32 +35,37 @@ export function AddQualityRuleModal({
     >
       <form onSubmit={onSubmit}>
         <div className="field-label">
-          Factor
-          <select
+          Factor · የጥራት ምክንያት
+          <input
+            type="text"
+            placeholder="e.g. weight, length, defect"
             value={newFactor}
             onChange={(e) => setNewFactor(e.target.value)}
             className="input-field"
-          >
-            <option value="weight">Weight</option>
-          </select>
+            required
+          />
           <span className="field-label-sub">
-            Length and width are not used in settlements yet.
+            Name of the quality evaluation factor or defect type
           </span>
         </div>
 
-        <div className="field-label" style={{ marginTop: "0.85rem" }}>
-          Unit
+        <div className="field-label form-field-gap">
+          Unit of measurement · መለኪያ
           <input
             type="text"
+            placeholder="e.g. g, cm, piece"
             value={newUnit}
             onChange={(e) => setNewUnit(e.target.value)}
-            className="input-field input-read-only"
-            readOnly
+            className="input-field"
+            required
           />
+          <span className="field-label-sub">
+            The unit for measuring defect shortfalls (e.g. g, cm, pcs)
+          </span>
         </div>
 
-        <div className="field-label" style={{ marginTop: "0.85rem" }}>
-          Deduction per gram (ETB)
+        <div className="field-label form-field-gap">
+          Deduction per unit (ETB) · ቅጣት በአንድ መለኪያ
           <input
             type="number"
             step="any"
@@ -73,22 +78,15 @@ export function AddQualityRuleModal({
           />
         </div>
 
-        {/* Warning note */}
-        <div className="warning-callout-box" style={{ marginTop: "1rem" }}>
-          <span style={{ fontSize: "14px" }}>ⓘ</span>
+        {/* Info callout */}
+        <div className="warning-callout-box info-callout-gap">
+          <span className="text-base">ⓘ</span>
           <div>
-            Only one weight rule can be active. Adding one replaces the current rate.
+            New quality rules apply to all subsequent fabric returns and settlement calculations.
           </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "0.75rem",
-            marginTop: "1.5rem",
-          }}
-        >
+        <div className="modal-actions-right">
           <button
             type="button"
             className="btn btn-secondary"

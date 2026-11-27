@@ -121,6 +121,14 @@
     width: 100%;
   }
 
+  .btn-addon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    line-height: 1;
+  }
+
   .btn-icon {
     display: inline-flex;
     align-items: center;

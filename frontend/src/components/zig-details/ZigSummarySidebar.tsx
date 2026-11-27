@@ -188,7 +188,7 @@ export function ZigSummarySidebar({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ color: "var(--color-text-muted, #64748b)" }}>Yarn given</span>
           <span style={{ fontWeight: 600, color: "var(--color-text-secondary, #334155)" }}>
-            {totalYarnGiven} kg ({totalYarnCost.toLocaleString()} ETB)
+            {totalYarnGiven} pcs ({totalYarnCost.toLocaleString()} ETB)
           </span>
         </div>
 

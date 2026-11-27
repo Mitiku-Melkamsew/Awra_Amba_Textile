@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import type { QualityRuleRow } from "../../../api";
+import { toTitleCase } from "../../../utils/formatters";
 
 export interface QualityRuleEditDrawerProps {
   rule: QualityRuleRow;
@@ -26,10 +27,10 @@ export function QualityRuleEditDrawer({
       <div className="detail-panel-header">
         <div>
           <h3 className="detail-panel-title">
-            Edit rule · {rule.factor.charAt(0).toUpperCase() + rule.factor.slice(1)}
+            Edit rule · {toTitleCase(rule.factor)}
           </h3>
           <p className="detail-panel-sub">
-            Deduction per piece, for each gram below the fabric's standard
+            Deduction per piece, for each {rule.unit} below the fabric's standard
           </p>
         </div>
         <button
@@ -47,14 +48,14 @@ export function QualityRuleEditDrawer({
           Factor
           <input
             type="text"
-            value={rule.factor.charAt(0).toUpperCase() + rule.factor.slice(1)}
+            value={toTitleCase(rule.factor)}
             readOnly
             disabled
             className="input-field input-read-only"
           />
         </div>
 
-        <div className="field-label" style={{ marginTop: "0.85rem" }}>
+        <div className="field-label form-field-gap">
           Unit
           <input
             type="text"
@@ -65,8 +66,8 @@ export function QualityRuleEditDrawer({
           />
         </div>
 
-        <div className="field-label" style={{ marginTop: "0.85rem" }}>
-          Deduction per gram (ETB)
+        <div className="field-label form-field-gap">
+          Deduction per {rule.unit} (ETB)
           <input
             type="number"
             step="any"
@@ -78,11 +79,10 @@ export function QualityRuleEditDrawer({
           />
         </div>
 
-        <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+        <div className="detail-panel-actions">
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ flex: 1 }}
+            className="btn btn-primary btn-full-width"
             disabled={isSaving}
           >
             {isSaving ? "Saving…" : "Save changes"}
@@ -97,19 +97,12 @@ export function QualityRuleEditDrawer({
         </div>
 
         {/* Example calculation box */}
-        <div className="example-calc-box" style={{ marginTop: "1rem" }}>
-          <strong>Example:</strong> 42 pieces, 1 g short → 1 × {calcRate} × 42 ={" "}
+        <div className="example-calc-box">
+          <strong>Example:</strong> 42 pieces, 1 {rule.unit} short → 1 × {calcRate} × 42 ={" "}
           <strong>{exampleDeduction} ETB</strong> deducted.
         </div>
 
-        <p
-          style={{
-            margin: "0.85rem 0 0",
-            fontSize: "12px",
-            color: "var(--text-muted, #64748B)",
-            lineHeight: 1.45,
-          }}
-        >
+        <p className="detail-panel-footnote">
           Applies to settlements calculated from now on. Confirmed settlements keep their saved deductions.
         </p>
       </form>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Badge, Button, Card, FormField } from "../../../../components/common";
+import { toTitleCase } from "../../../../utils/formatters";
 
 export interface YarnsTabProps {
   yarns: any[];
@@ -23,7 +24,7 @@ export function YarnsTab({
   saving,
 }: YarnsTabProps) {
   return (
-    <div className="master-detail" style={{ gridTemplateColumns: "minmax(0, 1fr) 340px" }}>
+    <div className="master-detail">
       {/* Left Column: Yarns Table */}
       <div className="data-table-container">
         <table className="data-table">
@@ -31,13 +32,13 @@ export function YarnsTab({
             <tr>
               <th>Yarn name · ክር</th>
               <th>Status</th>
-              <th className="text-right">Action</th>
+              <th className="text-right"></th>
             </tr>
           </thead>
           <tbody>
             {yarns.length === 0 ? (
               <tr>
-                <td colSpan={3} className="text-center text-muted" style={{ padding: "var(--space-8)" }}>
+                <td colSpan={3} className="text-center text-muted catalog-empty-cell">
                   No yarns recorded.
                 </td>
               </tr>
@@ -49,13 +50,10 @@ export function YarnsTab({
                   <tr
                     key={y.yarnId}
                     onClick={() => onSelectYarn(y)}
-                    style={{
-                      cursor: "pointer",
-                      background: isSelected ? "var(--orange-bg, #fff7ed)" : undefined,
-                    }}
+                    className={`selectable-row ${isSelected ? "selected" : ""}`}
                   >
                     <td>
-                      <strong className="text-brand text-base">{y.name}</strong>
+                      <strong className="text-brand text-base">{toTitleCase(y.name)}</strong>
                     </td>
                     <td>
                       <Badge variant={isActive ? "success" : "neutral"} pill dot>
@@ -63,16 +61,7 @@ export function YarnsTab({
                       </Badge>
                     </td>
                     <td className="text-right">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectYarn(y);
-                        }}
-                      >
-                        Configure
-                      </Button>
+                      <span className="row-chevron">›</span>
                     </td>
                   </tr>
                 );
@@ -84,13 +73,13 @@ export function YarnsTab({
 
       {/* Right Column: Edit Yarn Card */}
       {selectedYarn ? (
-        <Card style={{ position: "sticky", top: "1.5rem", padding: "var(--space-6)" }}>
-          <div className="cluster-between" style={{ marginBottom: "var(--space-4)" }}>
+        <Card className="catalog-edit-card">
+          <div className="cluster-between catalog-edit-header">
             <div>
-              <h3 className="text-lg font-bold" style={{ margin: 0 }}>
-                Edit yarn · {selectedYarn.name}
+              <h3 className="text-lg font-bold">
+                Edit yarn · {toTitleCase(selectedYarn.name)}
               </h3>
-              <p className="text-muted text-xs" style={{ margin: 0 }}>
+              <p className="text-muted text-xs">
                 Update yarn catalog entry
               </p>
             </div>
@@ -115,13 +104,13 @@ export function YarnsTab({
               />
             </FormField>
 
-            <Button type="submit" variant="primary" isLoading={saving} style={{ width: "100%" }}>
+            <Button type="submit" variant="primary" isLoading={saving} className="btn-full-width">
               Save changes
             </Button>
           </form>
         </Card>
       ) : (
-        <Card style={{ padding: "var(--space-6)", textAlign: "center" }}>
+        <Card className="catalog-edit-placeholder">
           <p className="text-muted text-sm">Select a yarn to edit its details</p>
         </Card>
       )}

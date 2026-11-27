@@ -65,6 +65,134 @@ export function suggestWeightDeduction(
   };
 }
 
+/**
+ * Suggest a length deduction entry if measured length is below standardLengthCm.
+ */
+export function suggestLengthDeduction(
+  measuredLengthCm: number,
+  standardLengthCm: number,
+  deductionRatePerUnit: number = 5,
+): DeductionEntry | null {
+  if (!measuredLengthCm || measuredLengthCm <= 0 || !standardLengthCm || standardLengthCm <= 0) {
+    return null;
+  }
+  const flooredLength = Math.floor(measuredLengthCm);
+  if (flooredLength >= standardLengthCm) {
+    return null;
+  }
+  const deficit = standardLengthCm - flooredLength;
+  const perPiece = deficit * deductionRatePerUnit;
+  return {
+    factor: "length",
+    perPiece,
+    remark: `Length ${flooredLength}cm is ${deficit}cm below standard ${standardLengthCm}cm (${perPiece} ETB/piece)`,
+  };
+}
+
+/**
+ * Suggest a width deduction entry if measured width is below standardWidthCm.
+ */
+export function suggestWidthDeduction(
+  measuredWidthCm: number,
+  standardWidthCm: number,
+  deductionRatePerUnit: number = 5,
+): DeductionEntry | null {
+  if (!measuredWidthCm || measuredWidthCm <= 0 || !standardWidthCm || standardWidthCm <= 0) {
+    return null;
+  }
+  const flooredWidth = Math.floor(measuredWidthCm);
+  if (flooredWidth >= standardWidthCm) {
+    return null;
+  }
+  const deficit = standardWidthCm - flooredWidth;
+  const perPiece = deficit * deductionRatePerUnit;
+  return {
+    factor: "width",
+    perPiece,
+    remark: `Width ${flooredWidth}cm is ${deficit}cm below standard ${standardWidthCm}cm (${perPiece} ETB/piece)`,
+  };
+}
+
+/**
+ * Computes all automatic quality deductions for a return based on standards & active rules.
+ */
+export function calculateQualityDeductions(params: {
+  quantity: number;
+  totalWeight?: number | null;
+  lengthCm?: number | null;
+  widthCm?: number | null;
+  standardWeightG?: number | null;
+  standardLengthCm?: number | null;
+  standardWidthCm?: number | null;
+  qualityRules?: Array<{ factor: string; deductionPerUnit: number | string }>;
+}): DeductionEntry[] {
+  const {
+    quantity,
+    totalWeight,
+    lengthCm,
+    widthCm,
+    standardWeightG,
+    standardLengthCm,
+    standardWidthCm,
+    qualityRules = [],
+  } = params;
+
+  if (!quantity || quantity <= 0) return [];
+
+  const getRate = (factor: string): number | null => {
+    const rule = qualityRules.find(
+      (r) => r.factor.toLowerCase() === factor.toLowerCase()
+    );
+    if (!rule) return null;
+    const rate = Number(rule.deductionPerUnit);
+    return isNaN(rate) || rate <= 0 ? null : rate;
+  };
+
+  const results: DeductionEntry[] = [];
+
+  // 1. Weight deduction (only if an active quality rule exists for weight in DB)
+  if (totalWeight && standardWeightG && Number(standardWeightG) > 0) {
+    const weightRate = getRate("weight");
+    if (weightRate !== null) {
+      const weightDeduction = suggestWeightDeduction(
+        Number(totalWeight),
+        quantity,
+        Number(standardWeightG),
+        weightRate,
+      );
+      if (weightDeduction) results.push(weightDeduction);
+    }
+  }
+
+  // 2. Length deduction (only if an active quality rule exists for length in DB)
+  if (lengthCm && standardLengthCm && Number(standardLengthCm) > 0) {
+    const lengthRate = getRate("length");
+    if (lengthRate !== null) {
+      const lengthDeduction = suggestLengthDeduction(
+        Number(lengthCm),
+        Number(standardLengthCm),
+        lengthRate,
+      );
+      if (lengthDeduction) results.push(lengthDeduction);
+    }
+  }
+
+  // 3. Width deduction (only if an active quality rule exists for width in DB)
+  if (widthCm && standardWidthCm && Number(standardWidthCm) > 0) {
+    const widthRate = getRate("width");
+    if (widthRate !== null) {
+      const widthDeduction = suggestWidthDeduction(
+        Number(widthCm),
+        Number(standardWidthCm),
+        widthRate,
+      );
+      if (widthDeduction) results.push(widthDeduction);
+    }
+  }
+
+  return results;
+}
+
 export interface FabricReturnFinancials {
   grossFabricValue: number;
   deductionAmount: number;

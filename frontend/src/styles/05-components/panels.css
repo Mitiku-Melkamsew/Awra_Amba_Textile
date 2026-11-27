@@ -66,6 +66,19 @@
     line-height: var(--leading-normal, 1.5);
   }
 
+  .detail-panel-actions {
+    display: flex;
+    gap: var(--space-3, 0.75rem);
+    margin-top: var(--space-5, 1.25rem);
+  }
+
+  .detail-panel-footnote {
+    margin: var(--space-3, 0.75rem) 0 0;
+    font-size: var(--text-xs, 12px);
+    color: var(--text-muted, #64748B);
+    line-height: var(--leading-normal, 1.45);
+  }
+
   @media (max-width: 960px) {
     .edit-detail-panel,
     .price-edit-panel {

@@ -164,7 +164,7 @@ export function ZigYarnDeliveriesSection({
               type="text"
               value={editingYarnRemark}
               onChange={(e) => setEditingYarnRemark(e.target.value)}
-              placeholder="e.g. Weaver returned 3 kg unused yarn"
+              placeholder="e.g. Weaver returned 3 pcs unused yarn"
               className="input"
               style={{
                 fontSize: "0.85rem",
@@ -239,7 +239,7 @@ export function ZigYarnDeliveriesSection({
                 }}
               >
                 <span style={{ fontWeight: 600, color: "var(--color-text, #0f172a)" }}>{yarnLabel}</span>
-                <span>{yg.quantity} kg</span>
+                <span>{yg.quantity} pcs</span>
                 <span>{yg.unitPrice ? `${Number(yg.unitPrice).toLocaleString()} ETB` : "—"}</span>
                 <span style={{ color: "var(--color-text-muted, #64748b)" }}>{formatDateDDMMYY(yg.dateGiven)}</span>
                 <span>

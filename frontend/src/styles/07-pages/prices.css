@@ -105,7 +105,12 @@
     gap: var(--space-1, 4px);
     font-size: var(--text-xs, 12px);
     line-height: var(--leading-tight, 1.25);
+    margin-top: var(--space-1, 4px);
   }
+
+  .delta-no-change { color: var(--text-muted, #64748B); }
+  .delta-up { color: var(--brand, #C2410C); font-weight: var(--font-semibold, 600); }
+  .delta-down { color: var(--blue, #0284C7); font-weight: var(--font-semibold, 600); }
 
   .price-item-name {
     font-size: var(--text-sm, 14px);
@@ -226,5 +231,39 @@
     color: var(--text-muted, #64748B);
     line-height: var(--leading-normal, 1.5);
     margin-top: var(--space-4, 1rem);
+  }
+
+  /* Table column definitions */
+  .fabric-col-name { width: 26%; }
+  .fabric-col-rate { width: 18%; text-align: right; }
+  .fabric-col-selling { width: 18%; text-align: right; }
+  .fabric-col-date { width: 18%; }
+  .fabric-col-status { width: 14%; }
+  .fabric-col-action { width: 6%; text-align: right; }
+
+  .yarn-col-name { width: 22%; white-space: nowrap; }
+  .yarn-col-supplier { width: 18%; white-space: nowrap; }
+  .yarn-col-purchase { width: 16%; text-align: right; white-space: nowrap; }
+  .yarn-col-selling { width: 16%; text-align: right; white-space: nowrap; }
+  .yarn-col-date { width: 14%; white-space: nowrap; }
+  .yarn-col-status { width: 10%; white-space: nowrap; }
+  .yarn-col-action { width: 4%; text-align: right; white-space: nowrap; }
+
+  .rule-col-factor { width: 34%; }
+  .rule-col-deduction { width: 32%; }
+  .rule-col-unit { width: 14%; }
+  .rule-col-status { width: 14%; }
+  .rule-col-action { width: 6%; text-align: right; }
+
+  .quality-controls-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: var(--space-3, 0.75rem);
+  }
+
+  .tab-bar--flush {
+    margin-bottom: 0 !important;
+    border-bottom: none !important;
   }
 }

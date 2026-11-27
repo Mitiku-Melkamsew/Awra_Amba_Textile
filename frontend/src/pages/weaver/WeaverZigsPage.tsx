@@ -151,7 +151,7 @@ export function WeaverZigsPage() {
                 </div>
                 <div className="weaver-zig-card-fabric">{fabricTitle}</div>
                 <div className="weaver-zig-card-meta">
-                  Yarn received {yarnQty > 0 ? `${yarnQty} kg` : "—"} · Fabric returned {fabricPcs} pcs
+                  Yarn received {yarnQty > 0 ? `${yarnQty} pcs` : "—"} · Fabric returned {fabricPcs} pcs
                 </div>
               </Link>
             );

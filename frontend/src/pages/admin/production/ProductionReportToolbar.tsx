@@ -14,12 +14,10 @@ export function ProductionReportToolbar({
   onStatusTabChange,
   search,
   onSearchChange,
-  totalCount,
-  stats,
 }: ProductionReportToolbarProps) {
   return (
     <div className="production-toolbar">
-      {/* Search Input (Takes Remaining Space on Left) */}
+      {/* Search Input */}
       <div className="production-search-wrap">
         <span className="production-search-icon">🔍</span>
         <input
@@ -42,37 +40,26 @@ export function ProductionReportToolbar({
         )}
       </div>
 
-      {/* Segmented Status Toggle (Grouped on Right) */}
-      <div className="production-segmented-control">
-        <button
-          type="button"
-          onClick={() => onStatusTabChange("all")}
-          className={`production-segmented-btn ${statusTab === "all" ? "active" : ""}`}
-        >
-          All Zigs ({totalCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => onStatusTabChange("ongoing")}
-          className={`production-segmented-btn ${statusTab === "ongoing" ? "active" : ""}`}
-        >
-          Ongoing WIP ({stats.ongoingCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => onStatusTabChange("returned")}
-          className={`production-segmented-btn ${statusTab === "returned" ? "active" : ""}`}
-        >
-          Returned ({stats.returnedCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => onStatusTabChange("reconciled")}
-          className={`production-segmented-btn ${statusTab === "reconciled" ? "active" : ""}`}
-        >
-          Reconciled ({stats.reconciledCount})
-        </button>
-      </div>
+      {/* Active Filter Pill & Reset */}
+      {statusTab !== "all" && (
+        <div className="production-active-filter-bar">
+          <div className="production-active-filter-info">
+            <span>Filter:</span>
+            <span className="production-active-filter-tag">
+              {statusTab === "ongoing" && "Ongoing WIP"}
+              {statusTab === "returned" && "Returned (Ready to settle)"}
+              {statusTab === "reconciled" && "Reconciled"}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="production-active-filter-clear"
+            onClick={() => onStatusTabChange("all")}
+          >
+            Show all zigs
+          </button>
+        </div>
+      )}
     </div>
   );
 }

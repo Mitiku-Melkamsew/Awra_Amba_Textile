@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { useProductionReport } from "./production/useProductionReport";
 import { ProductionKpiCards } from "./production/ProductionKpiCards";
 import { ProductionReportToolbar } from "./production/ProductionReportToolbar";
@@ -43,16 +42,6 @@ export function ProductionReportPage() {
         </div>
       </div>
 
-      {/* ── Section Segmented Navigation Tabs ── */}
-      <div className="reports-segmented-tabs">
-        <Link to="/admin/reports" className="reports-segmented-tab">
-          Financial Overview
-        </Link>
-        <Link to="/admin/reports/production" className="reports-segmented-tab active">
-          Production & WIP Ledger
-        </Link>
-      </div>
-
       {/* ── Error Banner ── */}
       {error && (
         <div className="settlement-alert-error">
@@ -60,10 +49,14 @@ export function ProductionReportPage() {
         </div>
       )}
 
-      {/* ── Aggregated KPI Cards ── */}
-      <ProductionKpiCards stats={stats} />
+      {/* ── Aggregated Interactive KPI Filter Cards ── */}
+      <ProductionKpiCards
+        stats={stats}
+        statusTab={statusTab}
+        onStatusTabChange={setStatusTab}
+      />
 
-      {/* ── Status Filter Tabs & Search Bar ── */}
+      {/* ── Search Bar & Filter Indicators ── */}
       <ProductionReportToolbar
         statusTab={statusTab}
         onStatusTabChange={setStatusTab}

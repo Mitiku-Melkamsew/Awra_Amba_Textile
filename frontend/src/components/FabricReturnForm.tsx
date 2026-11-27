@@ -201,26 +201,46 @@ export function FabricReturnForm({
               </div>
 
               {/* Quality Average & Minimum Standard Indicator */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                  marginTop: "0.75rem",
-                  flexWrap: "wrap",
-                }}
-              >
+              <div className="quality-indicators-row">
                 {form.flooredAvg > 0 && (
                   <span
-                    className={`badge ${form.isCurrentUnderweight ? "badge--warning" : "badge--success"}`}
-                    style={{ padding: "0.3rem 0.75rem", fontSize: "0.82rem" }}
+                    className={`badge ${
+                      !form.hasWeightRule
+                        ? "badge--neutral"
+                        : form.isCurrentUnderweight
+                        ? "badge--warning"
+                        : "badge--success"
+                    }`}
                   >
-                    {form.isCurrentUnderweight ? "⚠" : "✓"} Avg {form.flooredAvg} g per piece
+                    {form.hasWeightRule && form.isCurrentUnderweight ? "⚠ " : form.hasWeightRule ? "✓ " : ""}Avg {form.flooredAvg} g/pc (std {form.standardWeight} g)
                   </span>
                 )}
-                <span style={{ fontSize: "0.82rem", color: "var(--color-text-muted, #64748b)" }}>
-                  Minimum average {form.standardWeight} g
-                </span>
+                {form.numLength > 0 && (
+                  <span
+                    className={`badge ${
+                      !form.hasLengthRule
+                        ? "badge--neutral"
+                        : form.isCurrentUnderlength
+                        ? "badge--warning"
+                        : "badge--success"
+                    }`}
+                  >
+                    {form.hasLengthRule && form.isCurrentUnderlength ? "⚠ " : form.hasLengthRule ? "✓ " : ""}Length {form.numLength} cm (std {form.standardLength} cm)
+                  </span>
+                )}
+                {form.numWidth > 0 && (
+                  <span
+                    className={`badge ${
+                      !form.hasWidthRule
+                        ? "badge--neutral"
+                        : form.isCurrentUnderwidth
+                        ? "badge--warning"
+                        : "badge--success"
+                    }`}
+                  >
+                    {form.hasWidthRule && form.isCurrentUnderwidth ? "⚠ " : form.hasWidthRule ? "✓ " : ""}Width {form.numWidth} cm (std {form.standardWidth} cm)
+                  </span>
+                )}
               </div>
 
               {/* Collapsible Accordion: More details */}
@@ -243,7 +263,7 @@ export function FabricReturnForm({
                   }}
                 >
                   <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--color-text-secondary, #334155)" }}>
-                    More details · {form.lengthCm || "64"} × {form.widthCm || "120"} cm ·{" "}
+                    More details · {form.lengthCm || form.standardLength || "200"} × {form.widthCm || form.standardWidth || "120"} cm ·{" "}
                     {form.remark ? form.remark : "no remark"}
                   </span>
                   <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted, #64748b)" }}>
@@ -308,16 +328,14 @@ export function FabricReturnForm({
               <DeductionsSection
                 deductions={form.deductions}
                 numQty={numQty}
-                isCurrentUnderweight={form.isCurrentUnderweight}
-                hasWeightDeduction={form.hasWeightDeduction}
-                flooredAvg={form.flooredAvg}
-                weightDeficit={form.weightDeficit}
-                standardWeight={form.standardWeight}
-                suggestedWeightPerPiece={form.suggestedWeightPerPiece}
-                handleApplyWeightDeduction={form.handleApplyWeightDeduction}
                 handleRemoveDeduction={form.handleRemoveDeduction}
+                handleCancelDeduction={form.handleCancelDeduction}
+                handleRestoreDeduction={form.handleRestoreDeduction}
+                cancelledAutoDeductions={form.cancelledAutoDeductions}
+                availableFactors={form.availableFactors}
                 addFactorOpen={form.addFactorOpen}
                 setAddFactorOpen={form.setAddFactorOpen}
+                handleOpenAddFactor={form.handleOpenAddFactor}
                 factorType={form.factorType}
                 setFactorType={form.setFactorType}
                 factorPerPiece={form.factorPerPiece}

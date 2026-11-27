@@ -60,16 +60,12 @@ export function CatalogPage() {
     handleSelectColor,
     editColorName,
     setEditColorName,
-    editColorHex,
-    setEditColorHex,
     handleSaveColorSpecs,
     // Designs
     selectedDesign,
     handleSelectDesign,
     editDesignName,
     setEditDesignName,
-    editDesignDescription,
-    setEditDesignDescription,
     handleSaveDesignSpecs,
     // Suppliers
     selectedSupplier,
@@ -81,11 +77,7 @@ export function CatalogPage() {
     handleSaveSupplierSpecs,
     handleToggleSupplierStatus,
     // Variants
-    selectedFabricVariant,
-    handleSelectFabricVariant,
     handleToggleFabricVariantStatus,
-    selectedYarnVariant,
-    handleSelectYarnVariant,
     handleToggleYarnVariantStatus,
     // Shared
     saving,
@@ -207,8 +199,6 @@ export function CatalogPage() {
         <FabricVariantsTab
           variants={fabricVariants}
           showDeactivated={showDeactivated}
-          selectedVariant={selectedFabricVariant}
-          onSelectVariant={handleSelectFabricVariant}
           onToggleStatus={handleToggleFabricVariantStatus}
           saving={saving}
         />
@@ -230,8 +220,6 @@ export function CatalogPage() {
       {tab === "yarnVariants" && (
         <YarnVariantsTab
           variants={yarnVariants}
-          selectedVariant={selectedYarnVariant}
-          onSelectVariant={handleSelectYarnVariant}
           onToggleStatus={handleToggleYarnVariantStatus}
           saving={saving}
         />
@@ -244,8 +232,6 @@ export function CatalogPage() {
           onSelectColor={handleSelectColor}
           editName={editColorName}
           onEditNameChange={setEditColorName}
-          editHex={editColorHex}
-          onEditHexChange={setEditColorHex}
           onSaveSpecs={handleSaveColorSpecs}
           saving={saving}
         />
@@ -258,8 +244,6 @@ export function CatalogPage() {
           onSelectDesign={handleSelectDesign}
           editName={editDesignName}
           onEditNameChange={setEditDesignName}
-          editDescription={editDesignDescription}
-          onEditDescriptionChange={setEditDesignDescription}
           onSaveSpecs={handleSaveDesignSpecs}
           saving={saving}
         />

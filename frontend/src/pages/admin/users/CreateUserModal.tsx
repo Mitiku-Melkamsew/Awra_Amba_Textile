@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { UserRole } from "../../../domain/models";
 import { userService } from "../../../infrastructure/services";
 import { Button, FormField, Modal } from "../../../components/common";
@@ -8,6 +8,7 @@ export interface CreateUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUserCreated: (credentials: {
+    userId: number;
     fullName: string;
     username: string;
     initialPassword?: string;
@@ -45,6 +46,12 @@ export function CreateUserModal({
     setCreateError(null);
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+
   const handleFullNameChange = (val: string) => {
     setNewFullName(val);
     if (!isCustomUsername) {
@@ -73,6 +80,7 @@ export function CreateUserModal({
       resetForm();
       onClose();
       onUserCreated({
+        userId: created.userId,
         fullName: created.fullName,
         username: created.username,
         initialPassword: created.initialPassword,
@@ -95,7 +103,7 @@ export function CreateUserModal({
       maxWidth={480}
     >
       {createError && (
-        <div className="alert-banner alert-banner--error" style={{ marginBottom: "var(--space-4)" }}>
+        <div className="alert-banner alert-banner--error mb-4">
           ⚠️ {createError}
         </div>
       )}
@@ -149,9 +157,9 @@ export function CreateUserModal({
         </FormField>
 
         <FormField label="Assigned Roles" required>
-          <div className="cluster" style={{ gap: "var(--space-4)" }}>
+          <div className="cluster gap-md">
             {(["weaver", "merchant", "admin"] as UserRole[]).map((r) => (
-              <label key={r} className="cluster" style={{ cursor: "pointer", textTransform: "capitalize" }}>
+              <label key={r} className="role-checkbox-label">
                 <input
                   type="checkbox"
                   checked={newRoles.includes(r)}
@@ -162,7 +170,7 @@ export function CreateUserModal({
                       setNewRoles(newRoles.filter((x) => x !== r));
                     }
                   }}
-                  style={{ accentColor: "var(--brand)" }}
+                  className="user-role-checkbox"
                 />
                 <span className="text-sm font-medium">{r}</span>
               </label>
@@ -182,7 +190,7 @@ export function CreateUserModal({
           </FormField>
         )}
 
-        <div className="cluster" style={{ justifyContent: "flex-end", gap: "var(--space-2)", marginTop: "var(--space-2)" }}>
+        <div className="modal-actions-cluster">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>

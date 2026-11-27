@@ -123,4 +123,54 @@
     width: 100%;
     box-sizing: border-box;
   }
+
+  .row-chevron {
+    color: var(--text-muted, #94A3B8);
+    font-size: var(--text-lg, 18px);
+    font-weight: var(--font-bold, 700);
+    display: inline-block;
+    transition: transform var(--transition-fast, 0.15s ease), color var(--transition-fast, 0.15s ease);
+  }
+
+  tr:hover .row-chevron {
+    color: var(--brand, #C2410C);
+    transform: translateX(2px);
+  }
+
+  .catalog-edit-card {
+    position: sticky;
+    top: var(--space-6, 1.5rem);
+    padding: var(--space-6, 1.5rem);
+  }
+
+  .catalog-edit-header {
+    margin-bottom: var(--space-4, 1rem);
+  }
+
+  .catalog-edit-placeholder {
+    padding: var(--space-6, 1.5rem);
+    text-align: center;
+  }
+
+  .catalog-empty-cell {
+    padding: var(--space-8, 2rem);
+  }
+
+  .catalog-card-footer {
+    margin-top: var(--space-6, 1.5rem);
+    padding-top: var(--space-4, 1rem);
+    border-top: 1px solid var(--border, #E2E8F0);
+  }
+
+  .catalog-capitalize {
+    text-transform: capitalize;
+  }
+
+  .text-danger {
+    color: var(--red, #DC2626) !important;
+  }
+
+  .text-success {
+    color: var(--green, #059669) !important;
+  }
 }

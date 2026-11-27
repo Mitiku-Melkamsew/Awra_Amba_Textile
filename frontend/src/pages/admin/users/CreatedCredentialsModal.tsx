@@ -37,21 +37,14 @@ export function CreatedCredentialsModal({
       maxWidth={440}
     >
       <div className="stack">
-        <div style={{ fontSize: "2rem", textAlign: "center" }}>🎉</div>
+        <div className="modal-celebrate-icon">🎉</div>
 
-        <div
-          style={{
-            background: "var(--bg-subtle)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            padding: "var(--space-4)",
-          }}
-        >
-          <div className="cluster-between" style={{ marginBottom: "var(--space-2)" }}>
+        <div className="created-creds-box">
+          <div className="cluster-between mb-2">
             <span className="text-muted text-sm">Username:</span>
             <strong className="text-sm font-bold">{credentials.username}</strong>
           </div>
-          <div className="cluster-between" style={{ marginBottom: "var(--space-2)" }}>
+          <div className="cluster-between mb-2">
             <span className="text-muted text-sm">Password:</span>
             <strong className="text-sm font-bold text-brand">
               {credentials.initialPassword || "••••••••"}
@@ -59,17 +52,17 @@ export function CreatedCredentialsModal({
           </div>
           <div className="cluster-between">
             <span className="text-muted text-sm">Roles:</span>
-            <span className="text-sm font-semibold" style={{ textTransform: "capitalize" }}>
+            <span className="text-sm font-semibold capitalize">
               {credentials.roles.join(", ")}
             </span>
           </div>
         </div>
 
-        <div className="cluster" style={{ gap: "var(--space-2)" }}>
-          <Button variant="secondary" onClick={handleCopy} style={{ flex: 1 }}>
+        <div className="cluster">
+          <Button variant="secondary" onClick={handleCopy} fullWidth>
             {copied ? "✓ Copied!" : "Copy info"}
           </Button>
-          <Button variant="primary" onClick={onClose} style={{ flex: 1 }}>
+          <Button variant="primary" onClick={onClose} fullWidth>
             Done
           </Button>
         </div>

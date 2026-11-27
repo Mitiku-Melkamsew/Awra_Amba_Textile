@@ -1,5 +1,7 @@
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { ZigLedgerItem } from "../../domain/models";
+import { toTitleCase } from "../../utils/formatters";
 
 function getNetPayable(item: ZigLedgerItem): number {
   if ((item as any).netPayable !== undefined) return Number((item as any).netPayable);
@@ -24,12 +26,46 @@ export function SettlementZigsTab({
   returnedZigsCount,
   ongoingZigsCount,
 }: SettlementZigsTabProps) {
+  const [statusFilter, setStatusFilter] = useState<"all" | "ready_to_settle" | "ongoing">("all");
+
+  const filteredData = useMemo(() => {
+    if (statusFilter === "ready_to_settle") {
+      return data.filter((item) => item.status === "returned");
+    }
+    if (statusFilter === "ongoing") {
+      return data.filter((item) => item.status === "assigned" || item.status === "in_progress");
+    }
+    return data;
+  }, [data, statusFilter]);
+
+  const toggleFilter = (filter: "ready_to_settle" | "ongoing") => {
+    setStatusFilter((curr) => (curr === filter ? "all" : filter));
+  };
+
   return (
     <div>
-      {/* ── Two KPI Cards ── */}
+      {/* ── Two Interactive Filter KPI Cards ── */}
       <div className="settlement-kpi-grid">
         {/* Card 1: Ready to settle (Peach Background) */}
-        <div className="settlement-kpi-card settlement-kpi-peach">
+        <div
+          role="button"
+          tabIndex={0}
+          className={`settlement-kpi-card settlement-kpi-peach clickable ${
+            statusFilter === "ready_to_settle" ? "active-filter" : ""
+          }`}
+          onClick={() => toggleFilter("ready_to_settle")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleFilter("ready_to_settle");
+            }
+          }}
+          title={
+            statusFilter === "ready_to_settle"
+              ? "Click to view all zigs"
+              : "Click to filter zigs ready to settle"
+          }
+        >
           <div className="settlement-kpi-label">Ready to settle</div>
           <div className="settlement-kpi-val rust">
             {Math.round(readyToSettleAmount).toLocaleString()} ETB
@@ -40,7 +76,25 @@ export function SettlementZigsTab({
         </div>
 
         {/* Card 2: Ongoing (White Card) */}
-        <div className="settlement-kpi-card settlement-kpi-white">
+        <div
+          role="button"
+          tabIndex={0}
+          className={`settlement-kpi-card settlement-kpi-white clickable ${
+            statusFilter === "ongoing" ? "active-filter" : ""
+          }`}
+          onClick={() => toggleFilter("ongoing")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleFilter("ongoing");
+            }
+          }}
+          title={
+            statusFilter === "ongoing"
+              ? "Click to view all zigs"
+              : "Click to filter ongoing zigs only"
+          }
+        >
           <div className="settlement-kpi-label">Ongoing</div>
           <div className="settlement-kpi-val dark">
             {ongoingZigsCount} zigs
@@ -50,6 +104,27 @@ export function SettlementZigsTab({
           </div>
         </div>
       </div>
+
+      {/* ── Active Filter Bar ── */}
+      {statusFilter !== "all" && (
+        <div className="settlement-filter-bar">
+          <div className="settlement-filter-info">
+            <span>Filtered by:</span>
+            <span className="settlement-filter-tag">
+              {statusFilter === "ready_to_settle"
+                ? `Ready to settle (${filteredData.length})`
+                : `Ongoing (${filteredData.length})`}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="settlement-filter-clear"
+            onClick={() => setStatusFilter("all")}
+          >
+            Show all zigs
+          </button>
+        </div>
+      )}
 
       {/* ── Zigs Table ── */}
       <div className="settlement-table-container">
@@ -62,7 +137,7 @@ export function SettlementZigsTab({
               <th className="settlement-th text-center">Billable pcs</th>
               <th className="settlement-th text-right">Net payable</th>
               <th className="settlement-th text-center">Status</th>
-              <th className="settlement-th" style={{ width: "40px" }}></th>
+              <th className="settlement-th"></th>
             </tr>
           </thead>
           <tbody>
@@ -72,57 +147,62 @@ export function SettlementZigsTab({
                   ⏳ Loading zigs ledger…
                 </td>
               </tr>
-            ) : data.length === 0 ? (
+            ) : filteredData.length === 0 ? (
               <tr>
                 <td colSpan={7} className="settlement-empty-state">
-                  No zigs found in ledger.
+                  {statusFilter === "all"
+                    ? "No zigs found in ledger."
+                    : "No zigs found matching the selected filter."}
                 </td>
               </tr>
             ) : (
-              data.map((item) => {
+              filteredData.map((item) => {
                 const isOngoing = item.status === "assigned" || item.status === "in_progress";
                 const isReturned = item.status === "returned";
                 const isReconciled = item.status === "reconciled" || item.isSettled;
 
                 const fabricDetails = [
-                  item.fabricName,
-                  item.warpColor && item.weftColor ? `${item.warpColor}/${item.weftColor}` : item.warpColor || item.weftColor,
-                  item.design,
+                  toTitleCase(item.fabricName),
+                  item.warpColor && item.weftColor
+                    ? `${toTitleCase(item.warpColor)}/${toTitleCase(item.weftColor)}`
+                    : toTitleCase(item.warpColor || item.weftColor),
+                  toTitleCase(item.design),
                 ].filter(Boolean).join(" · ");
 
                 return (
                   <tr key={item.zigId} className="settlement-tr">
                     <td className="settlement-td">
-                      <Link
-                        to={`/admin/zigs/${item.zigId}`}
-                        style={{ fontWeight: 700, color: "#0F172A", textDecoration: "none" }}
-                      >
+                      <Link to={`/admin/zigs/${item.zigId}`} className="settlement-row-link">
                         {item.zigId}
                       </Link>
                     </td>
 
-                    <td className="settlement-td" style={{ color: "#334155" }}>
+                    <td className="settlement-td">
                       <Link
                         to={`/admin/weavers/${item.weaverUserId}`}
-                        style={{ color: "#334155", textDecoration: "none", fontWeight: 500 }}
+                        className="settlement-weaver-link"
                       >
-                        {item.weaverName}
+                        {toTitleCase(item.weaverName)}
                       </Link>
                     </td>
 
-                    <td className="settlement-td" style={{ color: "#64748B", fontSize: "0.9rem" }}>
-                      {fabricDetails || item.fabricName || "Standard Fabric"}
+                    <td className="settlement-td">
+                      <span className="settlement-fabric-name">
+                        {fabricDetails || toTitleCase(item.fabricName) || "Standard Fabric"}
+                      </span>
                     </td>
 
-                    <td className="settlement-td text-center" style={{ color: "#334155", fontWeight: 500 }}>
-                      {isOngoing ? "—" : item.fabric?.receivedQuantity || 0}
+                    <td className="settlement-td text-center">
+                      <span className="settlement-pcs-count">
+                        {isOngoing ? "—" : item.fabric?.receivedQuantity || 0}
+                      </span>
                     </td>
 
                     <td className="settlement-td text-right">
                       {isOngoing ? (
-                        <span style={{ color: "#94A3B8" }}>—</span>
+                        <span className="settlement-empty-val">—</span>
                       ) : (
-                        <strong style={{ color: "#0F172A", fontWeight: 700 }}>
+                        <strong className="settlement-payable-val">
                           {Math.round(getNetPayable(item)).toLocaleString()}
                         </strong>
                       )}
@@ -142,15 +222,10 @@ export function SettlementZigsTab({
                       )}
                     </td>
 
-                    <td className="settlement-td text-right" style={{ padding: "1rem" }}>
+                    <td className="settlement-td text-right">
                       <Link
                         to={`/admin/zigs/${item.zigId}`}
-                        style={{
-                          color: "#94A3B8",
-                          textDecoration: "none",
-                          fontSize: "1.1rem",
-                          fontWeight: 600,
-                        }}
+                        className="settlement-chevron-link"
                       >
                         ›
                       </Link>
@@ -164,7 +239,7 @@ export function SettlementZigsTab({
       </div>
 
       {/* ── Footnote ── */}
-      <div style={{ marginTop: "0.85rem", color: "#94A3B8", fontSize: "0.85rem" }}>
+      <div className="settlement-footnote">
         Select a zig to see its yarn, returns and deductions.
       </div>
     </div>

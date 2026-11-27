@@ -120,8 +120,8 @@ export function HisabPrintPage() {
         >
           <p style={{ margin: 0, color: "#666", fontSize: "13px" }}>
             {isPaid
-              ? `Official Artisan Settlement Payment Receipt #${report.paymentId}`
-              : `Artisan Settlement Statement #${report.settlementId ?? report.paymentId} (Pre-Payout)`}
+              ? `Official Weaver Settlement Payment Receipt #${report.paymentId}`
+              : `Weaver Settlement Statement #${report.settlementId ?? report.paymentId} (Pre-Payout)`}
           </p>
           <span
             style={{
@@ -153,7 +153,7 @@ export function HisabPrintPage() {
             ቀን / Date: <strong>{formatDateDDMMYY(report.paymentDate)}</strong>
           </div>
           <div>
-            አሸጋይ / Artisan Weaver:{" "}
+            አሸጋይ / Weaver:{" "}
             <strong>
               {report.weaver.fullName}
             </strong>{" "}
@@ -445,7 +445,7 @@ export function HisabPrintPage() {
           </div>
           <div>
             <p style={{ margin: "0 0 2rem", fontWeight: 700 }}>
-              የተቀባዩ ፊርማ / Artisan Receiver
+              የተቀባዩ ፊርማ / Weaver Receiver
             </p>
             <p
               style={{

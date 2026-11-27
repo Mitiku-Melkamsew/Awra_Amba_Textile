@@ -49,7 +49,7 @@ export function WeaversPage() {
         </button>
       </div>
 
-      {/* ── Artisans Roster ── */}
+      {/* ── Weavers Roster ── */}
       <WeaverRosterToolbar
         search={search}
         setSearch={setSearch}

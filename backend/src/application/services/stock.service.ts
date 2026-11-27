@@ -18,12 +18,12 @@ export class StockService {
       }),
     ]);
 
-    const totalYarnStockKg = yarns.reduce((sum, y) => sum + Number(y.stockSnapshot), 0);
+    const totalYarnStockPieces = yarns.reduce((sum, y) => sum + Number(y.stockSnapshot), 0);
     const totalFabricStockPieces = fabrics.reduce((sum, f) => sum + Number(f.stockSnapshot), 0);
 
     return {
-      totalYarnStockKg: Number(totalYarnStockKg.toFixed(2)),
-      totalYarnStockPieces: Math.round(totalYarnStockKg),
+      totalYarnStockPieces: Math.round(totalYarnStockPieces),
+      totalYarnStockKg: Number(totalYarnStockPieces.toFixed(2)), // compatibility alias
       totalFabricStockPieces,
       yarns,
       fabrics,

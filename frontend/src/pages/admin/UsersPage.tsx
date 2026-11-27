@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { UserRole, UserSummary } from "../../domain/models";
 import { userService } from "../../infrastructure/services";
-import { Alert, Button, PageHeader } from "../../components/common";
+import { Alert, PageHeader } from "../../components/common";
 import { useUsersManager } from "./users/useUsersManager";
 import { UserListTable } from "./users/UserListTable";
 import { UserProfilePane } from "./users/UserProfilePane";
@@ -67,13 +67,13 @@ export function UsersPage() {
         eyebrow="ተጠቃሚዎች · USERS"
         title="Users and roles"
         actions={
-          <Button
-            variant="primary"
+          <button
+            type="button"
+            className="btn btn-primary"
             onClick={() => setShowCreateModal(true)}
-            icon={<span>+</span>}
           >
-            Add user
-          </Button>
+            + Add user
+          </button>
         }
       />
 
@@ -90,7 +90,7 @@ export function UsersPage() {
       )}
 
       {/* 2-Column Master-Detail Layout */}
-      <div className="master-detail" style={{ gridTemplateColumns: "minmax(0, 1fr) 380px" }}>
+      <div className="users-master-detail">
         <UserListTable
           users={filteredUsers}
           loading={loading}
@@ -100,6 +100,7 @@ export function UsersPage() {
           search={search}
           onSearchChange={setSearch}
           onSelectUser={(u) => setSelectedUserId(u.userId)}
+          onAddUser={() => setShowCreateModal(true)}
         />
 
         <UserProfilePane
@@ -115,7 +116,13 @@ export function UsersPage() {
       <CreateUserModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onUserCreated={(creds) => setCreatedCredentials(creds)}
+        onUserCreated={(creds) => {
+          setCreatedCredentials(creds);
+          setSelectedUserId(creds.userId);
+          if (selectedRole !== "all" && !creds.roles.includes(selectedRole as UserRole)) {
+            setSelectedRole("all");
+          }
+        }}
         onRefreshList={loadUsers}
       />
 

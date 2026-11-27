@@ -99,7 +99,7 @@ export function SettlementHistoryPage() {
           <span className="empty-icon">📜</span>
           <p style={{ fontWeight: 600, color: "var(--text)" }}>No batch settlement has been confirmed yet.</p>
           <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-            Go to the Settlement page to generate and commit your first artisan payroll.
+            Go to the Settlement page to generate and commit your first weaver payroll.
           </span>
         </div>
       )}
@@ -137,7 +137,7 @@ export function SettlementHistoryPage() {
                       </code>
                     </td>
                     <td>{row.cutoffDate ? formatDateDDMMYY(row.cutoffDate) : "—"}</td>
-                    <td style={{ textAlign: "right", fontWeight: 600 }}>{row.weaverCount} artisans</td>
+                    <td style={{ textAlign: "right", fontWeight: 600 }}>{row.weaverCount} weavers</td>
                     <td>
                       {isPaid ? (
                         <span className="badge badge--success">✓ Paid / የተከፈለ</span>
@@ -218,7 +218,7 @@ export function SettlementHistoryPage() {
             <form onSubmit={handleConfirmPayout} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div style={{ background: "var(--bg-subtle)", padding: "0.85rem", borderRadius: "8px", fontSize: "13px" }}>
                 <div>Batch Reference: <strong>#{payingBatch.previewId}</strong></div>
-                <div>Eligible Weavers: <strong>{payingBatch.weaverCount} artisans</strong></div>
+                <div>Eligible Weavers: <strong>{payingBatch.weaverCount} weavers</strong></div>
                 <div>Total Payable: <strong>{Math.round(payingBatch.grandTotal).toLocaleString()} ETB</strong></div>
                 <div>Already Paid: <strong>{Math.round(payingBatch.paidTotal).toLocaleString()} ETB</strong></div>
               </div>

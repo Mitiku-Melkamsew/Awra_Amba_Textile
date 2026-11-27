@@ -165,7 +165,7 @@ export function WeaverZigDetailPage() {
                     {dateStr}
                   </div>
                 </div>
-                <div className="weaver-rate-price">{qty} kg</div>
+                <div className="weaver-rate-price">{qty} pcs</div>
               </div>
             );
           })

@@ -201,8 +201,15 @@ export const catalogService = {
   },
 
   // Prices
-  async listFabricPrices(fabricId?: number): Promise<FabricPrice[]> {
-    const qs = fabricId ? `?fabricId=${fabricId}` : "";
+  async listFabricPrices(params?: { fabricId?: number; activeOnly?: boolean } | number): Promise<FabricPrice[]> {
+    const q = new URLSearchParams();
+    if (typeof params === "number") {
+      q.set("fabricId", String(params));
+    } else if (params) {
+      if (params.fabricId) q.set("fabricId", String(params.fabricId));
+      if (params.activeOnly !== undefined) q.set("activeOnly", String(params.activeOnly));
+    }
+    const qs = q.toString() ? `?${q.toString()}` : "";
     return request<FabricPrice[]>(`/catalog/fabric-prices${qs}`);
   },
   async createFabricPrice(data: {
@@ -222,8 +229,15 @@ export const catalogService = {
     });
   },
 
-  async listYarnPrices(yarnId?: number): Promise<YarnPrice[]> {
-    const qs = yarnId ? `?yarnId=${yarnId}` : "";
+  async listYarnPrices(params?: { yarnId?: number; activeOnly?: boolean } | number): Promise<YarnPrice[]> {
+    const q = new URLSearchParams();
+    if (typeof params === "number") {
+      q.set("yarnId", String(params));
+    } else if (params) {
+      if (params.yarnId) q.set("yarnId", String(params.yarnId));
+      if (params.activeOnly !== undefined) q.set("activeOnly", String(params.activeOnly));
+    }
+    const qs = q.toString() ? `?${q.toString()}` : "";
     return request<YarnPrice[]>(`/catalog/yarn-prices${qs}`);
   },
   async createYarnPrice(data: {

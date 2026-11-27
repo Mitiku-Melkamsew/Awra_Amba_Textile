@@ -80,10 +80,18 @@ export class CatalogService {
     data: { name: string; standardLengthCm: number; standardWidthCm: number; standardWeightG: number },
     actorUserId: number,
   ) {
+    const cleanedName = data.name.trim().toLowerCase();
+    const existing = await prisma.fabric.findFirst({
+      where: { name: { equals: cleanedName, mode: "insensitive" } },
+    });
+    if (existing) {
+      throw new ConflictError(`Fabric '${data.name.trim()}' already exists`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const created = await tx.fabric.create({
         data: {
-          name: data.name.trim(),
+          name: cleanedName,
           standardLengthCm: data.standardLengthCm,
           standardWidthCm: data.standardWidthCm,
           standardWeightG: data.standardWeightG,
@@ -107,15 +115,32 @@ export class CatalogService {
 
   static async updateFabric(
     fabricId: number,
-    data: { standardLengthCm?: number; standardWidthCm?: number; standardWeightG?: number; isActive?: boolean },
+    data: { name?: string; standardLengthCm?: number; standardWidthCm?: number; standardWeightG?: number; isActive?: boolean },
     actorUserId: number,
   ) {
     await this.getFabric(fabricId);
 
+    let cleanedName: string | undefined = undefined;
+    if (data.name !== undefined) {
+      cleanedName = data.name.trim().toLowerCase();
+      const existing = await prisma.fabric.findFirst({
+        where: {
+          name: { equals: cleanedName, mode: "insensitive" },
+          fabricId: { not: fabricId },
+        },
+      });
+      if (existing) {
+        throw new ConflictError(`Fabric '${data.name.trim()}' already exists`);
+      }
+    }
+
     return prisma.$transaction(async (tx) => {
       const updated = await tx.fabric.update({
         where: { fabricId },
-        data,
+        data: {
+          ...data,
+          name: cleanedName,
+        },
       });
 
       await AuditService.record(
@@ -150,9 +175,17 @@ export class CatalogService {
   }
 
   static async createYarn(data: { name: string }, actorUserId: number) {
+    const cleanedName = data.name.trim().toLowerCase();
+    const existing = await prisma.yarn.findFirst({
+      where: { name: { equals: cleanedName, mode: "insensitive" } },
+    });
+    if (existing) {
+      throw new ConflictError(`Yarn '${data.name.trim()}' already exists`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const created = await tx.yarn.create({
-        data: { name: data.name.trim() },
+        data: { name: cleanedName },
       });
 
       await AuditService.record(
@@ -175,11 +208,25 @@ export class CatalogService {
     data: { name?: string; isActive?: boolean },
     actorUserId: number,
   ) {
+    let cleanedName: string | undefined = undefined;
+    if (data.name !== undefined) {
+      cleanedName = data.name.trim().toLowerCase();
+      const existing = await prisma.yarn.findFirst({
+        where: {
+          name: { equals: cleanedName, mode: "insensitive" },
+          yarnId: { not: yarnId },
+        },
+      });
+      if (existing) {
+        throw new ConflictError(`Yarn '${data.name.trim()}' already exists`);
+      }
+    }
+
     return prisma.$transaction(async (tx) => {
       const updated = await tx.yarn.update({
         where: { yarnId },
         data: {
-          name: data.name ? data.name.trim() : undefined,
+          name: cleanedName,
           isActive: data.isActive,
         },
       });
@@ -206,9 +253,17 @@ export class CatalogService {
   }
 
   static async createColor(data: { name: string }, actorUserId: number) {
+    const cleanedName = data.name.trim().toLowerCase();
+    const existing = await prisma.color.findFirst({
+      where: { name: { equals: cleanedName, mode: "insensitive" } },
+    });
+    if (existing) {
+      throw new ConflictError(`Color '${data.name.trim()}' already exists`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const created = await tx.color.create({
-        data: { name: data.name.trim() },
+        data: { name: cleanedName },
       });
 
       await AuditService.record(
@@ -227,11 +282,22 @@ export class CatalogService {
   }
 
   static async updateColor(colorId: number, data: { name: string }, actorUserId: number) {
+    const cleanedName = data.name.trim().toLowerCase();
+    const existing = await prisma.color.findFirst({
+      where: {
+        name: { equals: cleanedName, mode: "insensitive" },
+        colorId: { not: colorId },
+      },
+    });
+    if (existing) {
+      throw new ConflictError(`Color '${data.name.trim()}' already exists`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const updated = await tx.color.update({
         where: { colorId },
         data: {
-          name: data.name.trim(),
+          name: cleanedName,
         },
       });
 
@@ -278,9 +344,17 @@ export class CatalogService {
   }
 
   static async createDesign(data: { name: string }, actorUserId: number) {
+    const cleanedName = data.name.trim().toLowerCase();
+    const existing = await prisma.design.findFirst({
+      where: { name: { equals: cleanedName, mode: "insensitive" } },
+    });
+    if (existing) {
+      throw new ConflictError(`Design '${data.name.trim()}' already exists`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const created = await tx.design.create({
-        data: { name: data.name.trim() },
+        data: { name: cleanedName },
       });
 
       await AuditService.record(
@@ -299,10 +373,21 @@ export class CatalogService {
   }
 
   static async updateDesign(designId: number, data: { name: string }, actorUserId: number) {
+    const cleanedName = data.name.trim().toLowerCase();
+    const existing = await prisma.design.findFirst({
+      where: {
+        name: { equals: cleanedName, mode: "insensitive" },
+        designId: { not: designId },
+      },
+    });
+    if (existing) {
+      throw new ConflictError(`Design '${data.name.trim()}' already exists`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const updated = await tx.design.update({
         where: { designId },
-        data: { name: data.name.trim() },
+        data: { name: cleanedName },
       });
 
       await AuditService.record(
@@ -353,9 +438,17 @@ export class CatalogService {
   }
 
   static async createSupplier(data: { name: string; contactPhone?: string }, actorUserId: number) {
+    const cleanedName = data.name.trim().toLowerCase();
+    const existing = await prisma.supplier.findFirst({
+      where: { name: { equals: cleanedName, mode: "insensitive" } },
+    });
+    if (existing) {
+      throw new ConflictError(`Supplier '${data.name.trim()}' already exists`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const created = await tx.supplier.create({
-        data: { name: data.name.trim(), contactPhone: data.contactPhone?.trim() },
+        data: { name: cleanedName, contactPhone: data.contactPhone?.trim() },
       });
 
       await AuditService.record(
@@ -378,11 +471,25 @@ export class CatalogService {
     data: { name?: string; contactPhone?: string; isActive?: boolean },
     actorUserId: number,
   ) {
+    let cleanedName: string | undefined = undefined;
+    if (data.name !== undefined) {
+      cleanedName = data.name.trim().toLowerCase();
+      const existing = await prisma.supplier.findFirst({
+        where: {
+          name: { equals: cleanedName, mode: "insensitive" },
+          supplierId: { not: supplierId },
+        },
+      });
+      if (existing) {
+        throw new ConflictError(`Supplier '${data.name.trim()}' already exists`);
+      }
+    }
+
     return prisma.$transaction(async (tx) => {
       const updated = await tx.supplier.update({
         where: { supplierId },
         data: {
-          name: data.name?.trim(),
+          name: cleanedName,
           contactPhone: data.contactPhone?.trim(),
           isActive: data.isActive,
         },
@@ -637,9 +744,18 @@ export class CatalogService {
 
   // --- Prices ---
 
-  static async listFabricPrices(fabricId?: number) {
+  static async listFabricPrices(fabricId?: number, activeOnly?: boolean) {
+    const where: any = {};
+    if (fabricId) where.fabricId = fabricId;
+    if (activeOnly) {
+      where.isActive = true;
+      where.OR = [
+        { effectiveTo: null },
+        { effectiveTo: { gt: new Date() } },
+      ];
+    }
     return prisma.fabricPrice.findMany({
-      where: fabricId ? { fabricId } : undefined,
+      where: Object.keys(where).length > 0 ? where : undefined,
       include: { fabric: true },
       orderBy: { effectiveFrom: "desc" },
     });
@@ -708,9 +824,18 @@ export class CatalogService {
     });
   }
 
-  static async listYarnPrices(yarnId?: number) {
+  static async listYarnPrices(yarnId?: number, activeOnly?: boolean) {
+    const where: any = {};
+    if (yarnId) where.yarnId = yarnId;
+    if (activeOnly) {
+      where.isActive = true;
+      where.OR = [
+        { effectiveTo: null },
+        { effectiveTo: { gt: new Date() } },
+      ];
+    }
     return prisma.yarnPrice.findMany({
-      where: yarnId ? { yarnId } : undefined,
+      where: Object.keys(where).length > 0 ? where : undefined,
       include: { yarn: true, supplier: true },
       orderBy: { effectiveFrom: "desc" },
     });
@@ -794,11 +919,26 @@ export class CatalogService {
     data: { factor: string; unit: string; deductionPerUnit: number },
     actorUserId: number,
   ) {
+    const cleanedFactor = data.factor.trim().toLowerCase();
+    const cleanedUnit = data.unit.trim().toLowerCase();
+
+    const existing = await prisma.qualityRule.findFirst({
+      where: {
+        factor: { equals: cleanedFactor, mode: "insensitive" },
+        unit: { equals: cleanedUnit, mode: "insensitive" },
+      },
+    });
+    if (existing) {
+      throw new ConflictError(
+        `Quality rule for factor '${data.factor.trim()}' and unit '${data.unit.trim()}' already exists`,
+      );
+    }
+
     return prisma.$transaction(async (tx) => {
       const created = await tx.qualityRule.create({
         data: {
-          factor: data.factor.trim(),
-          unit: data.unit.trim(),
+          factor: cleanedFactor,
+          unit: cleanedUnit,
           deductionPerUnit: data.deductionPerUnit,
         },
       });
@@ -823,12 +963,36 @@ export class CatalogService {
     data: { factor?: string; unit?: string; deductionPerUnit?: number; isActive?: boolean },
     actorUserId: number,
   ) {
+    let cleanedFactor: string | undefined = undefined;
+    let cleanedUnit: string | undefined = undefined;
+
+    if (data.factor !== undefined || data.unit !== undefined) {
+      const current = await prisma.qualityRule.findUnique({ where: { qualityRuleId } });
+      if (!current) throw new NotFoundError(`Quality rule with ID ${qualityRuleId} not found`);
+
+      cleanedFactor = data.factor !== undefined ? data.factor.trim().toLowerCase() : current.factor.toLowerCase();
+      cleanedUnit = data.unit !== undefined ? data.unit.trim().toLowerCase() : current.unit.toLowerCase();
+
+      const existing = await prisma.qualityRule.findFirst({
+        where: {
+          factor: { equals: cleanedFactor, mode: "insensitive" },
+          unit: { equals: cleanedUnit, mode: "insensitive" },
+          qualityRuleId: { not: qualityRuleId },
+        },
+      });
+      if (existing) {
+        throw new ConflictError(
+          `Quality rule for factor '${cleanedFactor}' and unit '${cleanedUnit}' already exists`,
+        );
+      }
+    }
+
     return prisma.$transaction(async (tx) => {
       const updated = await tx.qualityRule.update({
         where: { qualityRuleId },
         data: {
-          factor: data.factor?.trim(),
-          unit: data.unit?.trim(),
+          factor: cleanedFactor,
+          unit: cleanedUnit,
           deductionPerUnit: data.deductionPerUnit,
           isActive: data.isActive,
         },

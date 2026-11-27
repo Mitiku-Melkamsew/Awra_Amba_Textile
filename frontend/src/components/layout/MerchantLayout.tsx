@@ -39,15 +39,6 @@ export function MerchantLayout() {
               <span>🧣</span>
               <span>Fabrics / ጨርቆች</span>
             </NavLink>
-            <NavLink
-              to="/merchant/prices"
-              className={({ isActive }) =>
-                `merchant-nav-link ${isActive ? "active" : ""}`
-              }
-            >
-              <span>🏷️</span>
-              <span>Prices / ዋጋ ዝርዝር</span>
-            </NavLink>
           </nav>
 
           <div className="merchant-user-info">

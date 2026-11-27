@@ -3,6 +3,7 @@ import type { CatalogTab, FabricWithRates } from "./useCatalogData";
 import type { FabricVariant } from "../../../api";
 import { catalogApi } from "../../../api";
 import { Button, FormField, Modal, SearchableSelect } from "../../../components/common";
+import { toTitleCase } from "../../../utils/formatters";
 
 export interface AddCatalogItemModalProps {
   isOpen: boolean;
@@ -51,7 +52,6 @@ export function AddCatalogItemModal({
   // Add Simple items (Yarn, Color, Design, Supplier)
   const [newSimpleName, setNewSimpleName] = useState("");
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
-  const [newColorHex, setNewColorHex] = useState("#000000");
 
   // Inline creator toggles & state for Fabric Variant
   const [showNewFabricForm, setShowNewFabricForm] = useState(false);
@@ -97,7 +97,6 @@ export function AddCatalogItemModal({
     setNewYvSupplierId(suppliers[0]?.supplierId || "");
     setNewSimpleName("");
     setNewSupplierPhone("");
-    setNewColorHex("#000000");
     setShowNewFabricForm(false);
     setShowNewWarpColorForm(false);
     setShowNewWeftColorForm(false);
@@ -481,7 +480,7 @@ export function AddCatalogItemModal({
               <SearchableSelect
                 value={newFvFabricId}
                 onChange={(val) => setNewFvFabricId(val ? Number(val) : "")}
-                options={fabrics.map((f) => ({ id: f.fabricId, title: f.name, subtitle: `${f.standardWeightG}g standard` }))}
+                options={fabrics.map((f) => ({ id: f.fabricId, title: toTitleCase(f.name), subtitle: `${f.standardWeightG}g standard` }))}
                 placeholder="Select fabric…"
                 onAddNew={() => setShowNewFabricForm(true)}
                 addNewLabel="New fabric"
@@ -521,7 +520,7 @@ export function AddCatalogItemModal({
                 <SearchableSelect
                   value={newFvWarpColorId}
                   onChange={(val) => setNewFvWarpColorId(val ? Number(val) : "")}
-                  options={colors.map((c) => ({ id: c.colorId, title: c.name, badge: c.hexCode }))}
+                  options={colors.map((c) => ({ id: c.colorId, title: toTitleCase(c.name) }))}
                   placeholder="Select warp color…"
                   onAddNew={() => setShowNewWarpColorForm(true)}
                   addNewLabel="New color"
@@ -559,7 +558,7 @@ export function AddCatalogItemModal({
                 <SearchableSelect
                   value={newFvWeftColorId}
                   onChange={(val) => setNewFvWeftColorId(val ? Number(val) : "")}
-                  options={colors.map((c) => ({ id: c.colorId, title: c.name, badge: c.hexCode }))}
+                  options={colors.map((c) => ({ id: c.colorId, title: toTitleCase(c.name) }))}
                   placeholder="Select weft color…"
                   onAddNew={() => setShowNewWeftColorForm(true)}
                   addNewLabel="New color"
@@ -599,7 +598,7 @@ export function AddCatalogItemModal({
               <SearchableSelect
                 value={newFvDesignId}
                 onChange={(val) => setNewFvDesignId(val ? Number(val) : "")}
-                options={designs.map((d) => ({ id: d.designId, title: d.name }))}
+                options={designs.map((d) => ({ id: d.designId, title: toTitleCase(d.name) }))}
                 placeholder="Select design…"
                 onAddNew={() => setShowNewDesignForm(true)}
                 addNewLabel="New design"
@@ -660,7 +659,7 @@ export function AddCatalogItemModal({
               <SearchableSelect
                 value={newYvYarnId}
                 onChange={(val) => setNewYvYarnId(val ? Number(val) : "")}
-                options={yarns.map((y) => ({ id: y.yarnId, title: y.name }))}
+                options={yarns.map((y) => ({ id: y.yarnId, title: toTitleCase(y.name) }))}
                 placeholder="Select yarn…"
                 onAddNew={() => setShowNewYarnForm(true)}
                 addNewLabel="New yarn"
@@ -699,7 +698,7 @@ export function AddCatalogItemModal({
               <SearchableSelect
                 value={newYvColorId}
                 onChange={(val) => setNewYvColorId(val ? Number(val) : "")}
-                options={colors.map((c) => ({ id: c.colorId, title: c.name, badge: c.hexCode }))}
+                options={colors.map((c) => ({ id: c.colorId, title: toTitleCase(c.name) }))}
                 placeholder="Select color…"
                 onAddNew={() => setShowNewYarnColorForm(true)}
                 addNewLabel="New color"
@@ -748,7 +747,7 @@ export function AddCatalogItemModal({
               <SearchableSelect
                 value={newYvSupplierId}
                 onChange={(val) => setNewYvSupplierId(val ? Number(val) : "")}
-                options={suppliers.map((s) => ({ id: s.supplierId, title: s.name, subtitle: s.contactPhone }))}
+                options={suppliers.map((s) => ({ id: s.supplierId, title: toTitleCase(s.name), subtitle: s.contactPhone }))}
                 placeholder="Select supplier…"
                 onAddNew={() => setShowNewSupplierForm(true)}
                 addNewLabel="New supplier"
@@ -763,35 +762,15 @@ export function AddCatalogItemModal({
 
         {/* Color fields */}
         {activeTab === "colors" && (
-          <>
-            <FormField label="Color Name (የቀለም ስም)" required hint="e.g. White, Black, Red, Indigo">
-              <input
-                type="text"
-                className="input"
-                required
-                value={newSimpleName}
-                onChange={(e) => setNewSimpleName(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Color Hex Code (የቀለም ኮድ)">
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input
-                  type="color"
-                  value={newColorHex}
-                  onChange={(e) => setNewColorHex(e.target.value)}
-                  style={{ width: 42, height: 38, padding: 0, border: "1.5px solid var(--border)", borderRadius: "6px", cursor: "pointer" }}
-                />
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="#000000"
-                  value={newColorHex}
-                  onChange={(e) => setNewColorHex(e.target.value)}
-                  style={{ flex: 1 }}
-                />
-              </div>
-            </FormField>
-          </>
+          <FormField label="Color Name (የቀለም ስም)" required hint="e.g. White, Black, Red, Indigo">
+            <input
+              type="text"
+              className="input"
+              required
+              value={newSimpleName}
+              onChange={(e) => setNewSimpleName(e.target.value)}
+            />
+          </FormField>
         )}
 
         {/* Design fields */}

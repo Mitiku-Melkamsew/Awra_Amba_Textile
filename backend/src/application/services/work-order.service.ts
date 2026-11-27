@@ -12,6 +12,9 @@ import {
   computeNetFabricValue,
   computeNetPayable,
   suggestWeightDeduction,
+  suggestLengthDeduction,
+  suggestWidthDeduction,
+  calculateQualityDeductions,
   DeductionEntry,
 } from "./calculation.service.js";
 
@@ -529,21 +532,24 @@ export class WorkOrderService {
 
     return prisma.$transaction(async (tx) => {
       let deductions: DeductionEntry[] = input.deductions ?? [];
-      // Auto-suggest weight deduction if none supplied and fabric has standard weight
-      if (deductions.length === 0 && fv.fabric?.standardWeightG) {
-        const weightRule = await tx.qualityRule.findFirst({
-          where: { factor: "weight", isActive: true },
+      // Auto-suggest quality deductions if none explicitly supplied
+      if (input.deductions === undefined) {
+        const qualityRules = await tx.qualityRule.findMany({
+          where: { isActive: true },
         });
-        const deductionRate = weightRule ? Number(weightRule.deductionPerUnit) : 10;
-        const suggestion = suggestWeightDeduction(
+        deductions = calculateQualityDeductions({
+          quantity: input.quantityReturned,
           totalWeight,
-          input.quantityReturned,
-          Number(fv.fabric.standardWeightG),
-          deductionRate,
-        );
-        if (suggestion) {
-          deductions = [suggestion];
-        }
+          lengthCm: input.lengthCm,
+          widthCm: input.widthCm,
+          standardWeightG: fv.fabric?.standardWeightG ? Number(fv.fabric.standardWeightG) : null,
+          standardLengthCm: fv.fabric?.standardLengthCm ? Number(fv.fabric.standardLengthCm) : null,
+          standardWidthCm: fv.fabric?.standardWidthCm ? Number(fv.fabric.standardWidthCm) : null,
+          qualityRules: qualityRules.map((r: any) => ({
+            factor: r.factor,
+            deductionPerUnit: Number(r.deductionPerUnit),
+          })),
+        });
       }
 
       const deductionAmount = computeDeductionAmount(deductions, input.quantityReturned);

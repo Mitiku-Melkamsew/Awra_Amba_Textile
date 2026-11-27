@@ -8,15 +8,19 @@ import {
   type Design,
   type Fabric,
   type FabricVariant,
+  type QualityRuleRow,
   type WorkOrderDetail,
 } from "../../api";
 import { fabricVariantName } from "../../utils/variantNames";
 import { findZigZagDesignId } from "../../utils/defaultDesign";
+import { toTitleCase } from "../../utils/formatters";
 
 export type FabricReturnRow = WorkOrderDetail["fabricReturns"][number];
 
 export const DEDUCTION_FACTORS: Array<{ value: string; label: string }> = [
   { value: "weight", label: "Weight Deficit" },
+  { value: "length", label: "Length Deficit" },
+  { value: "width", label: "Width Deficit" },
   { value: "low_quality", label: "Low Quality / Coarse Weave" },
   { value: "stain", label: "Stain / Discoloration" },
   { value: "weaving_defect", label: "Weaving Defect / Broken Threads" },
@@ -45,6 +49,7 @@ export function useFabricReturnForm({
   const [colors, setColors] = useState<Color[]>([]);
   const [designs, setDesigns] = useState<Design[]>([]);
   const [fabricVariants, setFabricVariants] = useState<FabricVariant[]>([]);
+  const [qualityRules, setQualityRules] = useState<QualityRuleRow[]>([]);
 
   // Oxlint-safe order variant id reference
   const orderVariant = order.fabricVariant;
@@ -77,21 +82,22 @@ export function useFabricReturnForm({
       ? String(editReturn.lengthCm)
       : orderVariant?.fabric?.standardLengthCm
       ? String(orderVariant.fabric.standardLengthCm)
-      : "64"
+      : ""
   );
   const [widthCm, setWidthCm] = useState(
     editReturn && editReturn.widthCm
       ? String(editReturn.widthCm)
       : orderVariant?.fabric?.standardWidthCm
       ? String(orderVariant.fabric.standardWidthCm)
-      : "120"
+      : ""
   );
   const [remark, setRemark] = useState(editReturn?.remark ?? "");
 
-  // Quality Deductions state
-  const [deductions, setDeductions] = useState<DeductionEntry[]>(
+  // Quality Deductions state: custom entries, cancelled auto-factors
+  const [customDeductions, setCustomDeductions] = useState<DeductionEntry[]>(
     editReturn?.deductions ? [...(editReturn.deductions as any)] : []
   );
+  const [cancelledFactors, setCancelledFactors] = useState<string[]>([]);
   const [addFactorOpen, setAddFactorOpen] = useState(false);
   const [factorType, setFactorType] = useState("low_quality");
   const [factorPerPiece, setFactorPerPiece] = useState("");
@@ -118,6 +124,7 @@ export function useFabricReturnForm({
         setColors(lookup.colors);
         setDesigns(lookup.designs);
         setFabricVariants(variants);
+        setQualityRules(lookup.qualityRules || []);
 
         if (lookup.fabrics[0]) setModalFabricId(String(lookup.fabrics[0].fabricId));
         if (lookup.colors[0]) {
@@ -143,7 +150,14 @@ export function useFabricReturnForm({
       if (editReturn.lengthCm) setLengthCm(String(editReturn.lengthCm));
       if (editReturn.widthCm) setWidthCm(String(editReturn.widthCm));
       setRemark(editReturn.remark ?? "");
-      setDeductions(editReturn.deductions ? [...(editReturn.deductions as any)] : []);
+      const existingDeductions = editReturn.deductions ? [...(editReturn.deductions as any)] : [];
+      setCustomDeductions(existingDeductions);
+      const existingFactorNames = new Set(existingDeductions.map((d: any) => d.factor));
+      const cancelled: string[] = [];
+      if (!existingFactorNames.has("weight")) cancelled.push("weight");
+      if (!existingFactorNames.has("length")) cancelled.push("length");
+      if (!existingFactorNames.has("width")) cancelled.push("width");
+      setCancelledFactors(cancelled);
       const varId = Number(editReturn.fabricVariant?.fabricVariantId ?? editReturn.fabricVariantId);
       if (varId) setSelectedVariantId(varId);
     }
@@ -158,22 +172,260 @@ export function useFabricReturnForm({
     return undefined;
   }, [fabricVariants, selectedVariantId, order.fabricVariant]);
 
+  // Standard dimensions from selected fabric
+  const standardWeight = selectedVariant?.fabric?.standardWeightG
+    ? Number(selectedVariant.fabric.standardWeightG)
+    : 64;
+  const standardLength = selectedVariant?.fabric?.standardLengthCm
+    ? Number(selectedVariant.fabric.standardLengthCm)
+    : 0;
+  const standardWidth = selectedVariant?.fabric?.standardWidthCm
+    ? Number(selectedVariant.fabric.standardWidthCm)
+    : 0;
+
+  // Pre-fill length and width with fabric standards when variant is loaded (if not yet customized)
+  useEffect(() => {
+    if (!editingReturnId && selectedVariant?.fabric) {
+      const stdLen = selectedVariant.fabric.standardLengthCm
+        ? String(selectedVariant.fabric.standardLengthCm)
+        : "";
+      const stdWid = selectedVariant.fabric.standardWidthCm
+        ? String(selectedVariant.fabric.standardWidthCm)
+        : "";
+      if (stdLen) {
+        setLengthCm((prev) => prev || stdLen);
+      }
+      if (stdWid) {
+        setWidthCm((prev) => prev || stdWid);
+      }
+    }
+  }, [selectedVariant, editingReturnId]);
+
   const selectedVariantDisplayName = useMemo(() => {
-    if (!selectedVariant) return "medebegna · biret · geberdin";
-    return fabricVariantName(selectedVariant).split("-").join(" · ");
+    if (!selectedVariant) return "Medebegna · Biret · Geberdin";
+    return fabricVariantName(selectedVariant, " · ");
   }, [selectedVariant]);
 
-  const standardWeight = selectedVariant?.fabric?.standardWeightG ?? 64;
+  // Quality rule rates helper: ONLY returns a rate if an active rule exists in DB!
+  const getRuleRate = (factorName: string): number | null => {
+    const rule = qualityRules.find(
+      (r) => String(r.factor || "").toLowerCase() === factorName.toLowerCase() && r.isActive !== false
+    );
+    if (!rule) return null;
+    const rate = Number(rule.deductionPerUnit);
+    return isNaN(rate) || rate <= 0 ? null : rate;
+  };
 
-  // Real-time averages for the current form entry
+  // Real-time measurements & averages
   const numQty = parseFloat(quantity) || 0;
   const numWeight = parseFloat(totalWeight) || 0;
+  const numLength = parseFloat(lengthCm) || 0;
+  const numWidth = parseFloat(widthCm) || 0;
+
+  // 1. Weight Deficit (only active if weight rule exists in DB)
   const currentAvgWeight = numQty > 0 ? numWeight / numQty : 0;
   const flooredAvg = Math.floor(currentAvgWeight);
-  const isCurrentUnderweight = numQty > 0 && flooredAvg < standardWeight;
+  const weightRate = getRuleRate("weight");
+  const isCurrentUnderweight =
+    numQty > 0 && flooredAvg > 0 && standardWeight > 0 && flooredAvg < standardWeight && weightRate !== null;
   const weightDeficit = isCurrentUnderweight ? standardWeight - flooredAvg : 0;
-  const suggestedWeightPerPiece = weightDeficit * 10;
-  const hasWeightDeduction = deductions.some((d) => d.factor === "weight");
+  const suggestedWeightPerPiece = weightRate !== null ? weightDeficit * weightRate : 0;
+
+  // 2. Length Deficit (only active if length rule exists in DB)
+  const flooredLength = Math.floor(numLength);
+  const lengthRate = getRuleRate("length");
+  const isCurrentUnderlength =
+    numQty > 0 && flooredLength > 0 && standardLength > 0 && flooredLength < standardLength && lengthRate !== null;
+  const lengthDeficit = isCurrentUnderlength ? standardLength - flooredLength : 0;
+  const suggestedLengthPerPiece = lengthRate !== null ? lengthDeficit * lengthRate : 0;
+
+  // 3. Width Deficit (only active if width rule exists in DB)
+  const flooredWidth = Math.floor(numWidth);
+  const widthRate = getRuleRate("width");
+  const isCurrentUnderwidth =
+    numQty > 0 && flooredWidth > 0 && standardWidth > 0 && flooredWidth < standardWidth && widthRate !== null;
+  const widthDeficit = isCurrentUnderwidth ? standardWidth - flooredWidth : 0;
+  const suggestedWidthPerPiece = widthRate !== null ? widthDeficit * widthRate : 0;
+
+  // Available factors dynamically pulled from database quality rules + standards
+  const availableFactors = useMemo(() => {
+    const list: Array<{ value: string; label: string; rate?: number }> = [];
+
+    if (weightRate !== null) {
+      list.push({ value: "weight", label: `Weight Deficit (${weightRate} ETB/g)`, rate: weightRate });
+    }
+    if (lengthRate !== null) {
+      list.push({ value: "length", label: `Length Deficit (${lengthRate} ETB/cm)`, rate: lengthRate });
+    }
+    if (widthRate !== null) {
+      list.push({ value: "width", label: `Width Deficit (${widthRate} ETB/cm)`, rate: widthRate });
+    }
+
+    qualityRules.forEach((rule) => {
+      const f = String(rule.factor || "").toLowerCase();
+      if (f !== "weight" && f !== "length" && f !== "width") {
+        list.push({
+          value: rule.factor,
+          label: `${toTitleCase(rule.factor)} (${Number(rule.deductionPerUnit)} ETB/${rule.unit})`,
+          rate: Number(rule.deductionPerUnit),
+        });
+      }
+    });
+
+    const standardDefects = [
+      { value: "low_quality", label: "Low Quality / Coarse Weave" },
+      { value: "stain", label: "Stain / Discoloration" },
+      { value: "weaving_defect", label: "Weaving Defect / Broken Threads" },
+      { value: "custom", label: "Other / Custom Factor" },
+    ];
+    standardDefects.forEach((sd) => {
+      if (!list.some((item) => item.value.toLowerCase() === sd.value.toLowerCase())) {
+        list.push(sd);
+      }
+    });
+
+    return list;
+  }, [qualityRules, weightRate, lengthRate, widthRate]);
+
+  function handleOpenAddFactor() {
+    setAddFactorOpen(true);
+    const initialFactor = availableFactors.find((f) => f.value === factorType) || availableFactors[0];
+    if (initialFactor && initialFactor.rate !== undefined && !factorPerPiece) {
+      setFactorPerPiece(String(initialFactor.rate));
+    }
+  }
+
+  // Automatically applied quality deductions (unless user explicitly cancelled them)
+  const deductions = useMemo<DeductionEntry[]>(() => {
+    const list: DeductionEntry[] = [];
+    const autoFactorNames = new Set<string>();
+
+    if (isCurrentUnderweight && !cancelledFactors.includes("weight")) {
+      list.push({
+        factor: "weight",
+        perPiece: suggestedWeightPerPiece,
+        remark: `Avg ${flooredAvg}g is ${weightDeficit}g below standard ${standardWeight}g (-${suggestedWeightPerPiece} ETB/piece)`,
+      });
+      autoFactorNames.add("weight");
+    }
+
+    if (isCurrentUnderlength && !cancelledFactors.includes("length")) {
+      list.push({
+        factor: "length",
+        perPiece: suggestedLengthPerPiece,
+        remark: `Length ${flooredLength}cm is ${lengthDeficit}cm below standard ${standardLength}cm (-${suggestedLengthPerPiece} ETB/piece)`,
+      });
+      autoFactorNames.add("length");
+    }
+
+    if (isCurrentUnderwidth && !cancelledFactors.includes("width")) {
+      list.push({
+        factor: "width",
+        perPiece: suggestedWidthPerPiece,
+        remark: `Width ${flooredWidth}cm is ${widthDeficit}cm below standard ${standardWidth}cm (-${suggestedWidthPerPiece} ETB/piece)`,
+      });
+      autoFactorNames.add("width");
+    }
+
+    // Append custom / non-auto deductions
+    for (const cd of customDeductions) {
+      if (!autoFactorNames.has(cd.factor) && !cancelledFactors.includes(cd.factor)) {
+        list.push(cd);
+      }
+    }
+
+    return list;
+  }, [
+    isCurrentUnderweight,
+    cancelledFactors,
+    suggestedWeightPerPiece,
+    flooredAvg,
+    weightDeficit,
+    standardWeight,
+    isCurrentUnderlength,
+    suggestedLengthPerPiece,
+    flooredLength,
+    lengthDeficit,
+    standardLength,
+    isCurrentUnderwidth,
+    suggestedWidthPerPiece,
+    flooredWidth,
+    widthDeficit,
+    standardWidth,
+    customDeductions,
+  ]);
+
+  // List of active deficits that the user chose to cancel / waive
+  const cancelledAutoDeductions = useMemo(() => {
+    const list: Array<{
+      factor: string;
+      label: string;
+      deficit: number;
+      unit: string;
+      standard: number;
+      actual: number;
+      perPiece: number;
+      remark: string;
+    }> = [];
+
+    if (isCurrentUnderweight && cancelledFactors.includes("weight")) {
+      list.push({
+        factor: "weight",
+        label: "Weight Deficit",
+        deficit: weightDeficit,
+        unit: "g",
+        standard: standardWeight,
+        actual: flooredAvg,
+        perPiece: suggestedWeightPerPiece,
+        remark: `Avg ${flooredAvg}g is ${weightDeficit}g below standard ${standardWeight}g`,
+      });
+    }
+
+    if (isCurrentUnderlength && cancelledFactors.includes("length")) {
+      list.push({
+        factor: "length",
+        label: "Length Deficit",
+        deficit: lengthDeficit,
+        unit: "cm",
+        standard: standardLength,
+        actual: flooredLength,
+        perPiece: suggestedLengthPerPiece,
+        remark: `Length ${flooredLength}cm is ${lengthDeficit}cm below standard ${standardLength}cm`,
+      });
+    }
+
+    if (isCurrentUnderwidth && cancelledFactors.includes("width")) {
+      list.push({
+        factor: "width",
+        label: "Width Deficit",
+        deficit: widthDeficit,
+        unit: "cm",
+        standard: standardWidth,
+        actual: flooredWidth,
+        perPiece: suggestedWidthPerPiece,
+        remark: `Width ${flooredWidth}cm is ${widthDeficit}cm below standard ${standardWidth}cm`,
+      });
+    }
+
+    return list;
+  }, [
+    isCurrentUnderweight,
+    cancelledFactors,
+    weightDeficit,
+    standardWeight,
+    flooredAvg,
+    suggestedWeightPerPiece,
+    isCurrentUnderlength,
+    lengthDeficit,
+    standardLength,
+    flooredLength,
+    suggestedLengthPerPiece,
+    isCurrentUnderwidth,
+    widthDeficit,
+    standardWidth,
+    flooredWidth,
+    suggestedWidthPerPiece,
+  ]);
 
   const totalDeductionPerPiece = useMemo(
     () => deductions.reduce((sum, d) => sum + (Number(d.perPiece) || 0), 0),
@@ -192,19 +444,13 @@ export function useFabricReturnForm({
     [liveGross, liveDeductionAmount]
   );
 
-  function handleApplyWeightDeduction() {
-    if (suggestedWeightPerPiece <= 0) return;
-    setDeductions((prev) => {
-      const rest = prev.filter((d) => d.factor !== "weight");
-      return [
-        ...rest,
-        {
-          factor: "weight",
-          perPiece: suggestedWeightPerPiece,
-          remark: `Avg ${flooredAvg}g is ${weightDeficit}g below standard ${standardWeight}g (-${suggestedWeightPerPiece} ETB/piece)`,
-        },
-      ];
-    });
+  function handleCancelDeduction(factor: string) {
+    setCancelledFactors((prev) => (prev.includes(factor) ? prev : [...prev, factor]));
+    setCustomDeductions((prev) => prev.filter((d) => d.factor !== factor));
+  }
+
+  function handleRestoreDeduction(factor: string) {
+    setCancelledFactors((prev) => prev.filter((f) => f !== factor));
   }
 
   function handleAddCustomFactor() {
@@ -213,12 +459,14 @@ export function useFabricReturnForm({
       setError("Please specify a deduction amount per piece greater than 0");
       return;
     }
-    setDeductions((prev) => {
-      const rest = prev.filter((d) => d.factor !== factorType);
+    const factor = factorType.trim();
+    setCancelledFactors((prev) => prev.filter((f) => f !== factor));
+    setCustomDeductions((prev) => {
+      const rest = prev.filter((d) => d.factor !== factor);
       return [
         ...rest,
         {
-          factor: factorType,
+          factor,
           perPiece: p,
           remark: factorRemark.trim() || undefined,
         },
@@ -229,9 +477,7 @@ export function useFabricReturnForm({
     setAddFactorOpen(false);
   }
 
-  function handleRemoveDeduction(factor: string) {
-    setDeductions((prev) => prev.filter((d) => d.factor !== factor));
-  }
+  const handleRemoveDeduction = handleCancelDeduction;
 
   function handleOpenModal() {
     setModalSearch("");
@@ -260,6 +506,14 @@ export function useFabricReturnForm({
       variant.fabric?.standardWeightG;
     if (p && !editReturn) {
       setUnitPrice(String(p));
+    }
+    if (!editReturn && variant.fabric) {
+      if (variant.fabric.standardLengthCm) {
+        setLengthCm(String(variant.fabric.standardLengthCm));
+      }
+      if (variant.fabric.standardWidthCm) {
+        setWidthCm(String(variant.fabric.standardWidthCm));
+      }
     }
     setIsModalOpen(false);
   }
@@ -351,7 +605,8 @@ export function useFabricReturnForm({
         setQuantity("");
         setTotalWeight("");
         setRemark("");
-        setDeductions([]);
+        setCustomDeductions([]);
+        setCancelledFactors([]);
         setAddFactorOpen(false);
         setTimeout(() => {
           quantityInputRef.current?.focus();
@@ -369,7 +624,8 @@ export function useFabricReturnForm({
     setQuantity("");
     setTotalWeight("");
     setRemark("");
-    setDeductions([]);
+    setCustomDeductions([]);
+    setCancelledFactors([]);
     setAddFactorOpen(false);
     setSelectedVariantId(Number(order.fabricVariantId ?? orderVariantId ?? 0));
     if (onCancel) onCancel();
@@ -384,7 +640,14 @@ export function useFabricReturnForm({
     if (ret.lengthCm) setLengthCm(String(ret.lengthCm));
     if (ret.widthCm) setWidthCm(String(ret.widthCm));
     setRemark(ret.remark ?? "");
-    setDeductions(ret.deductions ? [...(ret.deductions as any)] : []);
+    const existingDeductions = ret.deductions ? [...(ret.deductions as any)] : [];
+    setCustomDeductions(existingDeductions);
+    const existingFactorNames = new Set(existingDeductions.map((d: any) => d.factor));
+    const cancelled: string[] = [];
+    if (!existingFactorNames.has("weight")) cancelled.push("weight");
+    if (!existingFactorNames.has("length")) cancelled.push("length");
+    if (!existingFactorNames.has("width")) cancelled.push("width");
+    setCancelledFactors(cancelled);
     const vId = Number(ret.fabricVariant?.fabricVariantId ?? ret.fabricVariantId);
     if (vId) setSelectedVariantId(vId);
     setError("");
@@ -437,8 +700,8 @@ export function useFabricReturnForm({
 
       if (!map.has(vId)) {
         const label = v
-          ? fabricVariantName(v).split("-").join(" · ")
-          : "medebegna · biret · geberdin";
+          ? fabricVariantName(v, " · ")
+          : "Medebegna · Biret · Geberdin";
         const stdW = v?.fabric?.standardWeightG ?? 64;
         map.set(vId, {
           variantId: vId,
@@ -497,8 +760,10 @@ export function useFabricReturnForm({
     remark,
     setRemark,
     deductions,
+    availableFactors,
     addFactorOpen,
     setAddFactorOpen,
+    handleOpenAddFactor,
     factorType,
     setFactorType,
     factorPerPiece,
@@ -511,18 +776,34 @@ export function useFabricReturnForm({
     error,
     setError,
     standardWeight,
+    standardLength,
+    standardWidth,
+    hasWeightRule: weightRate !== null,
+    hasLengthRule: lengthRate !== null,
+    hasWidthRule: widthRate !== null,
     flooredAvg,
+    numLength,
+    numWidth,
+    flooredLength,
+    flooredWidth,
     isCurrentUnderweight,
+    isCurrentUnderlength,
+    isCurrentUnderwidth,
     weightDeficit,
+    lengthDeficit,
+    widthDeficit,
     suggestedWeightPerPiece,
-    hasWeightDeduction,
+    suggestedLengthPerPiece,
+    suggestedWidthPerPiece,
+    cancelledAutoDeductions,
+    handleCancelDeduction,
+    handleRestoreDeduction,
+    handleRemoveDeduction,
+    handleAddCustomFactor,
     totalDeductionPerPiece,
     liveGross,
     liveDeductionAmount,
     liveNetFabricValue,
-    handleApplyWeightDeduction,
-    handleAddCustomFactor,
-    handleRemoveDeduction,
     isModalOpen,
     setIsModalOpen,
     modalSearch,

@@ -9,6 +9,9 @@ import {
   computeNetPayable,
   DEDUCTION_RATE_PER_UNIT,
   suggestWeightDeduction,
+  suggestLengthDeduction,
+  suggestWidthDeduction,
+  calculateQualityDeductions,
 } from "./calculation.service.js";
 
 describe("calculateDeduction", () => {
@@ -175,5 +178,91 @@ describe("Pure Calculation Functions for Zig & Return Level Math", () => {
       [{ quantity: 8, unitPrice: 120 }]
     );
     expect(yarnAdjustedPayable).toBe(1490);
+  });
+
+  describe("suggestLengthDeduction", () => {
+    it("suggests deduction when measured length is below standard length", () => {
+      const deduction = suggestLengthDeduction(230, 250, 5);
+      expect(deduction).not.toBeNull();
+      expect(deduction?.factor).toBe("length");
+      expect(deduction?.perPiece).toBe(100); // (250 - 230) * 5 = 100
+      expect(deduction?.remark).toContain("below standard 250cm");
+    });
+
+    it("returns null when measured length meets or exceeds standard", () => {
+      expect(suggestLengthDeduction(250, 250, 5)).toBeNull();
+      expect(suggestLengthDeduction(260, 250, 5)).toBeNull();
+    });
+  });
+
+  describe("suggestWidthDeduction", () => {
+    it("suggests deduction when measured width is below standard width", () => {
+      const deduction = suggestWidthDeduction(140, 150, 5);
+      expect(deduction).not.toBeNull();
+      expect(deduction?.factor).toBe("width");
+      expect(deduction?.perPiece).toBe(50); // (150 - 140) * 5 = 50
+    });
+
+    it("returns null when width meets standard", () => {
+      expect(suggestWidthDeduction(150, 150, 5)).toBeNull();
+    });
+  });
+
+  describe("calculateQualityDeductions", () => {
+    it("evaluates weight, length, and width quality rules simultaneously", () => {
+      const rules = [
+        { factor: "weight", deductionPerUnit: 10 },
+        { factor: "length", deductionPerUnit: 5 },
+        { factor: "width", deductionPerUnit: 4 },
+      ];
+
+      const deductions = calculateQualityDeductions({
+        quantity: 10,
+        totalWeight: 4800, // avg 480 vs std 500 -> 20g deficit * 10 = 200 ETB/pc
+        lengthCm: 230,     // 230 vs std 250 -> 20cm deficit * 5 = 100 ETB/pc
+        widthCm: 145,      // 145 vs std 150 -> 5cm deficit * 4 = 20 ETB/pc
+        standardWeightG: 500,
+        standardLengthCm: 250,
+        standardWidthCm: 150,
+        qualityRules: rules,
+      });
+
+      expect(deductions).toHaveLength(3);
+      expect(deductions.find((d) => d.factor === "weight")?.perPiece).toBe(200);
+      expect(deductions.find((d) => d.factor === "length")?.perPiece).toBe(100);
+      expect(deductions.find((d) => d.factor === "width")?.perPiece).toBe(20);
+    });
+
+    it("returns empty array when all measurements meet standards", () => {
+      const deductions = calculateQualityDeductions({
+        quantity: 10,
+        totalWeight: 5000,
+        lengthCm: 250,
+        widthCm: 150,
+        standardWeightG: 500,
+        standardLengthCm: 250,
+        standardWidthCm: 150,
+      });
+
+      expect(deductions).toEqual([]);
+    });
+
+    it("does not calculate deductions for factors not configured in qualityRules", () => {
+      // Only length rule configured; no width rule configured
+      const rules = [{ factor: "length", deductionPerUnit: 5 }];
+
+      const deductions = calculateQualityDeductions({
+        quantity: 10,
+        lengthCm: 230, // 20cm deficit -> 100 ETB/pc
+        widthCm: 130,  // below std 150, but NO rule exists for width
+        standardLengthCm: 250,
+        standardWidthCm: 150,
+        qualityRules: rules,
+      });
+
+      expect(deductions).toHaveLength(1);
+      expect(deductions[0].factor).toBe("length");
+      expect(deductions.find((d) => d.factor === "width")).toBeUndefined();
+    });
   });
 });
