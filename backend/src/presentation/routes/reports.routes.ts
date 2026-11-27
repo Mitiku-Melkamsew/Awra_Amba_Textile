@@ -2,7 +2,9 @@ import { Router } from "express";
 import { ReportController } from "../controllers/report.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { requireCapability } from "../middleware/authorize.js";
+import { validateParams } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
+import { NumericIdParamSchema } from "../dtos/common.dto.js";
 
 export const reportsRouter = Router();
 
@@ -17,12 +19,14 @@ reportsRouter.get(
 reportsRouter.get(
   "/hisab/payment/:id",
   requireCapability(Capability.REPORTS_READ_FINANCIAL),
+  validateParams(NumericIdParamSchema),
   ReportController.getPaymentHisab,
 );
 
 reportsRouter.get(
   "/hisab/settlement/:id",
   requireCapability(Capability.REPORTS_READ_FINANCIAL),
+  validateParams(NumericIdParamSchema),
   ReportController.getSettlementHisab,
 );
 
@@ -41,7 +45,7 @@ reportsRouter.get(
 reportsRouter.get(
   "/production-summary",
   requireCapability(Capability.REPORTS_READ_FINANCIAL),
-  ReportController.getFinancialSummary,
+  ReportController.getProductionSummary,
 );
 
 reportsRouter.get(

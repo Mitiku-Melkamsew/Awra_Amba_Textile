@@ -3,8 +3,9 @@ import { SettlementController } from "../controllers/settlement.controller.js";
 import { ReportController } from "../controllers/report.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { requireCapability } from "../middleware/authorize.js";
-import { validateBody } from "../middleware/validate.js";
+import { validateBody, validateParams } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
+import { NumericIdParamSchema } from "../dtos/common.dto.js";
 import {
   CommitBatchSettlementSchema,
   CommitSingleSettlementSchema,
@@ -64,42 +65,49 @@ settlementsRouter.get(
 settlementsRouter.get(
   "/batches/:id/hisab.csv",
   requireCapability(Capability.SETTLEMENTS_COMMIT),
+  validateParams(NumericIdParamSchema),
   SettlementController.getBatchCsv,
 );
 
 settlementsRouter.get(
   "/batches/:id",
   requireCapability(Capability.SETTLEMENTS_COMMIT),
+  validateParams(NumericIdParamSchema),
   SettlementController.getBatch,
 );
 
 settlementsRouter.get(
   "/:id/hisab-statement",
   requireCapability(Capability.REPORTS_READ_FINANCIAL),
+  validateParams(NumericIdParamSchema),
   ReportController.getSettlementHisab,
 );
 
 settlementsRouter.post(
   "/:id/pay",
   requireCapability(Capability.SETTLEMENTS_PAY),
+  validateParams(NumericIdParamSchema),
   validateBody(PaySettlementSchema),
   SettlementController.pay,
 );
 settlementsRouter.post(
   "/:id/cancel",
   requireCapability(Capability.SETTLEMENTS_COMMIT),
+  validateParams(NumericIdParamSchema),
   validateBody(CancelSettlementSchema),
   SettlementController.cancel,
 );
 settlementsRouter.post(
   "/batches/:id/pay",
   requireCapability(Capability.SETTLEMENTS_PAY),
+  validateParams(NumericIdParamSchema),
   validateBody(PaySettlementSchema),
   SettlementController.payBatch,
 );
 settlementsRouter.post(
   "/batches/:id/cancel",
   requireCapability(Capability.SETTLEMENTS_COMMIT),
+  validateParams(NumericIdParamSchema),
   validateBody(CancelSettlementSchema),
   SettlementController.cancelBatch,
 );
@@ -107,12 +115,14 @@ settlementsRouter.post(
 settlementsRouter.post(
   "/lines/:id/override",
   requireCapability(Capability.SETTLEMENTS_OVERRIDE),
+  validateParams(NumericIdParamSchema),
   validateBody(OverrideSettlementLineSchema),
   SettlementController.overrideLine,
 );
 settlementsRouter.patch(
   "/lines/:id/override",
   requireCapability(Capability.SETTLEMENTS_OVERRIDE),
+  validateParams(NumericIdParamSchema),
   validateBody(OverrideSettlementLineSchema),
   SettlementController.overrideLine,
 );
@@ -121,5 +131,6 @@ settlementsRouter.patch(
 settlementsRouter.get(
   "/:id",
   requireCapability(Capability.SETTLEMENTS_PREVIEW),
+  validateParams(NumericIdParamSchema),
   SettlementController.getSettlement,
 );

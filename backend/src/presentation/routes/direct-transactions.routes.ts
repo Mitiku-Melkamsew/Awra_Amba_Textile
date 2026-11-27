@@ -2,8 +2,9 @@ import { Router } from "express";
 import { DirectTransactionController } from "../controllers/direct-transaction.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { requireCapability } from "../middleware/authorize.js";
-import { validateBody, validateQuery } from "../middleware/validate.js";
+import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
+import { DirectTxnIdParamSchema } from "../dtos/common.dto.js";
 import {
   CreateDirectTransactionSchema,
   AddDirectTxnPaymentSchema,
@@ -24,6 +25,7 @@ directTransactionsRouter.get(
 directTransactionsRouter.get(
   "/:id",
   requireCapability(Capability.DIRECT_TRANSACTIONS_READ_ALL),
+  validateParams(DirectTxnIdParamSchema),
   DirectTransactionController.getById,
 );
 
@@ -37,6 +39,7 @@ directTransactionsRouter.post(
 directTransactionsRouter.post(
   "/:id/payments",
   requireCapability(Capability.DIRECT_TRANSACTIONS_MANAGE),
+  validateParams(DirectTxnIdParamSchema),
   validateBody(AddDirectTxnPaymentSchema),
   DirectTransactionController.recordPayment,
 );
@@ -44,5 +47,6 @@ directTransactionsRouter.post(
 directTransactionsRouter.post(
   "/:id/cancel",
   requireCapability(Capability.DIRECT_TRANSACTIONS_MANAGE),
+  validateParams(DirectTxnIdParamSchema),
   DirectTransactionController.cancel,
 );

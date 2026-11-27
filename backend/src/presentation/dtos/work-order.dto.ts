@@ -18,7 +18,7 @@ export const CreateWorkOrderSchema = z.object({
     .array(
       z.object({
         yarnVariantId: z.coerce.number().int().positive(),
-        quantity: z.coerce.number().positive(),
+        quantity: z.coerce.number().int("Yarn quantity must be a whole number (pieces)").positive(),
         unitPrice: z.coerce.number().nonnegative().optional(),
       }),
     )
@@ -35,13 +35,13 @@ export const AddYarnGivenSchema = z
       .array(
         z.object({
           yarnVariantId: z.coerce.number().int().positive(),
-          quantity: z.coerce.number().positive(),
+          quantity: z.coerce.number().int("Yarn quantity must be a whole number (pieces)").positive(),
           unitPrice: z.coerce.number().nonnegative().optional(),
         }),
       )
       .optional(),
     yarnVariantId: z.coerce.number().int().positive().optional(),
-    quantity: z.coerce.number().positive().optional(),
+    quantity: z.coerce.number().int("Yarn quantity must be a whole number (pieces)").positive().optional(),
     unitPrice: z.coerce.number().nonnegative().optional(),
   })
   .refine(
@@ -52,7 +52,7 @@ export const AddYarnGivenSchema = z
   );
 
 export const UpdateYarnGivenSchema = z.object({
-  quantity: z.coerce.number().positive().optional(),
+  quantity: z.coerce.number().int("Yarn quantity must be a whole number (pieces)").positive().optional(),
   unitPrice: z.coerce.number().nonnegative().optional(),
   remark: z.string().max(500).optional().nullable(),
 });

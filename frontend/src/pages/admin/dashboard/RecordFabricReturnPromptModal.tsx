@@ -40,7 +40,7 @@ export function RecordFabricReturnPromptModal({
     if (!search.trim()) return orders;
     const q = search.toLowerCase();
     return orders.filter((o) => {
-      const zigIdStr = String(o.workOrderId || o.zigId || "");
+      const zigIdStr = String(o.zigId || "");
       const weaverName = (o.weaver?.fullName || o.weaverName || "").toLowerCase();
       const fabricName = (
         o.fabricVariant?.fabric?.name ||
@@ -56,9 +56,9 @@ export function RecordFabricReturnPromptModal({
     });
   }, [orders, search]);
 
-  const handleSelectZig = (orderId: number) => {
+  const handleSelectZig = (zigId: string) => {
     onClose();
-    navigate(`/admin/zigs/${orderId}?action=return`);
+    navigate(`/admin/zigs/${zigId}?action=return`);
   };
 
   return (
@@ -88,7 +88,7 @@ export function RecordFabricReturnPromptModal({
             </div>
           ) : (
             filteredOrders.map((order) => {
-              const orderId = order.workOrderId || order.zigId;
+              const orderId = order.zigId;
               const weaver = toTitleCase(order.weaver?.fullName || order.weaverName || "Weaver");
               const fabric = toTitleCase(
                 order.fabricVariant?.fabric?.name ||

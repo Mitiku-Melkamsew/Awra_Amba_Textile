@@ -16,7 +16,7 @@ export function ProductionKpiCards({
     onStatusTabChange(statusTab === tab ? "all" : tab);
   };
 
-  const yarnPieces = stats.ongoingYarnPieces ?? stats.ongoingYarnKg;
+  const yarnPieces = stats.ongoingYarnPieces;
 
   return (
     <div className="reports-kpi-grid">

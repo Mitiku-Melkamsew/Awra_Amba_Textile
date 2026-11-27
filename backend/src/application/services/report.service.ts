@@ -102,14 +102,15 @@ export class ReportService {
       );
     }, 0);
 
-    // 4. Weaver settlement payouts (Paid settlements)
-    const settlements = await prisma.settlement.aggregate({
+    // 4. Weaver settlement payouts (actual disbursed SettlementPayment rows, including partial payouts)
+    const settlementPayments = await prisma.settlementPayment.aggregate({
       where: {
-        status: "paid",
-        paidAt: Object.keys(dateFilter).length > 0 ? dateFilter : undefined,
+        settlement: { status: { not: "cancelled" } },
+        paymentDate: Object.keys(dateFilter).length > 0 ? dateFilter : undefined,
       },
-      _sum: { netAmount: true, grossFabricValue: true, totalDeductions: true, totalYarnCost: true },
+      _sum: { amount: true },
     });
+    const totalSettlementPayouts = Number(settlementPayments._sum.amount ?? 0);
 
     // 5. Direct fabric purchases from weavers
     const weaverDirectPurchases = await prisma.directTransaction.aggregate({
@@ -125,7 +126,7 @@ export class ReportService {
       Number(merchantSales._sum.totalAmount ?? 0) + Number(yarnSales._sum.totalAmount ?? 0);
     const totalExpenses =
       totalYarnProcurementExpense +
-      Number(settlements._sum.netAmount ?? 0) +
+      totalSettlementPayouts +
       Number(weaverDirectPurchases._sum.totalAmount ?? 0);
 
     const netOperatingProfit = grossCommercialRevenue - totalExpenses;
@@ -140,7 +141,7 @@ export class ReportService {
       },
       expenses: {
         supplierYarnProcurementExpense: Number(totalYarnProcurementExpense.toFixed(2)),
-        weaverSettlementPayouts: Number((settlements._sum.netAmount ?? 0).toFixed(2)),
+        weaverSettlementPayouts: Number(totalSettlementPayouts.toFixed(2)),
         weaverDirectFabricPurchases: Number((weaverDirectPurchases._sum.totalAmount ?? 0).toFixed(2)),
         totalExpenses: Number(totalExpenses.toFixed(2)),
       },
@@ -151,103 +152,231 @@ export class ReportService {
       yarnSalesRevenue: Number(yarnSales._sum.totalAmount ?? 0),
       fabricPurchasesExpense: Number((weaverDirectPurchases._sum.totalAmount ?? 0).toFixed(2)),
       yarnProcurementExpense: Number(totalYarnProcurementExpense.toFixed(2)),
-      weaverSettlementsExpense: Number((settlements._sum.netAmount ?? 0).toFixed(2)),
+      weaverSettlementsExpense: Number(totalSettlementPayouts.toFixed(2)),
       netCashFlow: Number(netOperatingProfit.toFixed(2)),
     };
   }
 
   /**
-   * Accounts payable summary for all active weavers
+   * Generates production volume & quality summary for a date range
+   */
+  static async getProductionSummary(startDate?: Date, endDate?: Date) {
+    const dateFilter: any = {};
+    if (startDate || endDate) {
+      if (startDate) dateFilter.gte = startDate;
+      if (endDate) dateFilter.lte = endDate;
+    }
+    const hasRange = Object.keys(dateFilter).length > 0;
+
+    const [workOrdersAssigned, workOrdersReturned, fabricReturnsAgg, yarnGivenAgg] =
+      await Promise.all([
+        prisma.workOrder.count({
+          where: {
+            status: { not: "cancelled" },
+            dateIssued: hasRange ? dateFilter : undefined,
+          },
+        }),
+        prisma.workOrder.count({
+          where: {
+            status: { in: ["returned", "reconciled"] },
+            dateReturned: hasRange ? dateFilter : undefined,
+          },
+        }),
+        prisma.fabricReturn.aggregate({
+          where: {
+            workOrder: { status: { not: "cancelled" } },
+            dateReturned: hasRange ? dateFilter : undefined,
+          },
+          _sum: {
+            quantityReturned: true,
+            deductionAmount: true,
+            grossFabricValue: true,
+          },
+        }),
+        prisma.yarnGiven.aggregate({
+          where: {
+            workOrder: { status: { not: "cancelled" } },
+            dateGiven: hasRange ? dateFilter : undefined,
+          },
+          _sum: { quantity: true },
+        }),
+      ]);
+
+    return {
+      periodStart: startDate ? startDate.toISOString() : null,
+      periodEnd: endDate ? endDate.toISOString() : null,
+      workOrdersAssigned,
+      workOrdersReturned,
+      fabricPiecesProduced: Number(fabricReturnsAgg._sum.quantityReturned ?? 0),
+      yarnIssuedPieces: Math.round(Number(yarnGivenAgg._sum.quantity ?? 0)),
+      grossFabricValueBirr: Number(Number(fabricReturnsAgg._sum.grossFabricValue ?? 0).toFixed(2)),
+      totalQualityDeductionsBirr: Number(Number(fabricReturnsAgg._sum.deductionAmount ?? 0).toFixed(2)),
+    };
+  }
+
+  /**
+   * Accounts payable summary for all active weavers (batched, no N+1 queries)
    */
   static async getWeaversBalanceReport() {
-    const weavers = await prisma.user.findMany({
-      where: {
-        roles: { some: { role: UserRole.weaver } },
-        isActive: true,
-      },
-      select: { userId: true, firstName: true, lastName: true, username: true, phone: true },
-      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-    });
+    const [weavers, directPurchases, unsettledWorkOrders, activeWorkOrders, committedSettlements] =
+      await Promise.all([
+        prisma.user.findMany({
+          where: {
+            roles: { some: { role: UserRole.weaver } },
+            isActive: true,
+          },
+          select: { userId: true, firstName: true, lastName: true, username: true, phone: true },
+          orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+        }),
+        prisma.directTransaction.findMany({
+          where: {
+            type: DirectTxnType.fabric_purchase_from_weaver,
+            status: { not: "cancelled" },
+            weaverUserId: { not: null },
+          },
+          select: { weaverUserId: true, totalAmount: true, amountPaid: true },
+        }),
+        prisma.workOrder.findMany({
+          where: {
+            status: "returned",
+            settlementId: null,
+          },
+          select: { weaverUserId: true, netPayable: true },
+        }),
+        prisma.workOrder.findMany({
+          where: {
+            status: { in: ["assigned", "in_progress"] },
+          },
+          select: { weaverUserId: true, netPayable: true },
+        }),
+        prisma.settlement.findMany({
+          where: {
+            status: "committed",
+          },
+          select: {
+            weaverUserId: true,
+            netAmount: true,
+            payments: { select: { amount: true } },
+          },
+        }),
+      ]);
 
-    const report = [];
-    for (const w of weavers) {
-      // Direct purchase payables
-      const purchases = await prisma.directTransaction.findMany({
-        where: {
-          weaverUserId: w.userId,
-          type: DirectTxnType.fabric_purchase_from_weaver,
-          status: { not: "cancelled" },
-        },
-        select: { totalAmount: true, amountPaid: true },
-      });
-
-      let directPayable = 0;
-      for (const p of purchases) {
-        const remaining = Number(p.totalAmount) - Number(p.amountPaid);
-        if (remaining > 0) directPayable += remaining;
+    const directPayableMap = new Map<number, number>();
+    for (const p of directPurchases) {
+      if (p.weaverUserId == null) continue;
+      const remaining = Math.max(0, Number(p.totalAmount) - Number(p.amountPaid));
+      if (remaining > 0) {
+        directPayableMap.set(p.weaverUserId, (directPayableMap.get(p.weaverUserId) ?? 0) + remaining);
       }
+    }
 
-      // Returned unsettled work orders
-      const returnedZigs = await prisma.workOrder.count({
-        where: { weaverUserId: w.userId, status: "returned" },
-      });
+    const unsettledCountMap = new Map<number, number>();
+    const unsettledPayableMap = new Map<number, number>();
+    for (const wo of unsettledWorkOrders) {
+      unsettledCountMap.set(wo.weaverUserId, (unsettledCountMap.get(wo.weaverUserId) ?? 0) + 1);
+      const payable = Math.max(0, Number(wo.netPayable ?? 0));
+      unsettledPayableMap.set(wo.weaverUserId, (unsettledPayableMap.get(wo.weaverUserId) ?? 0) + payable);
+    }
 
-      report.push({
+    const activeCountMap = new Map<number, number>();
+    const activeWipPayableMap = new Map<number, number>();
+    for (const wo of activeWorkOrders) {
+      activeCountMap.set(wo.weaverUserId, (activeCountMap.get(wo.weaverUserId) ?? 0) + 1);
+      const payable = Math.max(0, Number(wo.netPayable ?? 0));
+      activeWipPayableMap.set(wo.weaverUserId, (activeWipPayableMap.get(wo.weaverUserId) ?? 0) + payable);
+    }
+
+    const committedPayableMap = new Map<number, number>();
+    for (const s of committedSettlements) {
+      const paid = s.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const remaining = Math.max(0, Number(s.netAmount) - paid);
+      if (remaining > 0) {
+        committedPayableMap.set(s.weaverUserId, (committedPayableMap.get(s.weaverUserId) ?? 0) + remaining);
+      }
+    }
+
+    return weavers.map((w) => {
+      const directPurchasePayable = Number((directPayableMap.get(w.userId) ?? 0).toFixed(2));
+      const unsettledReturnedZigsCount = unsettledCountMap.get(w.userId) ?? 0;
+      const unsettledWorkOrderPayable = Number((unsettledPayableMap.get(w.userId) ?? 0).toFixed(2));
+      const committedSettlementPayable = Number((committedPayableMap.get(w.userId) ?? 0).toFixed(2));
+      const activeWorkOrdersCount = activeCountMap.get(w.userId) ?? 0;
+      const estimatedPendingPayout = Number(
+        (unsettledWorkOrderPayable + (activeWipPayableMap.get(w.userId) ?? 0)).toFixed(2),
+      );
+      const netPayableBalance = Number(
+        (directPurchasePayable + unsettledWorkOrderPayable + committedSettlementPayable).toFixed(2),
+      );
+
+      return {
+        weaverId: w.userId,
         weaverUserId: w.userId,
         firstName: w.firstName,
         lastName: w.lastName,
         fullName: formatUserFullName(w),
         username: w.username,
         phone: w.phone,
-        directPurchasePayable: Number(directPayable.toFixed(2)),
-        unsettledReturnedZigsCount: returnedZigs,
-      });
-    }
-
-    return report;
+        directPurchasePayable,
+        directSalesPayableBalance: directPurchasePayable,
+        unsettledReturnedZigsCount,
+        unsettledPiecesCount: unsettledReturnedZigsCount,
+        activeWorkOrdersCount,
+        estimatedPendingPayout,
+        committedSettlementPayable,
+        netPayableBalance,
+      };
+    });
   }
 
   /**
-   * Accounts receivable summary for all merchants
+   * Accounts receivable summary for all merchants (batched, no N+1 queries)
    */
   static async getMerchantsBalanceReport() {
-    const merchants = await prisma.user.findMany({
-      where: {
-        roles: { some: { role: UserRole.merchant } },
-        isActive: true,
-      },
-      select: { userId: true, firstName: true, lastName: true, username: true, phone: true },
-      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-    });
-
-    const report = [];
-    for (const m of merchants) {
-      const sales = await prisma.directTransaction.findMany({
+    const [merchants, sales] = await Promise.all([
+      prisma.user.findMany({
         where: {
-          merchantUserId: m.userId,
+          roles: { some: { role: UserRole.merchant } },
+          isActive: true,
+        },
+        select: { userId: true, firstName: true, lastName: true, username: true, phone: true },
+        orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      }),
+      prisma.directTransaction.findMany({
+        where: {
           type: DirectTxnType.fabric_sale_to_merchant,
           status: { not: "cancelled" },
+          merchantUserId: { not: null },
         },
-        select: { totalAmount: true, amountPaid: true },
-      });
+        select: { merchantUserId: true, totalAmount: true, amountPaid: true },
+      }),
+    ]);
 
-      let outstandingReceivable = 0;
-      for (const s of sales) {
-        const remaining = Number(s.totalAmount) - Number(s.amountPaid);
-        if (remaining > 0) outstandingReceivable += remaining;
+    const receivableMap = new Map<number, number>();
+    const unpaidCountMap = new Map<number, number>();
+
+    for (const s of sales) {
+      if (s.merchantUserId == null) continue;
+      const remaining = Number(s.totalAmount) - Number(s.amountPaid);
+      if (remaining > 0.005) {
+        receivableMap.set(s.merchantUserId, (receivableMap.get(s.merchantUserId) ?? 0) + remaining);
+        unpaidCountMap.set(s.merchantUserId, (unpaidCountMap.get(s.merchantUserId) ?? 0) + 1);
       }
+    }
 
-      report.push({
+    return merchants.map((m) => {
+      const outstandingReceivable = Number((receivableMap.get(m.userId) ?? 0).toFixed(2));
+      return {
+        merchantId: m.userId,
         merchantUserId: m.userId,
         firstName: m.firstName,
         lastName: m.lastName,
         fullName: formatUserFullName(m),
         username: m.username,
         phone: m.phone,
-        outstandingReceivable: Number(outstandingReceivable.toFixed(2)),
-      });
-    }
-
-    return report;
+        outstandingReceivable,
+        totalReceivableBalance: outstandingReceivable,
+        unpaidSalesCount: unpaidCountMap.get(m.userId) ?? 0,
+      };
+    });
   }
 }

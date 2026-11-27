@@ -84,14 +84,24 @@ export class SettlementService {
    * Pending liability summary: total payable for returned zigs not yet in a settlement
    */
   static async getPendingSettlementsSummary() {
-    const result = await prisma.workOrder.aggregate({
-      where: {
-        status: "returned",
-        settlementId: null,
-      },
-      _sum: { netPayable: true },
-      _count: { _all: true },
-    });
+    const [result, distinctWeavers] = await Promise.all([
+      prisma.workOrder.aggregate({
+        where: {
+          status: "returned",
+          settlementId: null,
+        },
+        _sum: { netPayable: true },
+        _count: { _all: true },
+      }),
+      prisma.workOrder.findMany({
+        where: {
+          status: "returned",
+          settlementId: null,
+        },
+        distinct: ["weaverUserId"],
+        select: { weaverUserId: true },
+      }),
+    ]);
 
     const pendingLiability = Number(result._sum.netPayable ?? 0);
     const unsettledZigCount = result._count._all;
@@ -99,6 +109,7 @@ export class SettlementService {
     return {
       pendingLiability: roundCurrency(pendingLiability),
       unsettledZigCount,
+      weaverCount: distinctWeavers.length,
     };
   }
 

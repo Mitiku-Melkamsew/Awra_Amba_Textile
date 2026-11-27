@@ -44,34 +44,22 @@ export const weaversApi = {
     return result;
   },
   get: async (id: number) => {
-    try {
-      const user = await userService.getUser(id);
-      const fullName = user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || `Weaver #${id}`;
-      return {
+    const user = await userService.getUser(id);
+    const fullName = user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+    return {
+      userId: user.userId,
+      firstName: user.firstName || fullName,
+      lastName: user.lastName ?? "",
+      fullName,
+      phone: user.phone,
+      email: user.email ?? null,
+      isActive: user.isActive,
+      user: {
         userId: user.userId,
-        firstName: user.firstName || fullName,
-        lastName: user.lastName ?? "",
-        fullName,
-        phone: user.phone,
-        email: user.email ?? null,
+        username: user.username,
         isActive: user.isActive,
-        user: {
-          userId: user.userId,
-          username: user.username,
-          isActive: user.isActive,
-        },
-      };
-    } catch {
-      return {
-        userId: id,
-        fullName: `Weaver #${id}`,
-        firstName: `Weaver`,
-        lastName: `#${id}`,
-        phone: null,
-        email: null,
-        isActive: true,
-      };
-    }
+      },
+    };
   },
   create: async (data: {
     fullName?: string;
@@ -148,9 +136,9 @@ export const catalogApi = {
       return {
         fabricId: f.fabricId,
         name: f.name,
-        standardLengthCm: f.standardLengthCm ?? 200,
-        standardWidthCm: f.standardWidthCm ?? 100,
-        standardWeightG: f.standardWeightG ?? 500,
+        standardLengthCm: f.standardLengthCm ?? null,
+        standardWidthCm: f.standardWidthCm ?? null,
+        standardWeightG: f.standardWeightG ?? null,
         isActive: f.isActive,
         weaverRate,
         sellingPrice,
@@ -332,8 +320,6 @@ export const catalogApi = {
       fabric: created.fabric,
     };
   },
-  updateFabricPrice: async (_id: number, _data: any) => {},
-  deactivateFabricPrice: async (_id: number) => {},
 
   yarnPrices: async (params?: { yarnId?: number; activeOnly?: boolean } | number) => {
     const list = await catalogService.listYarnPrices(params);
@@ -375,8 +361,6 @@ export const catalogApi = {
       isActive: created.isActive,
     };
   },
-  updateYarnPrice: async (_id: number, _data: any) => {},
-  deactivateYarnPrice: async (_id: number) => {},
 
   qualityRules: async () => {
     const list = await catalogService.listQualityRules();
@@ -511,7 +495,7 @@ export const workOrdersApi = {
       })),
     };
   },
-  nextId: async () => ({ zigId: `WO-${Date.now().toString().slice(-6)}` }),
+  nextId: async () => workOrderService.getNextZigId(),
   create: async (data: any) => {
     const created: any = await workOrderService.createWorkOrder({
       weaverUserId: Number(data.weaverUserId ?? data.userId),
@@ -631,7 +615,6 @@ export const fabricReturnsApi = {
 };
 
 export const transactionsApi = {
-  nextId: async () => ({ transactionId: `TX-${Date.now().toString().slice(-6)}` }),
   list: async (params?: { type?: string; status?: string }) => {
     const txns = await directTransactionService.listTransactions(params as any);
     return txns.map((t: any) => {
@@ -770,9 +753,6 @@ export const transactionsApi = {
       transactionId: String(res.transactionId),
     };
   },
-  deliver: async (transactionId: string) => {
-    return directTransactionService.getTransaction(transactionId);
-  },
   addPayment: async (transactionId: string, data: { amount: number; paymentMethod?: string; notes?: string }) => {
     return directTransactionService.recordPayment(transactionId, {
       amount: data.amount,
@@ -799,8 +779,7 @@ export const stockApi = {
       yarnVariants: yarnList.map((y: any) => ({
         ...y,
         yarn: y.yarn,
-        currentStockPieces: Number(y.stockSnapshot ?? y.currentStockPieces ?? y.currentStockKg ?? 0),
-        currentStockKg: Number(y.stockSnapshot ?? y.currentStockKg ?? 0),
+        currentStockPieces: Math.round(Number(y.stockSnapshot ?? y.currentStockPieces ?? 0)),
       })),
     };
   },
@@ -1104,13 +1083,7 @@ export const weaverPortalApi = {
     return workOrdersApi.get(zigId);
   },
   payments: async () => {
-    const settlements = await weaverPortalService.listSettlements();
-    return settlements.map((s) => ({
-      paymentId: s.settlementId,
-      amount: String(s.netAmount),
-      paymentDate: s.createdAt,
-      paymentMethod: "Bank Transfer",
-    }));
+    return weaverPortalService.listPayments();
   },
 };
 
@@ -1122,9 +1095,9 @@ export const merchantApi = {
       sku: v.sku,
       fabricId: v.fabricId,
       fabricName: v.fabricName ?? v.fabric?.name ?? "Fabric",
-      standardLengthCm: v.standardLengthCm ?? v.fabric?.standardLengthCm ?? 200,
-      standardWidthCm: v.standardWidthCm ?? v.fabric?.standardWidthCm ?? 100,
-      standardWeightG: v.standardWeightG ?? v.fabric?.standardWeightG ?? 500,
+      standardLengthCm: v.standardLengthCm ?? v.fabric?.standardLengthCm ?? null,
+      standardWidthCm: v.standardWidthCm ?? v.fabric?.standardWidthCm ?? null,
+      standardWeightG: v.standardWeightG ?? v.fabric?.standardWeightG ?? null,
       design: typeof v.design === "string" ? v.design : (v.design?.name ?? "Standard"),
       warpColor: typeof v.warpColor === "string" ? v.warpColor : (v.warpColor?.name ?? "Natural"),
       weftColor: typeof v.weftColor === "string" ? v.weftColor : (v.weftColor?.name ?? "Natural"),

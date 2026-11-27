@@ -547,6 +547,7 @@ export class WorkOrderService {
           standardWidthCm: fv.fabric?.standardWidthCm ? Number(fv.fabric.standardWidthCm) : null,
           qualityRules: qualityRules.map((r: any) => ({
             factor: r.factor,
+            unit: r.unit,
             deductionPerUnit: Number(r.deductionPerUnit),
           })),
         });

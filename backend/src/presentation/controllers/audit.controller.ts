@@ -4,10 +4,11 @@ import { AuditService } from "../../application/services/audit.service.js";
 export class AuditController {
   static async query(req: Request, res: Response, next: NextFunction) {
     try {
-      const { actorUserId, entityType, entityName, entityId, startDate, endDate, limit, offset } = req.query as any;
+      const { actorUserId, action, entityType, entityName, entityId, startDate, endDate, limit, offset } = req.query as any;
 
       const result = await AuditService.query({
         actorUserId: actorUserId ? Number(actorUserId) : undefined,
+        action: typeof action === "string" && action.trim() ? action.trim() : undefined,
         entityType: entityType ?? entityName,
         entityId,
         startDate: startDate ? new Date(startDate) : undefined,

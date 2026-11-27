@@ -62,8 +62,24 @@ describe("buildHisabReport (settlement ID space)", () => {
     const report = await buildHisabReport(42);
 
     expect(mockPrisma.settlement.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { settlementId: 42 } }),
+      expect.objectContaining({
+        where: { settlementId: 42 },
+        include: expect.objectContaining({
+          weaver: {
+            select: {
+              userId: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              isActive: true,
+            },
+          },
+        }),
+      }),
     );
+    expect("passwordHash" in report.weaver).toBe(false);
+    expect((report.weaver as any).passwordHash).toBeUndefined();
     expect(report.settlementId).toBe(42);
     expect(report.paymentId).toBeNull();
     expect(report.isPaid).toBe(false);
@@ -83,7 +99,7 @@ describe("buildHisabReport (settlement ID space)", () => {
     mockPrisma.settlement.findUnique.mockResolvedValueOnce(null);
 
     await expect(buildHisabReport(9999)).rejects.toThrow(
-      "CONFLICT:Settlement not found.",
+      "Settlement not found.",
     );
   });
 });
@@ -124,7 +140,7 @@ describe("buildHisabReportByPaymentId (payment ID space)", () => {
     mockPrisma.settlementPayment.findUnique.mockResolvedValueOnce(null);
 
     await expect(buildHisabReportByPaymentId(42)).rejects.toThrow(
-      "CONFLICT:Payment not found.",
+      "Payment not found.",
     );
     expect(mockPrisma.settlement.findUnique).not.toHaveBeenCalled();
   });

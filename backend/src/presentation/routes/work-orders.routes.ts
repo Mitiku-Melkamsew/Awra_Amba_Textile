@@ -2,8 +2,9 @@ import { Router } from "express";
 import { WorkOrderController } from "../controllers/work-order.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { requireCapability, requireAnyCapability } from "../middleware/authorize.js";
-import { validateBody } from "../middleware/validate.js";
+import { validateBody, validateParams } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
+import { NumericIdParamSchema } from "../dtos/common.dto.js";
 import {
   CreateWorkOrderSchema,
   UpdateWorkOrderStatusSchema,
@@ -66,12 +67,14 @@ workOrdersRouter.post(
 workOrdersRouter.patch(
   "/yarn-given/:id",
   requireCapability(Capability.YARN_GIVEN_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateYarnGivenSchema),
   WorkOrderController.updateYarnGiven,
 );
 workOrdersRouter.put(
   "/yarn-given/:id",
   requireCapability(Capability.YARN_GIVEN_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateYarnGivenSchema),
   WorkOrderController.updateYarnGiven,
 );
@@ -79,6 +82,7 @@ workOrdersRouter.put(
 workOrdersRouter.delete(
   "/yarn-given/:id",
   requireCapability(Capability.YARN_GIVEN_MANAGE),
+  validateParams(NumericIdParamSchema),
   WorkOrderController.deleteYarnGiven,
 );
 
@@ -93,12 +97,14 @@ workOrdersRouter.post(
 workOrdersRouter.patch(
   "/fabric-returns/:id",
   requireCapability(Capability.FABRIC_RETURNS_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateFabricReturnSchema),
   WorkOrderController.updateFabricReturn,
 );
 workOrdersRouter.put(
   "/fabric-returns/:id",
   requireCapability(Capability.FABRIC_RETURNS_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateFabricReturnSchema),
   WorkOrderController.updateFabricReturn,
 );
@@ -106,5 +112,6 @@ workOrdersRouter.put(
 workOrdersRouter.delete(
   "/fabric-returns/:id",
   requireCapability(Capability.FABRIC_RETURNS_MANAGE),
+  validateParams(NumericIdParamSchema),
   WorkOrderController.deleteFabricReturn,
 );

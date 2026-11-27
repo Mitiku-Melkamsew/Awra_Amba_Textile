@@ -56,6 +56,17 @@ export class ReportController {
     }
   }
 
+  static async getProductionSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const startDate = req.query.startDate ? new Date(String(req.query.startDate)) : undefined;
+      const endDate = req.query.endDate ? new Date(String(req.query.endDate)) : undefined;
+      const summary = await ReportService.getProductionSummary(startDate, endDate);
+      res.json(summary);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async getWeaversBalance(_req: Request, res: Response, next: NextFunction) {
     try {
       const balances = await ReportService.getWeaversBalanceReport();

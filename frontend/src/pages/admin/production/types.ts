@@ -36,8 +36,7 @@ export type ProductionStatusTab = "all" | "ongoing" | "returned" | "reconciled";
 
 export interface ProductionStats {
   ongoingCount: number;
-  ongoingYarnKg: number;
-  ongoingYarnPieces?: number;
+  ongoingYarnPieces: number;
   returnedCount: number;
   pendingLiability: number;
   reconciledCount: number;

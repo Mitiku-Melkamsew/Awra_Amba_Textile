@@ -115,6 +115,8 @@ export function suggestWidthDeduction(
 
 /**
  * Computes all automatic quality deductions for a return based on standards & active rules.
+ * Applicable rules across weight, length, and width stack additively per piece.
+ * When multiple rules share a factor, unit-matching rules (g/gram for weight, cm for length/width) take precedence.
  */
 export function calculateQualityDeductions(params: {
   quantity: number;
@@ -124,7 +126,7 @@ export function calculateQualityDeductions(params: {
   standardWeightG?: number | null;
   standardLengthCm?: number | null;
   standardWidthCm?: number | null;
-  qualityRules?: Array<{ factor: string; deductionPerUnit: number | string }>;
+  qualityRules?: Array<{ factor: string; unit?: string; deductionPerUnit: number | string }>;
 }): DeductionEntry[] {
   const {
     quantity,
@@ -139,11 +141,16 @@ export function calculateQualityDeductions(params: {
 
   if (!quantity || quantity <= 0) return [];
 
-  const getRate = (factor: string): number | null => {
-    const rule = qualityRules.find(
-      (r) => r.factor.toLowerCase() === factor.toLowerCase()
+  const getRate = (factor: string, preferredUnits: string[]): number | null => {
+    const factorMatches = qualityRules.filter(
+      (r) => r.factor.trim().toLowerCase() === factor.toLowerCase(),
     );
-    if (!rule) return null;
+    if (factorMatches.length === 0) return null;
+
+    const unitMatch = factorMatches.find(
+      (r) => r.unit && preferredUnits.includes(r.unit.trim().toLowerCase()),
+    );
+    const rule = unitMatch ?? factorMatches[0];
     const rate = Number(rule.deductionPerUnit);
     return isNaN(rate) || rate <= 0 ? null : rate;
   };
@@ -152,7 +159,7 @@ export function calculateQualityDeductions(params: {
 
   // 1. Weight deduction (only if an active quality rule exists for weight in DB)
   if (totalWeight && standardWeightG && Number(standardWeightG) > 0) {
-    const weightRate = getRate("weight");
+    const weightRate = getRate("weight", ["g", "gram", "grams"]);
     if (weightRate !== null) {
       const weightDeduction = suggestWeightDeduction(
         Number(totalWeight),
@@ -166,7 +173,7 @@ export function calculateQualityDeductions(params: {
 
   // 2. Length deduction (only if an active quality rule exists for length in DB)
   if (lengthCm && standardLengthCm && Number(standardLengthCm) > 0) {
-    const lengthRate = getRate("length");
+    const lengthRate = getRate("length", ["cm", "centimeter", "centimeters"]);
     if (lengthRate !== null) {
       const lengthDeduction = suggestLengthDeduction(
         Number(lengthCm),
@@ -179,7 +186,7 @@ export function calculateQualityDeductions(params: {
 
   // 3. Width deduction (only if an active quality rule exists for width in DB)
   if (widthCm && standardWidthCm && Number(standardWidthCm) > 0) {
-    const widthRate = getRate("width");
+    const widthRate = getRate("width", ["cm", "centimeter", "centimeters"]);
     if (widthRate !== null) {
       const widthDeduction = suggestWidthDeduction(
         Number(widthCm),

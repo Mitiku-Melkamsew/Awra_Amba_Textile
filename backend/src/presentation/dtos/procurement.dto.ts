@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export const CreateProcurementLineSchema = z.object({
   yarnVariantId: z.coerce.number().int().positive(),
-  quantity: z.coerce.number().positive(),
+  quantity: z.coerce.number().int("Yarn quantity must be a whole number (pieces)").positive(),
   unitPrice: z.coerce.number().positive(),
 });
 

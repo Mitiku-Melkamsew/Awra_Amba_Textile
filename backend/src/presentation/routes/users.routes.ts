@@ -2,8 +2,9 @@ import { Router } from "express";
 import { UserController } from "../controllers/user.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { requireCapability } from "../middleware/authorize.js";
-import { validateBody, validateQuery } from "../middleware/validate.js";
+import { validateBody, validateParams, validateQuery } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
+import { NumericIdParamSchema, UserRoleParamSchema } from "../dtos/common.dto.js";
 import {
   CreateUserSchema,
   UpdateUserSchema,
@@ -28,6 +29,7 @@ usersRouter.get(
 usersRouter.get(
   "/:id",
   requireCapability(Capability.USERS_READ),
+  validateParams(NumericIdParamSchema),
   UserController.getById,
 );
 
@@ -41,12 +43,14 @@ usersRouter.post(
 usersRouter.patch(
   "/:id",
   requireCapability(Capability.USERS_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateUserSchema),
   UserController.update,
 );
 usersRouter.put(
   "/:id",
   requireCapability(Capability.USERS_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateUserSchema),
   UserController.update,
 );
@@ -54,6 +58,7 @@ usersRouter.put(
 usersRouter.patch(
   "/:id/status",
   requireCapability(Capability.USERS_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetUserStatusSchema),
   UserController.setStatus,
 );
@@ -61,6 +66,7 @@ usersRouter.patch(
 usersRouter.post(
   "/:id/roles",
   requireCapability(Capability.ROLES_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(AssignRoleSchema),
   UserController.assignRole,
 );
@@ -68,6 +74,7 @@ usersRouter.post(
 usersRouter.put(
   "/:id/roles",
   requireCapability(Capability.ROLES_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetRolesSchema),
   UserController.setRoles,
 );
@@ -75,12 +82,14 @@ usersRouter.put(
 usersRouter.delete(
   "/:id/roles/:role",
   requireCapability(Capability.ROLES_MANAGE),
+  validateParams(UserRoleParamSchema),
   UserController.revokeRole,
 );
 
 usersRouter.post(
   "/:id/reset-password",
   requireCapability(Capability.USERS_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(ResetPasswordSchema),
   UserController.resetPassword,
 );
@@ -88,5 +97,6 @@ usersRouter.post(
 usersRouter.get(
   "/:id/balance",
   requireCapability(Capability.USERS_READ),
+  validateParams(NumericIdParamSchema),
   UserController.getBalance,
 );

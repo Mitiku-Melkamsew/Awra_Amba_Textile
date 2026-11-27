@@ -65,6 +65,7 @@ model User {
   email        String?  @db.VarChar(120)
   passwordHash String?  @map("password_hash") @db.VarChar(200)
   isActive     Boolean  @default(true) @map("is_active")
+  tokenVersion Int      @default(0) @map("token_version")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 

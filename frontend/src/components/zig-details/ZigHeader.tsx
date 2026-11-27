@@ -179,8 +179,9 @@ export function ZigHeader({
             }}
           >
             {STEPS.map((step, idx) => {
-              const isDone = idx < currentStepIndex;
-              const isCurrent = idx === currentStepIndex;
+              const isTerminalDone = statusNorm === "reconciled";
+              const isDone = isTerminalDone ? idx <= currentStepIndex : idx < currentStepIndex;
+              const isCurrent = !isTerminalDone && idx === currentStepIndex;
 
               return (
                 <div

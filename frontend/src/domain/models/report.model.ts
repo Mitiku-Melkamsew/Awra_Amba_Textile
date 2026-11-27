@@ -35,12 +35,12 @@ export interface CommercialReportSummary {
 }
 
 export interface ProductionReportSummary {
-  periodStart: string;
-  periodEnd: string;
+  periodStart: string | null;
+  periodEnd: string | null;
   workOrdersAssigned: number;
   workOrdersReturned: number;
   fabricPiecesProduced: number;
-  yarnIssuedKg: number;
-  yarnReturnedKg: number;
+  yarnIssuedPieces: number;
+  grossFabricValueBirr?: number;
   totalQualityDeductionsBirr: number;
 }

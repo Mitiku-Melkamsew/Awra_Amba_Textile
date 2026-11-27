@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { numberToAmharicWords } from "../../utils/amharic-words.js";
 import { formatDateDDMMYY } from "../../utils/format-date.js";
 import { formatUserFullName } from "../../utils/user-name.js";
+import { NotFoundError } from "../../domain/errors/domain-errors.js";
 
 export interface HisabRow {
   weaverId: string | number;
@@ -29,7 +30,16 @@ function zigSortKey(zigId: string): number {
 
 export async function buildHisabReport(settlementId: number) {
   const settlementInclude = {
-    weaver: true,
+    weaver: {
+      select: {
+        userId: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        isActive: true,
+      },
+    },
     workOrders: {
       include: {
         fabricVariant: { include: { fabric: true } },
@@ -55,7 +65,7 @@ export async function buildHisabReport(settlementId: number) {
   });
 
   if (!settlement) {
-    throw new Error("CONFLICT:Settlement not found.");
+    throw new NotFoundError("Settlement not found.");
   }
 
   const rows: HisabRow[] = [];
@@ -284,7 +294,7 @@ export async function buildHisabReportByPaymentId(id: number) {
     include: { settlement: { select: { status: true } } },
   });
   if (!payment) {
-    throw new Error("CONFLICT:Payment not found.");
+    throw new NotFoundError("Payment not found.");
   }
 
   const report = await buildHisabReport(payment.settlementId);

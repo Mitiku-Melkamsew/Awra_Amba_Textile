@@ -1,4 +1,4 @@
-import { request } from "../http/api-client";
+import { request, setToken } from "../http/api-client";
 import type { AuthUser, UserRole } from "../../domain/models";
 
 export interface LoginResponse {
@@ -57,10 +57,14 @@ export const authService = {
   async changePassword(
     currentPassword: string,
     newPassword: string,
-  ): Promise<{ success: boolean; message: string }> {
-    return request<{ success: boolean; message: string }>("/auth/change-password", {
+  ): Promise<{ success: boolean; message: string; token?: string }> {
+    const res = await request<{ success: boolean; message: string; token?: string }>("/auth/change-password", {
       method: "POST",
       body: JSON.stringify({ currentPassword, newPassword }),
     });
+    if (res.token) {
+      setToken(res.token);
+    }
+    return res;
   },
 };

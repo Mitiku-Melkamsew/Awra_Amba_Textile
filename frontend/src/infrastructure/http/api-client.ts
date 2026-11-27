@@ -41,6 +41,10 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   });
 
   if (!response.ok) {
+    if (response.status === 401 && path !== "/auth/login" && path !== "/auth/signup") {
+      setToken(null);
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    }
     let errorMsg = `Request failed: ${response.status} ${response.statusText}`;
     let errorDetails: unknown = null;
     try {

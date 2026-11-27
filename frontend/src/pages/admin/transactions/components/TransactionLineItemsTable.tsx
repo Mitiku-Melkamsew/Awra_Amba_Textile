@@ -147,6 +147,7 @@ export function TransactionLineItemsTable({
                   <input
                     type="number"
                     min="1"
+                    step="1"
                     value={l.quantity}
                     onChange={(e) =>
                       handleUpdateLine(l.id, "quantity", e.target.value)

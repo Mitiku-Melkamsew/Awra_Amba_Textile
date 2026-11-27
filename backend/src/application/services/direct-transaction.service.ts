@@ -1,7 +1,7 @@
 import { DirectTxnStatus, DirectTxnType } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AuditService } from "./audit.service.js";
-import { NotFoundError, ValidationError } from "../../domain/errors/domain-errors.js";
+import { ConflictError, NotFoundError, ValidationError } from "../../domain/errors/domain-errors.js";
 
 export interface CreateDirectTxnLineInput {
   fabricVariantId?: number | null;
@@ -38,55 +38,59 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
 
   if (resolvedType === DirectTxnType.fabric_purchase_from_weaver) {
     if (!input.weaverUserId) {
-      throw new Error("VALIDATION: weaverUserId is required for weaver direct transactions.");
+      throw new ValidationError("weaverUserId is required for weaver direct transactions.");
     }
     const weaver = await prisma.user.findUnique({ where: { userId: input.weaverUserId } });
-    if (!weaver) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} not found.`);
-    if (!weaver.isActive) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} is deactivated.`);
+    if (!weaver) throw new ValidationError(`Weaver user ${input.weaverUserId} not found.`);
+    if (!weaver.isActive) throw new ValidationError(`Weaver user ${input.weaverUserId} is deactivated.`);
   } else if (resolvedType === DirectTxnType.yarn_sale_to_weaver) {
     if (!input.weaverUserId) {
-      throw new Error("VALIDATION: weaverUserId is required for yarn_sale_to_weaver.");
+      throw new ValidationError("weaverUserId is required for yarn_sale_to_weaver.");
     }
     const weaver = await prisma.user.findUnique({ where: { userId: input.weaverUserId } });
-    if (!weaver) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} not found.`);
-    if (!weaver.isActive) throw new Error(`VALIDATION: Weaver user ${input.weaverUserId} is deactivated.`);
+    if (!weaver) throw new ValidationError(`Weaver user ${input.weaverUserId} not found.`);
+    if (!weaver.isActive) throw new ValidationError(`Weaver user ${input.weaverUserId} is deactivated.`);
   } else if (resolvedType === DirectTxnType.fabric_sale_to_merchant) {
     if (!input.merchantUserId) {
-      throw new Error("VALIDATION: merchantUserId is required for fabric_sale_to_merchant.");
+      throw new ValidationError("merchantUserId is required for fabric_sale_to_merchant.");
     }
     const merchant = await prisma.user.findUnique({ where: { userId: input.merchantUserId } });
-    if (!merchant) throw new Error(`VALIDATION: Merchant user ${input.merchantUserId} not found.`);
-    if (!merchant.isActive) throw new Error(`VALIDATION: Merchant user ${input.merchantUserId} is deactivated.`);
+    if (!merchant) throw new ValidationError(`Merchant user ${input.merchantUserId} not found.`);
+    if (!merchant.isActive) throw new ValidationError(`Merchant user ${input.merchantUserId} is deactivated.`);
   }
 
   if (!input.lines || input.lines.length === 0) {
-    throw new Error("VALIDATION: At least one transaction line is required.");
+    throw new ValidationError("At least one transaction line is required.");
   }
 
   let calculatedTotal = 0;
   const eventDate = input.transactionDate ?? new Date();
   for (const line of input.lines) {
     if (line.quantity <= 0) {
-      throw new Error("VALIDATION: Line quantity must be positive.");
+      throw new ValidationError("Line quantity must be positive.");
     }
     if (line.unitPrice <= 0) {
-      throw new Error("VALIDATION: Line unit price must be positive.");
+      throw new ValidationError("Line unit price must be positive.");
     }
     const hasFabric = !!line.fabricVariantId;
     const hasYarn = !!line.yarnVariantId;
     if ((hasFabric && hasYarn) || (!hasFabric && !hasYarn)) {
-      throw new Error("VALIDATION: Exactly one of fabricVariantId or yarnVariantId must be set.");
+      throw new ValidationError("Exactly one of fabricVariantId or yarnVariantId must be set.");
     }
 
     if (
       (resolvedType === DirectTxnType.fabric_purchase_from_weaver || resolvedType === DirectTxnType.fabric_sale_to_merchant) &&
       !hasFabric
     ) {
-      throw new Error("VALIDATION: Fabric variant is required for fabric transactions.");
+      throw new ValidationError("Fabric variant is required for fabric transactions.");
     }
 
     if (resolvedType === DirectTxnType.yarn_sale_to_weaver && !hasYarn) {
-      throw new Error("VALIDATION: Yarn variant is required for yarn transactions.");
+      throw new ValidationError("Yarn variant is required for yarn transactions.");
+    }
+
+    if (hasYarn && !Number.isInteger(line.quantity)) {
+      throw new ValidationError("Yarn quantity must be a whole number (pieces).");
     }
 
     if (hasFabric) {
@@ -95,13 +99,13 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         include: { fabric: true },
       });
       if (!variant?.isActive || !variant.fabric.isActive) {
-        throw new Error("VALIDATION: Inactive fabric catalog items cannot be used.");
+        throw new ValidationError("Inactive fabric catalog items cannot be used.");
       }
       if (resolvedType === DirectTxnType.fabric_sale_to_merchant) {
         const currentStock = Number(variant.stockSnapshot ?? 0);
         if (currentStock < line.quantity) {
-          throw new Error(
-            `INSUFFICIENT_STOCK: Cannot sell ${line.quantity} pieces of fabric "${variant.sku}". Available on-hand stock is ${currentStock} pieces.`,
+          throw new ValidationError(
+            `Cannot sell ${line.quantity} pieces of fabric "${variant.sku}". Available on-hand stock is ${currentStock} pieces.`,
           );
         }
       }
@@ -114,7 +118,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         },
       });
       if (!activePrice && (!line.unitPrice || line.unitPrice <= 0)) {
-        throw new Error("VALIDATION: No active fabric price exists and valid unitPrice was not specified.");
+        throw new ValidationError("No active fabric price exists and valid unitPrice was not specified.");
       }
     } else {
       const variant = await prisma.yarnVariant.findUnique({
@@ -122,13 +126,13 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         include: { yarn: true },
       });
       if (!variant?.isActive || !variant.yarn.isActive) {
-        throw new Error("VALIDATION: Inactive yarn catalog items cannot be used.");
+        throw new ValidationError("Inactive yarn catalog items cannot be used.");
       }
       if (resolvedType === DirectTxnType.yarn_sale_to_weaver) {
         const currentStock = Number(variant.stockSnapshot ?? 0);
         if (currentStock < line.quantity) {
-          throw new Error(
-            `INSUFFICIENT_STOCK: Cannot sell ${line.quantity} pieces of yarn "${variant.sku}". Available on-hand stock is ${currentStock} pieces.`,
+          throw new ValidationError(
+            `Cannot sell ${line.quantity} pieces of yarn "${variant.sku}". Available on-hand stock is ${currentStock} pieces.`,
           );
         }
       }
@@ -142,7 +146,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
         },
       });
       if (!activePrice && (!line.unitPrice || line.unitPrice <= 0)) {
-        throw new Error("VALIDATION: No active yarn price exists and valid unitPrice was not specified.");
+        throw new ValidationError("No active yarn price exists and valid unitPrice was not specified.");
       }
     }
 
@@ -152,7 +156,7 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
   return prisma.$transaction(async (tx) => {
     const initialPaid = input.initialPaymentAmount ? Number(input.initialPaymentAmount) : 0;
     if (initialPaid > calculatedTotal) {
-      throw new Error("VALIDATION: Initial payment cannot exceed total transaction amount.");
+      throw new ValidationError("Initial payment cannot exceed total transaction amount.");
     }
 
     const status = deriveDirectTxnStatus(calculatedTotal, initialPaid);
@@ -195,8 +199,8 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
           where: { fabricVariantId: line.fabricVariantId! },
         });
         if (Number(current.stockSnapshot) < Number(line.quantity)) {
-          throw new Error(
-            `INSUFFICIENT_STOCK: Insufficient stock for fabric "${current.sku}". Available: ${current.stockSnapshot}, Requested: ${line.quantity}`,
+          throw new ValidationError(
+            `Insufficient stock for fabric "${current.sku}". Available: ${current.stockSnapshot}, Requested: ${line.quantity}`,
           );
         }
         await tx.fabricVariant.update({
@@ -208,8 +212,8 @@ export async function createDirectTransaction(input: CreateDirectTransactionInpu
           where: { yarnVariantId: line.yarnVariantId! },
         });
         if (Number(current.stockSnapshot) < Number(line.quantity)) {
-          throw new Error(
-            `INSUFFICIENT_STOCK: Insufficient stock for yarn "${current.sku}". Available: ${current.stockSnapshot}, Requested: ${line.quantity}`,
+          throw new ValidationError(
+            `Insufficient stock for yarn "${current.sku}". Available: ${current.stockSnapshot}, Requested: ${line.quantity}`,
           );
         }
         await tx.yarnVariant.update({
@@ -263,7 +267,7 @@ export async function recordDirectTransactionPayment(params: {
   recordedByUserId: number;
 }) {
   if (params.amount <= 0) {
-    throw new Error("VALIDATION: Payment amount must be positive.");
+    throw new ValidationError("Payment amount must be positive.");
   }
 
   return prisma.$transaction(async (tx) => {
@@ -273,7 +277,7 @@ export async function recordDirectTransactionPayment(params: {
     });
 
     if (txn.status === DirectTxnStatus.cancelled) {
-      throw new Error("CONFLICT: Cannot record payment for a cancelled transaction.");
+      throw new ConflictError("Cannot record payment for a cancelled transaction.");
     }
 
     const currentPaid = Number(txn.amountPaid);
@@ -281,8 +285,8 @@ export async function recordDirectTransactionPayment(params: {
     const newPaid = currentPaid + params.amount;
 
     if (newPaid > totalAmount + 0.001) {
-      throw new Error(
-        `VALIDATION: Payment of ${params.amount} exceeds remaining balance of ${totalAmount - currentPaid}.`,
+      throw new ValidationError(
+        `Payment of ${params.amount} exceeds remaining balance of ${totalAmount - currentPaid}.`,
       );
     }
 
@@ -320,7 +324,7 @@ export async function cancelDirectTransaction(transactionId: number, actorUserId
     });
     if (txn.status === DirectTxnStatus.cancelled) return txn;
     if (txn.payments.length > 0 || Number(txn.amountPaid) > 0) {
-      throw new Error("CONFLICT: Paid direct transactions cannot be cancelled.");
+      throw new ConflictError("Paid direct transactions cannot be cancelled.");
     }
 
     for (const line of txn.lines) {
@@ -329,8 +333,8 @@ export async function cancelDirectTransaction(transactionId: number, actorUserId
           where: { fabricVariantId: line.fabricVariantId! },
         });
         if (Number(current.stockSnapshot) < Number(line.quantity)) {
-          throw new Error(
-            `INSUFFICIENT_STOCK: Cannot cancel transaction because current fabric stock (${current.stockSnapshot}) is less than quantity to reverse (${line.quantity}).`,
+          throw new ValidationError(
+            `Cannot cancel transaction because current fabric stock (${current.stockSnapshot}) is less than quantity to reverse (${line.quantity}).`,
           );
         }
         await tx.fabricVariant.update({

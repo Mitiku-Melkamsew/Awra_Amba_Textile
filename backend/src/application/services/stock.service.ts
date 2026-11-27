@@ -23,7 +23,6 @@ export class StockService {
 
     return {
       totalYarnStockPieces: Math.round(totalYarnStockPieces),
-      totalYarnStockKg: Number(totalYarnStockPieces.toFixed(2)), // compatibility alias
       totalFabricStockPieces,
       yarns,
       fabrics,

@@ -37,6 +37,10 @@ export const workOrderService = {
     return request<WorkOrder>(`/work-orders/${zigId}`);
   },
 
+  async getNextZigId(): Promise<{ zigId: string }> {
+    return request<{ zigId: string }>("/work-orders/next-id");
+  },
+
   async createWorkOrder(data: CreateWorkOrderDto): Promise<WorkOrder> {
     return request<WorkOrder>("/work-orders", {
       method: "POST",

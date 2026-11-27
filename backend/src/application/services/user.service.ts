@@ -266,6 +266,7 @@ export class UserService {
           phone: input.phone !== undefined ? input.phone.trim() || null : undefined,
           email: input.email !== undefined ? input.email.trim() || null : undefined,
           isActive: input.isActive ?? undefined,
+          ...(input.isActive === false ? { tokenVersion: { increment: 1 } } : {}),
         },
         include: {
           roles: { select: { role: true } },
@@ -319,6 +320,11 @@ export class UserService {
         data: { userId, role },
       });
 
+      await tx.user.update({
+        where: { userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+
       await AuditService.record(
         {
           actorUserId,
@@ -362,6 +368,12 @@ export class UserService {
           skipDuplicates: true,
         });
       }
+      if (toRemove.length > 0 || toAdd.length > 0) {
+        await tx.user.update({
+          where: { userId },
+          data: { tokenVersion: { increment: 1 } },
+        });
+      }
 
       await AuditService.record(
         {
@@ -394,6 +406,11 @@ export class UserService {
         where: { userId, role },
       });
 
+      await tx.user.update({
+        where: { userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+
       await AuditService.record(
         {
           actorUserId,
@@ -418,7 +435,10 @@ export class UserService {
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { userId },
-        data: { passwordHash },
+        data: {
+          passwordHash,
+          tokenVersion: { increment: 1 },
+        },
       });
 
       await AuditService.record(

@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { reportsApi } from "../../api";
 import type { HisabReport } from "../../api";
 import { formatDateDDMMYY } from "../../utils/formatDate";
+import { toTitleCase } from "../../utils/formatters";
 
 export function HisabPrintPage() {
   const { type, id } = useParams<{ type: string; id: string }>();
@@ -155,7 +156,7 @@ export function HisabPrintPage() {
           <div>
             አሸጋይ / Weaver:{" "}
             <strong>
-              {report.weaver.fullName}
+              {toTitleCase(report.weaver.fullName)}
             </strong>{" "}
             (ID: #{report.weaver.userId})
           </div>
@@ -307,7 +308,7 @@ export function HisabPrintPage() {
               <td
                 style={{ border: "1px solid #ccc", padding: "0.35rem 0.5rem" }}
               >
-                {row.fabricType}
+                {toTitleCase(row.fabricType)}
               </td>
               <td
                 style={{

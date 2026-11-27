@@ -1,31 +1,34 @@
 import { useEffect, useState } from "react";
-import { reportsApi, weaverPortalApi } from "../../api";
+import { weaverPortalService, type WeaverPaymentRecord } from "../../infrastructure/services";
 import { formatDateDDMMYY } from "../../utils/formatDate";
-
-interface PaymentRow {
-  paymentId: number;
-  amount: string;
-  paymentDate: string;
-  paymentMethod: string | null;
-}
+import { toTitleCase } from "../../utils/formatters";
 
 export function WeaverPaymentsPage() {
-  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [payments, setPayments] = useState<WeaverPaymentRecord[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    weaverPortalApi
-      .payments()
+    weaverPortalService
+      .listPayments()
       .then(setPayments)
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load payments"))
       .finally(() => setLoading(false));
   }, []);
 
   const totalEarnings = payments.reduce(
-    (acc, p) => acc + (parseFloat(p.amount) || 0),
+    (acc, p) => acc + (Number(p.amount) || 0),
     0
   );
+
+  const handleDownloadReceipt = async (paymentId: number) => {
+    setError("");
+    try {
+      await weaverPortalService.downloadPaymentReceiptCsv(paymentId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download receipt");
+    }
+  };
 
   return (
     <div>
@@ -65,9 +68,9 @@ export function WeaverPaymentsPage() {
       ) : (
         <div>
           {payments.map((p) => {
-            const amountNum = parseFloat(p.amount || "0");
+            const amountNum = Number(p.amount || 0);
             const dateStr = p.paymentDate ? formatDateDDMMYY(p.paymentDate) : "—";
-            const methodStr = p.paymentMethod || "Cash";
+            const methodStr = toTitleCase(p.paymentMethod || "Cash");
 
             return (
               <div key={p.paymentId} className="weaver-payment-card">
@@ -82,7 +85,7 @@ export function WeaverPaymentsPage() {
 
                 <button
                   type="button"
-                  onClick={() => reportsApi.downloadHisabCsv(p.paymentId, "payment")}
+                  onClick={() => handleDownloadReceipt(p.paymentId)}
                   className="weaver-receipt-btn"
                 >
                   <span>⬇</span>

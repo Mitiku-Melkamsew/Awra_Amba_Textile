@@ -2,7 +2,9 @@ import { Router } from "express";
 import { WeaverPortalController } from "../controllers/weaver-portal.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { requireCapability } from "../middleware/authorize.js";
+import { validateParams } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
+import { NumericIdParamSchema } from "../dtos/common.dto.js";
 
 export const weaverPortalRouter = Router();
 
@@ -31,7 +33,21 @@ weaverPortalRouter.get(
 weaverPortalRouter.get(
   "/settlements/:id/statement",
   requireCapability(Capability.SETTLEMENTS_READ_OWN),
+  validateParams(NumericIdParamSchema),
   WeaverPortalController.getMySettlementStatement,
+);
+
+weaverPortalRouter.get(
+  "/payments",
+  requireCapability(Capability.SETTLEMENTS_READ_OWN),
+  WeaverPortalController.getMyPayments,
+);
+
+weaverPortalRouter.get(
+  "/payments/:id/statement",
+  requireCapability(Capability.SETTLEMENTS_READ_OWN),
+  validateParams(NumericIdParamSchema),
+  WeaverPortalController.getMyPaymentStatement,
 );
 
 weaverPortalRouter.get(

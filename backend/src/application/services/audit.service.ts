@@ -13,6 +13,7 @@ export interface RecordAuditInput {
 
 export interface QueryAuditInput {
   actorUserId?: number;
+  action?: string;
   entityType?: string;
   entityId?: string;
   startDate?: Date;
@@ -38,6 +39,7 @@ export class AuditService {
     const where: Prisma.AuditLogWhereInput = {};
 
     if (input.actorUserId) where.actorUserId = input.actorUserId;
+    if (input.action) where.action = { contains: input.action, mode: "insensitive" };
     if (input.entityType) where.entityType = input.entityType;
     if (input.entityId) where.entityId = input.entityId;
 

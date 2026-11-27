@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { stockApi } from "../../api";
 import type { FabricVariant } from "../../api";
+import { toTitleCase } from "../../utils/formatters";
 
 interface YarnRow {
   yarnVariantId: number;
@@ -31,14 +32,14 @@ export function StockPage() {
       .then((data) => {
         if (data.yarnVariants) {
           const mappedYarns: YarnRow[] = (data.yarnVariants as any[]).map((y) => {
-            const material = y.yarn?.name ?? "cotton";
-            const color = y.color?.name ?? "natural";
+            const material = toTitleCase(y.yarn?.name ?? "cotton");
+            const color = toTitleCase(y.color?.name ?? "natural");
             return {
               yarnVariantId: y.yarnVariantId,
               sku: y.sku ? (y.sku.startsWith("SKU ") ? y.sku : `SKU ${y.sku}`) : `SKU Y-${y.yarnVariantId}`,
-              name: `${material.toLowerCase()} · ${color.toLowerCase()}`,
+              name: `${material} · ${color}`,
               colorName: color,
-              stockSnapshot: parseFloat(String(y.stockSnapshot ?? 0)) || 0,
+              stockSnapshot: Math.round(Number(y.stockSnapshot ?? 0)) || 0,
             };
           });
           setYarns(mappedYarns);
@@ -50,11 +51,11 @@ export function StockPage() {
             const warp = f.warpColor?.name;
             const weft = f.weftColor?.name;
             const design = f.design?.name;
-            const parts = [fname, warp, weft, design].filter(Boolean);
+            const parts = [fname, warp, weft, design].filter(Boolean).map((p) => toTitleCase(String(p)));
             return {
               fabricVariantId: f.fabricVariantId,
               sku: f.sku ? (f.sku.startsWith("SKU ") ? f.sku : `SKU ${f.sku}`) : `SKU F-${f.fabricVariantId}`,
-              name: parts.length > 1 ? parts.slice(0, 3).join(" · ").toLowerCase() : fname.toLowerCase(),
+              name: parts.length > 1 ? parts.slice(0, 3).join(" · ") : toTitleCase(fname),
               stockSnapshot: parseFloat(String(f.stockSnapshot ?? 0)) || 0,
             };
           });
@@ -141,7 +142,7 @@ export function StockPage() {
 
         <div className="card stock-kpi-card stock-kpi-warning">
           <span className="stock-kpi-label">Need attention</span>
-          <div className="stock-kpi-num text-warning-rust">{totalNeedAttention || 3}</div>
+          <div className="stock-kpi-num text-warning-rust">{totalNeedAttention}</div>
           <span className="stock-kpi-sub">low or out of stock</span>
         </div>
       </div>

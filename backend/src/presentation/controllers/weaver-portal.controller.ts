@@ -5,6 +5,7 @@ import { DirectTransactionService } from "../../application/services/direct-tran
 import { ReportService } from "../../application/services/report.service.js";
 import { prisma } from "../../lib/prisma.js";
 import { AbacService } from "../../application/security/abac.service.js";
+import { NotFoundError } from "../../domain/errors/domain-errors.js";
 
 export class WeaverPortalController {
   static async getProfile(req: Request, res: Response, next: NextFunction) {
@@ -89,8 +90,7 @@ export class WeaverPortalController {
       });
 
       if (!settlement) {
-        res.status(404).json({ error: "Settlement not found" });
-        return;
+        throw new NotFoundError(`Settlement ${id} not found`);
       }
 
       AbacService.enforceWeaverOwnership(
@@ -98,7 +98,91 @@ export class WeaverPortalController {
         { entityType: "settlement", weaverUserId: settlement.weaverUserId },
       );
 
+      if (req.query.format === "csv") {
+        const csv = await ReportService.exportSettlementHisabCsv(id);
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="HISAB-SETTLEMENT-${id}.csv"`);
+        res.send(csv);
+        return;
+      }
+
       const report = await ReportService.getSettlementHisab(id);
+      res.json(report);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getMyPayments(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.userId;
+      const payments = await prisma.settlementPayment.findMany({
+        where: {
+          settlement: {
+            weaverUserId: userId,
+            status: { not: "cancelled" },
+          },
+        },
+        include: {
+          settlement: {
+            select: {
+              settlementId: true,
+              batchId: true,
+              status: true,
+              netAmount: true,
+            },
+          },
+        },
+        orderBy: [{ paymentDate: "desc" }, { settlementPaymentId: "desc" }],
+      });
+
+      res.json(
+        payments.map((p) => ({
+          paymentId: p.settlementPaymentId,
+          settlementId: p.settlementId,
+          batchId: p.settlement.batchId,
+          amount: Number(p.amount),
+          paymentDate: p.paymentDate,
+          paymentMethod: p.paymentMethod ?? "Cash",
+          notes: p.notes ?? null,
+          settlementStatus: p.settlement.status,
+        })),
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getMyPaymentStatement(req: Request, res: Response, next: NextFunction) {
+    try {
+      const paymentId = Number(req.params.id);
+      const payment = await prisma.settlementPayment.findUnique({
+        where: { settlementPaymentId: paymentId },
+        include: {
+          settlement: {
+            select: { weaverUserId: true },
+          },
+        },
+      });
+
+      if (!payment) {
+        throw new NotFoundError(`Payment ${paymentId} not found`);
+      }
+
+      AbacService.enforceWeaverOwnership(
+        { userId: req.user!.userId, username: req.user!.username, roles: req.user!.roles },
+        { entityType: "settlement", weaverUserId: payment.settlement.weaverUserId },
+      );
+
+      if (req.query.format === "csv") {
+        const csv = await ReportService.exportPaymentHisabCsv(paymentId);
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="HISAB-PAYMENT-${paymentId}.csv"`);
+        res.send(csv);
+        return;
+      }
+
+      const report = await ReportService.getPaymentHisab(paymentId);
       res.json(report);
     } catch (error) {
       next(error);

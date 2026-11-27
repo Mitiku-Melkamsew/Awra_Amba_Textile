@@ -33,6 +33,10 @@ export const CreateDirectTxnLineSchema = z
   .refine(
     (line) => line.fabricVariantId != null || line.yarnVariantId != null,
     { message: "Each line must have fabricVariantId or yarnVariantId" },
+  )
+  .refine(
+    (line) => line.yarnVariantId == null || Number.isInteger(line.quantity),
+    { message: "Yarn quantity must be a whole number (pieces)", path: ["quantity"] },
   );
 
 export const CreateDirectTransactionSchema = z

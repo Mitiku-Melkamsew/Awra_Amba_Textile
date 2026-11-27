@@ -4,6 +4,7 @@ export interface AuthUser {
   userId: number;
   username: string;
   roles: UserRole[];
+  tokenVersion?: number;
 }
 
 declare global {

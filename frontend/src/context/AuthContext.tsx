@@ -48,6 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ user }) => setUser(user))
       .catch(() => setToken(null))
       .finally(() => setLoading(false));
+
+    const handleUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+    };
+    window.addEventListener("auth:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("auth:unauthorized", handleUnauthorized);
   }, []);
 
   const value = useMemo(() => {

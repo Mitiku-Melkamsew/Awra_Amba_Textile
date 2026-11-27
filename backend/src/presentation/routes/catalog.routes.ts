@@ -2,8 +2,9 @@ import { Router } from "express";
 import { CatalogController } from "../controllers/catalog.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { requireCapability } from "../middleware/authorize.js";
-import { validateBody } from "../middleware/validate.js";
+import { validateBody, validateParams } from "../middleware/validate.js";
 import { Capability } from "../../domain/security/capabilities.js";
+import { NumericIdParamSchema } from "../dtos/common.dto.js";
 import {
   CreateFabricSchema,
   UpdateFabricSchema,
@@ -36,7 +37,12 @@ catalogRouter.get("/lookup", requireCapability(Capability.CATALOG_READ), Catalog
 
 // Fabrics
 catalogRouter.get("/fabrics", requireCapability(Capability.CATALOG_READ), CatalogController.listFabrics);
-catalogRouter.get("/fabrics/:id", requireCapability(Capability.CATALOG_READ), CatalogController.getFabric);
+catalogRouter.get(
+  "/fabrics/:id",
+  requireCapability(Capability.CATALOG_READ),
+  validateParams(NumericIdParamSchema),
+  CatalogController.getFabric,
+);
 catalogRouter.post(
   "/fabrics",
   requireCapability(Capability.CATALOG_MANAGE),
@@ -46,18 +52,21 @@ catalogRouter.post(
 catalogRouter.patch(
   "/fabrics/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateFabricSchema),
   CatalogController.updateFabric,
 );
 catalogRouter.put(
   "/fabrics/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateFabricSchema),
   CatalogController.updateFabric,
 );
 catalogRouter.patch(
   "/fabrics/:id/status",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.updateFabric,
 );
@@ -73,18 +82,21 @@ catalogRouter.post(
 catalogRouter.patch(
   "/yarns/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateYarnSchema),
   CatalogController.updateYarn,
 );
 catalogRouter.put(
   "/yarns/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateYarnSchema),
   CatalogController.updateYarn,
 );
 catalogRouter.patch(
   "/yarns/:id/status",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.updateYarn,
 );
@@ -100,16 +112,23 @@ catalogRouter.post(
 catalogRouter.patch(
   "/colors/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateColorSchema),
   CatalogController.updateColor,
 );
 catalogRouter.put(
   "/colors/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateColorSchema),
   CatalogController.updateColor,
 );
-catalogRouter.delete("/colors/:id", requireCapability(Capability.CATALOG_MANAGE), CatalogController.deleteColor);
+catalogRouter.delete(
+  "/colors/:id",
+  requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
+  CatalogController.deleteColor,
+);
 
 // Designs
 catalogRouter.get("/designs", requireCapability(Capability.CATALOG_READ), CatalogController.listDesigns);
@@ -122,16 +141,23 @@ catalogRouter.post(
 catalogRouter.patch(
   "/designs/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateDesignSchema),
   CatalogController.updateDesign,
 );
 catalogRouter.put(
   "/designs/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateDesignSchema),
   CatalogController.updateDesign,
 );
-catalogRouter.delete("/designs/:id", requireCapability(Capability.CATALOG_MANAGE), CatalogController.deleteDesign);
+catalogRouter.delete(
+  "/designs/:id",
+  requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
+  CatalogController.deleteDesign,
+);
 
 // Suppliers
 catalogRouter.get("/suppliers", requireCapability(Capability.CATALOG_READ), CatalogController.listSuppliers);
@@ -144,18 +170,21 @@ catalogRouter.post(
 catalogRouter.patch(
   "/suppliers/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateSupplierSchema),
   CatalogController.updateSupplier,
 );
 catalogRouter.put(
   "/suppliers/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateSupplierSchema),
   CatalogController.updateSupplier,
 );
 catalogRouter.patch(
   "/suppliers/:id/status",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.updateSupplier,
 );
@@ -171,12 +200,14 @@ catalogRouter.post(
 catalogRouter.patch(
   "/fabric-variants/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.setFabricVariantStatus,
 );
 catalogRouter.patch(
   "/fabric-variants/:id/status",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.setFabricVariantStatus,
 );
@@ -192,12 +223,14 @@ catalogRouter.post(
 catalogRouter.patch(
   "/yarn-variants/:id",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.setYarnVariantStatus,
 );
 catalogRouter.patch(
   "/yarn-variants/:id/status",
   requireCapability(Capability.CATALOG_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.setYarnVariantStatus,
 );
@@ -220,6 +253,7 @@ catalogRouter.post(
 catalogRouter.patch(
   "/fabric-prices/:id",
   requireCapability(Capability.PRICES_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.setFabricPriceStatus,
 );
@@ -241,6 +275,7 @@ catalogRouter.post(
 catalogRouter.patch(
   "/yarn-prices/:id",
   requireCapability(Capability.PRICES_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.setYarnPriceStatus,
 );
@@ -256,18 +291,21 @@ catalogRouter.post(
 catalogRouter.patch(
   "/quality-rules/:id",
   requireCapability(Capability.QUALITY_RULES_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateQualityRuleSchema),
   CatalogController.updateQualityRule,
 );
 catalogRouter.put(
   "/quality-rules/:id",
   requireCapability(Capability.QUALITY_RULES_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(UpdateQualityRuleSchema),
   CatalogController.updateQualityRule,
 );
 catalogRouter.patch(
   "/quality-rules/:id/status",
   requireCapability(Capability.QUALITY_RULES_MANAGE),
+  validateParams(NumericIdParamSchema),
   validateBody(SetActiveStatusSchema),
   CatalogController.updateQualityRule,
 );

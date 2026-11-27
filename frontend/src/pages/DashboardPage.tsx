@@ -23,6 +23,7 @@ export function DashboardPage() {
 
   // Attention stats
   const [readyToSettleCount, setReadyToSettleCount] = useState<number>(0);
+  const [readyToSettleLabel, setReadyToSettleLabel] = useState<"weavers" | "zigs">("weavers");
   const [readyToSettleAmount, setReadyToSettleAmount] = useState<number>(0);
   const [lowStockCount, setLowStockCount] = useState<number>(0);
   const [lowStockYarnCount, setLowStockYarnCount] = useState<number>(0);
@@ -73,9 +74,11 @@ export function DashboardPage() {
         // 2. Ready to settle summary
         if (pendingRes.status === "fulfilled" && pendingRes.value) {
           const pending = pendingRes.value;
-          const wCount = pending.weaverCount ?? pending.unsettledZigCount ?? 0;
+          const hasWeaverCount = typeof pending.weaverCount === "number";
+          const wCount = hasWeaverCount ? (pending.weaverCount ?? 0) : (pending.unsettledZigCount ?? 0);
           const liability = pending.pendingLiability ?? pending.totalPendingAmount ?? 0;
           setReadyToSettleCount(wCount);
+          setReadyToSettleLabel(hasWeaverCount ? "weavers" : "zigs");
           setReadyToSettleAmount(liability);
         }
 
@@ -93,7 +96,7 @@ export function DashboardPage() {
         // 4. Unpaid transactions
         if (txnsRes.status === "fulfilled" && Array.isArray(txnsRes.value)) {
           const unpaid = txnsRes.value.filter(
-            (t: any) => t.status === "PENDING" || t.status === "unpaid" || t.status === "draft"
+            (t: any) => t.status === "unpaid" || t.status === "partially_paid"
           );
           setUnpaidTxnCount(unpaid.length);
           const sumDue = unpaid.reduce(
@@ -201,7 +204,10 @@ export function DashboardPage() {
               <span className="attention-card-arrow">→</span>
             </div>
             <div className="attention-card-stat">
-              {readyToSettleCount} weavers
+              {readyToSettleCount}{" "}
+              {readyToSettleLabel === "weavers"
+                ? (readyToSettleCount === 1 ? "weaver" : "weavers")
+                : (readyToSettleCount === 1 ? "zig" : "zigs")}
             </div>
             <p className="attention-card-sub-compact">
               {readyToSettleAmount.toLocaleString()} ETB from returned zigs

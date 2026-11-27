@@ -33,6 +33,7 @@ export class AuthController {
         userId: user.userId,
         username: user.username,
         roles,
+        tokenVersion: user.tokenVersion,
       });
 
       res.json({
@@ -90,6 +91,7 @@ export class AuthController {
         userId: user.userId,
         username: user.username,
         roles,
+        tokenVersion: user.tokenVersion,
       });
 
       res.status(201).json({
@@ -152,12 +154,23 @@ export class AuthController {
       if (!valid) throw new UnauthorizedError("Current password is incorrect");
 
       const newHash = await PasswordService.hash(req.body.newPassword);
-      await prisma.user.update({
+      const updated = await prisma.user.update({
         where: { userId: user.userId },
-        data: { passwordHash: newHash },
+        data: {
+          passwordHash: newHash,
+          tokenVersion: { increment: 1 },
+        },
+        include: { roles: true },
       });
 
-      res.json({ success: true, message: "Password updated successfully" });
+      const token = signToken({
+        userId: updated.userId,
+        username: updated.username,
+        roles: updated.roles.map((r) => r.role),
+        tokenVersion: updated.tokenVersion,
+      });
+
+      res.json({ success: true, message: "Password updated successfully", token });
     } catch (error) {
       next(error);
     }
@@ -205,6 +218,7 @@ export class AuthController {
         userId: updated.userId,
         username: updated.username,
         roles,
+        tokenVersion: updated.tokenVersion,
       });
 
       res.json({

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { SearchableSelect } from "../../../components/common";
+import { toTitleCase } from "../../../utils/formatters";
 import type { YarnLineItem } from "./useIssueZig";
 
 export interface YarnLinesCardProps {
@@ -28,8 +29,8 @@ export interface YarnLinesCardProps {
 }
 
 function formatYarnName(yv: any) {
-  const mat = yv.yarn?.name ?? "Yarn";
-  const col = yv.color?.name ?? "Standard";
+  const mat = toTitleCase(yv.yarn?.name ?? "Yarn");
+  const col = toTitleCase(yv.color?.name ?? "Standard");
   return `${mat} · ${col}`;
 }
 
