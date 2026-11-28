@@ -149,9 +149,10 @@ export function SearchableVariantSelect({
           placeholder={
             isFabric ? "Search fabric variant…" : "Search yarn variant…"
           }
-          onFocus={() => {
+          onFocus={(e) => {
             setDropdownOpen(true);
             setIsTyping(true);
+            e.currentTarget.select();
           }}
           onChange={(e) => {
             setQuery(e.target.value);

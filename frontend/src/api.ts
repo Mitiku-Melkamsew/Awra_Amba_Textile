@@ -460,7 +460,7 @@ export const workOrdersApi = {
         warpColor: fv.warpColor,
         weftColor: fv.weftColor,
         design: fv.design,
-        basePrice: fv.currentPrice?.weaverRate ?? fv.basePrice ?? 0,
+        basePrice: Number(fv.currentPrice?.weaverRate ?? fv.fabric?.prices?.[0]?.weaverRate ?? fv.basePrice ?? 0),
       },
       netPayable: wo.netPayable !== undefined ? Number(wo.netPayable) : undefined,
       dateReturned: wo.dateReturned ?? null,

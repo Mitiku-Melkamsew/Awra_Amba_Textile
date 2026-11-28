@@ -19,7 +19,15 @@ import {
 } from "./calculation.service.js";
 
 const fabricVariantInclude = {
-  fabric: true,
+  fabric: {
+    include: {
+      prices: {
+        where: { isActive: true },
+        orderBy: { effectiveFrom: "desc" as const },
+        take: 1,
+      },
+    },
+  },
   warpColor: true,
   weftColor: true,
   design: true,

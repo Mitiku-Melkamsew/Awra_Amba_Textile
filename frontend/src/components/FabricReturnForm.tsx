@@ -1,7 +1,8 @@
 import type { KeyboardEvent } from "react";
 import type { WorkOrderDetail } from "../api";
 import { useFabricReturnForm, type FabricReturnRow } from "./fabric-returns/useFabricReturnForm";
-import { FabricVariantPickerModal } from "./fabric-returns/FabricVariantPickerModal";
+import { SearchableVariantSelect } from "../pages/admin/transactions/components/SearchableVariantSelect";
+import { CreateVariantModal } from "../pages/admin/transactions/components/CreateVariantModal";
 import { DeductionsSection } from "./fabric-returns/DeductionsSection";
 import { GroupedReturnsCard } from "./fabric-returns/GroupedReturnsCard";
 
@@ -91,46 +92,45 @@ export function FabricReturnForm({
             )}
 
             <form onSubmit={form.handleSubmit}>
-              {/* Fabric Variant Row */}
+              {/* Fabric Variant Search + Add New */}
               <div style={{ marginBottom: "1rem" }}>
-                <label className="form-label" style={{ marginBottom: "0.35rem" }}>
-                  Fabric
-                </label>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <div
-                    style={{
-                      flex: 1,
-                      background: "var(--color-orange-50, #fffdf5)",
-                      border: "1px solid var(--color-orange-200, #fed7aa)",
-                      borderRadius: "var(--radius-sm, 8px)",
-                      padding: "0.55rem 0.85rem",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.6rem",
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: "var(--color-primary, #ea580c)",
-                        display: "inline-block",
-                      }}
-                    />
-                    <span style={{ fontWeight: 600, color: "var(--color-text, #1e293b)", fontSize: "0.92rem" }}>
-                      {form.selectedVariantDisplayName}
-                    </span>
-                  </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "0.35rem",
+                  }}
+                >
+                  <label className="form-label" style={{ marginBottom: 0 }}>
+                    Fabric
+                  </label>
                   <button
                     type="button"
-                    onClick={form.handleOpenModal}
-                    className="btn btn-secondary"
-                    style={{ padding: "0.55rem 1rem", fontSize: "0.85rem", whiteSpace: "nowrap" }}
+                    onClick={() => form.handleOpenCreateVariantModal()}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--color-primary, #c2410c)",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
                   >
-                    Change
+                    + Add new fabric
                   </button>
                 </div>
+                <SearchableVariantSelect
+                  isFabric={true}
+                  canAddNew={true}
+                  isSale={false}
+                  selectedVariantId={form.selectedVariantId ? String(form.selectedVariantId) : ""}
+                  fabricVariants={form.fabricVariants}
+                  yarnVariants={[]}
+                  onSelect={form.handleSelectVariantById}
+                  onAddNew={form.handleOpenCreateVariantModal}
+                />
               </div>
 
               {/* Numeric Inputs Row: Quantity, Total weight (g), Unit price (ETB) */}
@@ -425,27 +425,76 @@ export function FabricReturnForm({
         />
       </div>
 
-      {/* MODAL: Record fabric return · Changing fabric */}
-      <FabricVariantPickerModal
-        isOpen={form.isModalOpen}
-        onClose={() => form.setIsModalOpen(false)}
-        selectedVariantId={Number(form.selectedVariant?.fabricVariantId ?? 0)}
+      {/* MODAL: Add new fabric variant (with inline base fabric/color/design creation) */}
+      <CreateVariantModal
+        isOpen={form.showCreateVariantModal}
+        onClose={() => form.setShowCreateVariantModal(false)}
+        isFabric={true}
+        variantModalError={form.variantModalError}
+        savingVariant={form.savingVariant}
+        onSaveNewVariant={form.handleSaveNewVariant}
         fabrics={form.fabrics}
+        yarns={[]}
         colors={form.colors}
         designs={form.designs}
-        fabricVariants={form.fabricVariants}
-        modalSearch={form.modalSearch}
-        setModalSearch={form.setModalSearch}
-        modalFabricId={form.modalFabricId}
-        setModalFabricId={form.setModalFabricId}
-        modalWarpColorId={form.modalWarpColorId}
-        setModalWarpColorId={form.setModalWarpColorId}
-        modalWeftColorId={form.modalWeftColorId}
-        setModalWeftColorId={form.setModalWeftColorId}
-        modalDesignId={form.modalDesignId}
-        setModalDesignId={form.setModalDesignId}
-        onSelectVariant={form.handleSelectModalVariant}
-        onApplyCustomVariant={form.handleApplyCustomModalFabric}
+        suppliers={[]}
+        newFvFabricId={form.newFvFabricId}
+        setNewFvFabricId={form.setNewFvFabricId}
+        newFvWarpColorId={form.newFvWarpColorId}
+        setNewFvWarpColorId={form.setNewFvWarpColorId}
+        newFvWeftColorId={form.newFvWeftColorId}
+        setNewFvWeftColorId={form.setNewFvWeftColorId}
+        newFvDesignId={form.newFvDesignId}
+        setNewFvDesignId={form.setNewFvDesignId}
+        newYvYarnId=""
+        setNewYvYarnId={() => {}}
+        newYvColorId=""
+        setNewYvColorId={() => {}}
+        newYvSupplierId=""
+        setNewYvSupplierId={() => {}}
+        showNewFabricForm={form.showNewFabricForm}
+        setShowNewFabricForm={form.setShowNewFabricForm}
+        inlineFabricName={form.inlineFabricName}
+        setInlineFabricName={form.setInlineFabricName}
+        inlineFabricWeight={form.inlineFabricWeight}
+        setInlineFabricWeight={form.setInlineFabricWeight}
+        inlineFabricLength={form.inlineFabricLength}
+        setInlineFabricLength={form.setInlineFabricLength}
+        inlineFabricWidth={form.inlineFabricWidth}
+        setInlineFabricWidth={form.setInlineFabricWidth}
+        handleCreateInlineFabric={form.handleCreateInlineFabric}
+        showNewWarpColorForm={form.showNewWarpColorForm}
+        setShowNewWarpColorForm={form.setShowNewWarpColorForm}
+        inlineWarpColorName={form.inlineWarpColorName}
+        setInlineWarpColorName={form.setInlineWarpColorName}
+        handleCreateInlineWarpColor={form.handleCreateInlineWarpColor}
+        showNewWeftColorForm={form.showNewWeftColorForm}
+        setShowNewWeftColorForm={form.setShowNewWeftColorForm}
+        inlineWeftColorName={form.inlineWeftColorName}
+        setInlineWeftColorName={form.setInlineWeftColorName}
+        handleCreateInlineWeftColor={form.handleCreateInlineWeftColor}
+        showNewDesignForm={form.showNewDesignForm}
+        setShowNewDesignForm={form.setShowNewDesignForm}
+        inlineDesignName={form.inlineDesignName}
+        setInlineDesignName={form.setInlineDesignName}
+        handleCreateInlineDesign={form.handleCreateInlineDesign}
+        showNewYarnForm={false}
+        setShowNewYarnForm={() => {}}
+        inlineYarnName=""
+        setInlineYarnName={() => {}}
+        handleCreateInlineYarn={async () => {}}
+        showNewYarnColorForm={false}
+        setShowNewYarnColorForm={() => {}}
+        inlineYarnColorName=""
+        setInlineYarnColorName={() => {}}
+        handleCreateInlineYarnColor={async () => {}}
+        showNewSupplierForm={false}
+        setShowNewSupplierForm={() => {}}
+        inlineSupplierName=""
+        setInlineSupplierName={() => {}}
+        inlineSupplierPhone=""
+        setInlineSupplierPhone={() => {}}
+        handleCreateInlineSupplier={async () => {}}
       />
     </div>
   );

@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   catalogApi,
-  workOrdersApi,
   type Color,
   type Design,
   type Fabric,
@@ -30,7 +29,6 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
 
   // Core data states
   const [weaver, setWeaver] = useState<Weaver | null>(null);
-  const [lastZig, setLastZig] = useState<any | null>(null);
   const [fabrics, setFabrics] = useState<Fabric[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
   const [designs, setDesigns] = useState<Design[]>([]);
@@ -86,9 +84,8 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
       catalogApi.lookup(),
       catalogApi.fabricVariants(),
       catalogApi.yarnVariants(),
-      workOrdersApi.list({ weaverUserId: wid }).catch(() => []),
     ])
-      .then(([w, lookup, fv, yv, orders]) => {
+      .then(([w, lookup, fv, yv]) => {
         setWeaver(w);
         setFabrics(lookup.fabrics);
         setColors(lookup.colors);
@@ -102,31 +99,15 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
         }));
         setYarnVariants(enrichedYarnVariants);
 
-        const rawOrders = Array.isArray(orders) ? orders : [];
-        const previousOrders = rawOrders.filter((o: any) => {
-          const orderWid = o.weaverUserId ?? o.weaver?.userId;
-          return Number(orderWid) === wid;
-        });
-        const prev = previousOrders[0] ?? null;
-        setLastZig(prev);
-
         // Initialize fabric selection
-        let initialFabric = lookup.fabrics[0];
-        let initialWarp = lookup.colors[0];
-        let initialWeft = lookup.colors[0];
-        let initialDesignId = String(
+        const initialFabric = lookup.fabrics[0];
+        const initialWarp = lookup.colors[0];
+        const initialWeft = lookup.colors[0];
+        const initialDesignId = String(
           findZigZagDesignId(lookup.designs as any) ??
           lookup.designs[0]?.designId ??
           ""
         );
-
-        if (prev?.fabricVariant) {
-          const pv = prev.fabricVariant;
-          if (pv.fabric) initialFabric = pv.fabric;
-          if (pv.warpColor) initialWarp = pv.warpColor;
-          if (pv.weftColor) initialWeft = pv.weftColor;
-          if (pv.design) initialDesignId = String(pv.design.designId);
-        }
 
         if (initialFabric) {
           setFabricId(String(initialFabric.fabricId));
@@ -188,42 +169,6 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     const width = selectedFabric?.standardWidthCm ?? 100;
     return { weight, length, width };
   }, [selectedFabric]);
-
-  function handleUseSameSetup() {
-    if (!lastZig) return;
-    if (lastZig.fabricVariant) {
-      const pv = lastZig.fabricVariant;
-      if (pv.fabric?.fabricId) setFabricId(String(pv.fabric.fabricId));
-      else if (pv.fabricId) setFabricId(String(pv.fabricId));
-
-      if (pv.warpColor?.colorId) setWarpColorId(String(pv.warpColor.colorId));
-      if (pv.weftColor?.colorId) setWeftColorId(String(pv.weftColor.colorId));
-      if (pv.design?.designId) setDesignId(String(pv.design.designId));
-
-      const price = pv.basePrice ?? pv.currentPrice?.weaverRate;
-      if (price) setWeaverRate(String(price));
-      setSelectedVariantId(String(pv.fabricVariantId));
-    } else if (lastZig.fabric?.fabricId) {
-      setFabricId(String(lastZig.fabric.fabricId));
-    }
-
-    if (lastZig.yarnGiven && Array.isArray(lastZig.yarnGiven) && lastZig.yarnGiven.length > 0) {
-      setYarnLines(
-        lastZig.yarnGiven.map((yg: any, idx: number) => {
-          const matchedVariant = yarnVariants.find(
-            (y) => y.yarnVariantId === (yg.yarnVariant?.yarnVariantId ?? yg.yarnVariantId)
-          );
-          const price = matchedVariant?.sellingPrice ?? yg.unitPrice ?? 0;
-          return {
-            id: `yarn-repeat-${Date.now()}-${idx}`,
-            yarnVariantId: String(yg.yarnVariant?.yarnVariantId ?? yg.yarnVariantId ?? ""),
-            quantity: String(yg.quantity ?? "40"),
-            unitPrice: String(price),
-          };
-        })
-      );
-    }
-  }
 
   function handleAddYarnLine() {
     const inStock = yarnVariants.filter((y) => y.stockSnapshot > 0);
@@ -444,7 +389,6 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     weaver,
     weaverDisplayName,
     isDeactivated,
-    lastZig,
     fabrics,
     colors,
     designs,
@@ -464,7 +408,6 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     error,
     saving,
     loading,
-    handleUseSameSetup,
     handleAddYarnLine,
     handleRemoveYarnLine,
     handleYarnVariantChange,

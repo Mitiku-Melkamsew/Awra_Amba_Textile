@@ -1,5 +1,4 @@
 import { Link, useParams } from "react-router-dom";
-import { fabricVariantName } from "../../utils/variantNames";
 import { useIssueZig } from "./issue-zig/useIssueZig";
 import { DeactivatedWeaverAlert } from "./issue-zig/DeactivatedWeaverAlert";
 import { FabricSelectionCard } from "./issue-zig/FabricSelectionCard";
@@ -29,12 +28,6 @@ export function IssueZigPage() {
       />
     );
   }
-
-  const lastZigFabricTitle = zig.lastZig
-    ? zig.lastZig.fabricVariant
-      ? fabricVariantName(zig.lastZig.fabricVariant, " · ")
-      : zig.lastZig.fabric?.name ?? "Fabric"
-    : null;
 
   return (
     <div className="page" style={{ width: "100%", maxWidth: "100%", boxSizing: "border-box", padding: "1.5rem 2rem" }}>
@@ -80,45 +73,6 @@ export function IssueZigPage() {
           Issue zig for {zig.weaverDisplayName}
         </h1>
       </div>
-
-      {/* Top Banner: Last zig for this weaver */}
-      {zig.lastZig && (
-        <div
-          style={{
-            background: "var(--color-orange-50, #fff7ed)",
-            border: "1px solid var(--color-orange-100, #ffedd5)",
-            borderRadius: "var(--radius-md, 10px)",
-            padding: "0.85rem 1.25rem",
-            marginBottom: "1.5rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-          }}
-        >
-          <div style={{ fontSize: "0.92rem", color: "var(--color-orange-800, #9a3412)" }}>
-            Last zig for this weaver:{" "}
-            <strong>
-              {zig.lastZig.zigId} · {lastZigFabricTitle}
-            </strong>
-          </div>
-          <button
-            type="button"
-            onClick={zig.handleUseSameSetup}
-            className="btn btn-secondary"
-            style={{
-              borderColor: "var(--color-orange-300, #fdba74)",
-              color: "var(--color-primary, #c2410c)",
-              fontWeight: 700,
-              fontSize: "0.85rem",
-              padding: "0.45rem 0.9rem",
-            }}
-          >
-            Use the same setup
-          </button>
-        </div>
-      )}
 
       {/* Main Two-Column Layout */}
       <form onSubmit={zig.handleSubmit}>
