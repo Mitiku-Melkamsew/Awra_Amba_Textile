@@ -1,5 +1,4 @@
 import type { Request, Response, NextFunction } from "express";
-import { prisma } from "../../lib/prisma.js";
 import {
   DirectTransactionService,
   normalizeYarnPurchase,
@@ -51,17 +50,7 @@ export class DirectTransactionController {
       // `yarn_purchase` is accepted on this endpoint as a thin facade so the
       // commercial transactions UI has a single creation path.
       if (body.type === "yarn_purchase") {
-        let supplierId = body.supplierId != null ? Number(body.supplierId) : null;
-        if (supplierId == null && body.lines?.[0]?.yarnVariantId) {
-          const firstVar = await prisma.yarnVariant.findUnique({
-            where: { yarnVariantId: Number(body.lines[0].yarnVariantId) },
-            select: { supplierId: true },
-          });
-          if (firstVar) supplierId = firstVar.supplierId;
-        }
-        if (supplierId == null) {
-          throw new ValidationError("supplierId is required for yarn purchases.");
-        }
+        const supplierId = body.supplierId != null ? Number(body.supplierId) : null;
         const lines = (body.lines ?? []).map((l: any) => {
           if (l.yarnVariantId == null) {
             throw new ValidationError(

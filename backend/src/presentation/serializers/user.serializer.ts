@@ -1,4 +1,4 @@
-import type { UserRole } from "@prisma/client";
+import type { UserRole } from "../../domain/types/enums.js";
 import { project, type AnyRecord } from "./project.js";
 
 const USER_SUMMARY_KEYS = [

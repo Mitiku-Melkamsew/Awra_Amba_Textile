@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../../domain/types/enums.js";
 import { WorkOrderService } from "../../application/services/work-order.service.js";
 import { ForbiddenError } from "../../domain/errors/domain-errors.js";
 import { numericParam } from "../http/params.js";

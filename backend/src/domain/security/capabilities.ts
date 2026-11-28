@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../types/enums.js";
 
 export enum Capability {
   // Users & Roles

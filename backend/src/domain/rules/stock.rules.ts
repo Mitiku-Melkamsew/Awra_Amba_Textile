@@ -1,4 +1,4 @@
-import { DirectTxnType } from "@prisma/client";
+import { DirectTxnType } from "../types/enums.js";
 
 export type StockDirection = "in" | "out" | "none";
 

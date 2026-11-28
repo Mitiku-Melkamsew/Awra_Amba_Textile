@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkOrderStatus } from "@prisma/client";
+import { WorkOrderStatus } from "../../domain/types/enums.js";
 
 /**
  * Canonical work-order DTOs aligned with Prisma schema.

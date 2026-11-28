@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DirectTxnType, DirectTxnStatus } from "@prisma/client";
+import { DirectTxnType, DirectTxnStatus } from "../../domain/types/enums.js";
 
 /**
  * Canonical direct-transaction DTOs aligned with Prisma schema.

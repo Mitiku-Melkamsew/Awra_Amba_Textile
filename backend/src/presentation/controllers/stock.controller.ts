@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { StockService } from "../../application/services/stock.service.js";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../../domain/types/enums.js";
 import {
   serializeFabricVariant,
   serializeYarnVariant,

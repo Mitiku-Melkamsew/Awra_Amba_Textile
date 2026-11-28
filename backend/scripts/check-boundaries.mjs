@@ -1,10 +1,11 @@
 /**
- * Dependency-boundary check (Phase 0).
+ * Dependency-boundary check (Phase 1).
  *
- * Fails when an import crosses a layer boundary that is already clean today.
- * The remaining couplings (presentation -> lib/prisma, application -> prisma,
- * application -> infrastructure) are intentionally not enforced yet; they are
- * removed in Phases 1-2 and then added here.
+ * Fails when an import crosses an enforced layer boundary:
+ * - domain must not import application, infrastructure, presentation, lib/prisma, or @prisma/client.
+ * - application must not import presentation.
+ * - infrastructure must not import application or presentation.
+ * - presentation must not import infrastructure, lib/prisma, or @prisma/client.
  *
  * Run with: npm run check:boundaries
  */
@@ -20,6 +21,19 @@ const FORBIDDEN = {
   domain: new Set(["application", "infrastructure", "presentation"]),
   application: new Set(["presentation"]),
   infrastructure: new Set(["application", "presentation"]),
+  presentation: new Set(["infrastructure"]),
+};
+
+/** from-layer -> relative src subpaths it must not import */
+const FORBIDDEN_INTERNAL = {
+  domain: ["lib/prisma"],
+  presentation: ["lib/prisma"],
+};
+
+/** from-layer -> external packages it must not import */
+const FORBIDDEN_PACKAGES = {
+  domain: new Set(["@prisma/client"]),
+  presentation: new Set(["@prisma/client"]),
 };
 
 function walk(dir) {
@@ -53,25 +67,28 @@ for (const file of walk(SRC)) {
 
   const source = readFileSync(file, "utf8");
   for (const spec of importSpecifiers(source)) {
-    if (!spec.startsWith(".")) continue;
-
-    const target = resolve(dirname(file), spec);
-    const toLayer = layerOf(target);
-
-    if (fromLayer === "domain" && relative(SRC, target).startsWith("lib/prisma")) {
-      violations.push(`${relative(SRC, file)} imports lib/prisma from domain`);
+    if (!spec.startsWith(".")) {
+      if (FORBIDDEN_PACKAGES[fromLayer]?.has(spec)) {
+        violations.push(`${relative(SRC, file)} imports ${spec} from ${fromLayer}`);
+      }
+      continue;
     }
 
+    const target = resolve(dirname(file), spec);
+    const relTarget = relative(SRC, target).replace(/\\/g, "/");
+    for (const forbiddenSubpath of FORBIDDEN_INTERNAL[fromLayer] ?? []) {
+      if (relTarget === forbiddenSubpath || relTarget.startsWith(`${forbiddenSubpath}.`) || relTarget.startsWith(`${forbiddenSubpath}/`)) {
+        violations.push(`${relative(SRC, file)} imports ${forbiddenSubpath} from ${fromLayer}`);
+      }
+    }
+
+    const toLayer = layerOf(target);
     if (!toLayer || toLayer === fromLayer) continue;
 
     if (FORBIDDEN[fromLayer]?.has(toLayer)) {
       violations.push(
         `${relative(SRC, file)} imports ${toLayer} (${fromLayer} -> ${toLayer})`,
       );
-    }
-
-    if (fromLayer === "domain" && relative(SRC, target).startsWith("lib/prisma")) {
-      violations.push(`${relative(SRC, file)} imports lib/prisma from domain`);
     }
   }
 }

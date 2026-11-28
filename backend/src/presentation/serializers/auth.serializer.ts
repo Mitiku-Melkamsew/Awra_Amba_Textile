@@ -1,4 +1,4 @@
-import type { UserRole } from "@prisma/client";
+import type { UserRole } from "../../domain/types/enums.js";
 import { formatUserFullName } from "../../utils/user-name.js";
 
 /** Public shape of the authenticated user. Never includes credentials. */

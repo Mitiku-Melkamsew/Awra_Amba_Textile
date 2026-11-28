@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import type { UserRole } from "../types/enums.js";
 
 export interface AbacSubject {
   userId: number;

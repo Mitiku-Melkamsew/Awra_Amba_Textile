@@ -1,7 +1,8 @@
 import cors from "cors";
 import express from "express";
 import { securityHeaders } from "./presentation/middleware/security-headers.js";
-import { errorHandler } from "./presentation/middleware/error-handler.js";
+import { createErrorHandler } from "./presentation/middleware/error-handler.js";
+import { mapPrismaError } from "./infrastructure/persistence/prisma-error-mapper.js";
 import { healthRouter } from "./presentation/routes/health.routes.js";
 import { authRouter } from "./presentation/routes/auth.routes.js";
 import { usersRouter } from "./presentation/routes/users.routes.js";
@@ -82,7 +83,7 @@ export function createApp() {
   app.use("/api/v1/merchant", merchantPortalRouter);
 
   // Central Domain-Aware Error Handler
-  app.use(errorHandler);
+  app.use(createErrorHandler(mapPrismaError));
 
   return app;
 }

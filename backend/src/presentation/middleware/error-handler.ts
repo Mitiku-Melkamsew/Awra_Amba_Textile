@@ -1,45 +1,38 @@
 import type { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
-import { Prisma } from "@prisma/client";
 import { DomainError } from "../../domain/errors/domain-errors.js";
 
-export function errorHandler(
-  err: unknown,
-  _req: Request,
-  res: Response,
-  _next: NextFunction,
-) {
-  if (err instanceof DomainError) {
-    res.status(err.statusCode).json({
-      error: err.message,
-      ...(err as any).errors ? { details: (err as any).errors } : {},
-    });
-    return;
-  }
+export type ExternalErrorMapper = (err: unknown) => DomainError | null;
 
-  if (err instanceof ZodError) {
-    res.status(400).json({
-      error: "Validation failed",
-      details: err.errors,
-    });
-    return;
-  }
+export function createErrorHandler(mapExternalError?: ExternalErrorMapper) {
+  return function errorHandler(
+    err: unknown,
+    _req: Request,
+    res: Response,
+    _next: NextFunction,
+  ) {
+    const mapped = mapExternalError ? mapExternalError(err) : null;
+    const resolved = mapped ?? err;
 
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    if (err.code === "P2002") {
-      res.status(409).json({ error: "A record with this combination or identifier already exists." });
+    if (resolved instanceof DomainError) {
+      res.status(resolved.statusCode).json({
+        error: resolved.message,
+        ...(resolved as any).errors ? { details: (resolved as any).errors } : {},
+      });
       return;
     }
-    if (err.code === "P2003") {
-      res.status(400).json({ error: "The referenced counterparty or variant does not exist in the database." });
-      return;
-    }
-    if (err.code === "P2025") {
-      res.status(404).json({ error: "Requested record not found." });
-      return;
-    }
-  }
 
-  console.error("Unhandled Application Error:", err);
-  res.status(500).json({ error: "Internal server error" });
+    if (resolved instanceof ZodError) {
+      res.status(400).json({
+        error: "Validation failed",
+        details: resolved.errors,
+      });
+      return;
+    }
+
+    console.error("Unhandled Application Error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  };
 }
+
+export const errorHandler = createErrorHandler();

@@ -42,7 +42,7 @@ export class ProcurementService {
 
   static async createPurchase(
     input: {
-      supplierId: number;
+      supplierId?: number | null;
       purchaseDate?: Date;
       notes?: string | null;
       lines: Array<{
@@ -54,6 +54,18 @@ export class ProcurementService {
     actorUserId: number,
   ) {
     return prisma.$transaction(async (tx) => {
+      let supplierId = input.supplierId ?? null;
+      if (supplierId == null && input.lines[0]?.yarnVariantId) {
+        const firstVariant = await tx.yarnVariant.findUnique({
+          where: { yarnVariantId: input.lines[0].yarnVariantId },
+          select: { supplierId: true },
+        });
+        if (firstVariant) supplierId = firstVariant.supplierId;
+      }
+      if (supplierId == null) {
+        throw new ValidationError("supplierId is required for yarn purchases.");
+      }
+
       const resolvedLines: Array<{ yarnVariantId: number; quantity: number; unitPrice: number }> = [];
 
       for (const line of input.lines) {
@@ -81,7 +93,7 @@ export class ProcurementService {
 
       const purchase = await tx.yarnPurchase.create({
         data: {
-          supplierId: input.supplierId,
+          supplierId,
           purchaseDate: input.purchaseDate ?? new Date(),
           notes: input.notes,
           createdByUserId: actorUserId,
@@ -109,7 +121,7 @@ export class ProcurementService {
           action: "procurement.yarn_purchase",
           entityType: "yarn_purchase",
           entityId: purchase.purchaseId,
-          details: { supplierId: input.supplierId, lineCount: resolvedLines.length },
+          details: { supplierId, lineCount: resolvedLines.length },
         },
         tx,
       );
