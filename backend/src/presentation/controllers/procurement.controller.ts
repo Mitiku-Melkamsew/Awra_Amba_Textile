@@ -1,6 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import { ProcurementService } from "../../application/services/procurement.service.js";
 import { numericParam } from "../http/params.js";
+import {
+  serializeYarnPurchase,
+  serializeYarnPurchaseList,
+} from "../serializers/direct-transaction.serializer.js";
 
 export class ProcurementController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -8,7 +12,7 @@ export class ProcurementController {
       const limit = req.query.limit ? Number(req.query.limit) : 100;
       const offset = req.query.offset ? Number(req.query.offset) : 0;
       const result = await ProcurementService.listPurchases(limit, offset);
-      res.json(result);
+      res.json(serializeYarnPurchaseList(result));
     } catch (error) {
       next(error);
     }
@@ -18,7 +22,7 @@ export class ProcurementController {
     try {
       const id = numericParam(req);
       const purchase = await ProcurementService.getPurchase(id);
-      res.json(purchase);
+      res.json(serializeYarnPurchase(purchase));
     } catch (error) {
       next(error);
     }
@@ -44,7 +48,7 @@ export class ProcurementController {
         },
         actorUserId,
       );
-      res.status(201).json(created);
+      res.status(201).json(serializeYarnPurchase(created));
     } catch (error) {
       next(error);
     }

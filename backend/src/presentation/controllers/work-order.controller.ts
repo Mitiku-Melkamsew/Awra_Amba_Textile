@@ -3,6 +3,12 @@ import { UserRole } from "@prisma/client";
 import { WorkOrderService } from "../../application/services/work-order.service.js";
 import { ForbiddenError } from "../../domain/errors/domain-errors.js";
 import { numericParam } from "../http/params.js";
+import {
+  serializeFabricReturn,
+  serializeWorkOrder,
+  serializeWorkOrderList,
+  serializeYarnGiven,
+} from "../serializers/work-order.serializer.js";
 
 export class WorkOrderController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -23,7 +29,7 @@ export class WorkOrderController {
         limit: limit ? Number(limit) : undefined,
         offset: offset ? Number(offset) : undefined,
       });
-      res.json(result);
+      res.json(serializeWorkOrderList(result));
     } catch (error) {
       next(error);
     }
@@ -51,7 +57,7 @@ export class WorkOrderController {
         throw new ForbiddenError("You are not authorized to view this work order");
       }
 
-      res.json(order);
+      res.json(serializeWorkOrder(order));
     } catch (error) {
       next(error);
     }
@@ -62,7 +68,7 @@ export class WorkOrderController {
       const actorUserId = req.user!.userId;
       // Accept only schema fields: weaverUserId, fabricVariantId, zigId, yarnLines
       const created = await WorkOrderService.createWorkOrder(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeWorkOrder(created));
     } catch (error) {
       next(error);
     }
@@ -73,7 +79,7 @@ export class WorkOrderController {
       const zigId = String(req.params.zigId);
       const actorUserId = req.user!.userId;
       const updated = await WorkOrderService.updateStatus(zigId, req.body.status, actorUserId);
-      res.json(updated);
+      res.json(serializeWorkOrder(updated));
     } catch (error) {
       next(error);
     }
@@ -84,7 +90,7 @@ export class WorkOrderController {
       const zigId = String(req.params.zigId);
       const actorUserId = req.user!.userId;
       const cancelled = await WorkOrderService.cancelWorkOrder(zigId, actorUserId);
-      res.json(cancelled);
+      res.json(serializeWorkOrder(cancelled));
     } catch (error) {
       next(error);
     }
@@ -103,7 +109,7 @@ export class WorkOrderController {
         unitPrice: Number(l.unitPrice ?? 0),
       }));
       const created = await WorkOrderService.addYarnGiven(zigId, lines, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(Array.isArray(created) ? created.map(serializeYarnGiven) : serializeYarnGiven(created));
     } catch (error) {
       next(error);
     }
@@ -114,7 +120,7 @@ export class WorkOrderController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await WorkOrderService.updateYarnGiven(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeYarnGiven(updated));
     } catch (error) {
       next(error);
     }
@@ -141,7 +147,7 @@ export class WorkOrderController {
         { ...req.body, zigId },
         actorUserId,
       );
-      res.status(201).json(created);
+      res.status(201).json(serializeFabricReturn(created));
     } catch (error) {
       next(error);
     }
@@ -152,7 +158,7 @@ export class WorkOrderController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await WorkOrderService.updateFabricReturn(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeFabricReturn(updated));
     } catch (error) {
       next(error);
     }

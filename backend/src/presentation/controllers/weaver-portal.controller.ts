@@ -7,6 +7,11 @@ import { prisma } from "../../lib/prisma.js";
 import { AbacService } from "../../application/security/abac.service.js";
 import { NotFoundError } from "../../domain/errors/domain-errors.js";
 import { numericParam } from "../http/params.js";
+import { serializeWeaverProfile } from "../serializers/user.serializer.js";
+import { serializeWorkOrder, serializeWorkOrderList } from "../serializers/work-order.serializer.js";
+import { serializeSettlement } from "../serializers/settlement.serializer.js";
+import { serializeDirectTransactionList } from "../serializers/direct-transaction.serializer.js";
+import { serializeHisabReport, serializeWeaverPaymentItem } from "../serializers/report.serializer.js";
 
 export class WeaverPortalController {
   static async getProfile(req: Request, res: Response, next: NextFunction) {
@@ -20,11 +25,13 @@ export class WeaverPortalController {
         }),
       ]);
 
-      res.json({
-        ...user,
-        activeOrdersCount,
-        balance,
-      });
+      res.json(
+        serializeWeaverProfile({
+          ...user,
+          activeOrdersCount,
+          balance,
+        }),
+      );
     } catch (error) {
       next(error);
     }
@@ -38,7 +45,7 @@ export class WeaverPortalController {
         weaverUserId: userId,
         status,
       });
-      res.json(orders);
+      res.json(serializeWorkOrderList(orders));
     } catch (error) {
       next(error);
     }
@@ -54,7 +61,7 @@ export class WeaverPortalController {
         { entityType: "work_order", weaverUserId: order.weaverUserId },
       );
 
-      res.json(order);
+      res.json(serializeWorkOrder(order));
     } catch (error) {
       next(error);
     }
@@ -77,7 +84,7 @@ export class WeaverPortalController {
         },
         orderBy: { createdAt: "desc" },
       });
-      res.json(settlements);
+      res.json(settlements.map(serializeSettlement));
     } catch (error) {
       next(error);
     }
@@ -108,7 +115,7 @@ export class WeaverPortalController {
       }
 
       const report = await ReportService.getSettlementHisab(id);
-      res.json(report);
+      res.json(serializeHisabReport(report));
     } catch (error) {
       next(error);
     }
@@ -138,16 +145,18 @@ export class WeaverPortalController {
       });
 
       res.json(
-        payments.map((p) => ({
-          paymentId: p.settlementPaymentId,
-          settlementId: p.settlementId,
-          batchId: p.settlement.batchId,
-          amount: Number(p.amount),
-          paymentDate: p.paymentDate,
-          paymentMethod: p.paymentMethod ?? "Cash",
-          notes: p.notes ?? null,
-          settlementStatus: p.settlement.status,
-        })),
+        payments.map((p) =>
+          serializeWeaverPaymentItem({
+            paymentId: p.settlementPaymentId,
+            settlementId: p.settlementId,
+            batchId: p.settlement.batchId,
+            amount: Number(p.amount),
+            paymentDate: p.paymentDate,
+            paymentMethod: p.paymentMethod ?? "Cash",
+            notes: p.notes ?? null,
+            settlementStatus: p.settlement.status,
+          }),
+        ),
       );
     } catch (error) {
       next(error);
@@ -184,7 +193,7 @@ export class WeaverPortalController {
       }
 
       const report = await ReportService.getPaymentHisab(paymentId);
-      res.json(report);
+      res.json(serializeHisabReport(report));
     } catch (error) {
       next(error);
     }
@@ -196,7 +205,7 @@ export class WeaverPortalController {
       const txns = await DirectTransactionService.listTransactions({
         weaverUserId: userId,
       });
-      res.json(txns);
+      res.json(serializeDirectTransactionList(txns));
     } catch (error) {
       next(error);
     }

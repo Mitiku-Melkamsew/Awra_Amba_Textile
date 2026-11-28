@@ -3,12 +3,26 @@ import { CatalogService } from "../../application/services/catalog.service.js";
 import { StockService } from "../../application/services/stock.service.js";
 import { AbacService } from "../../application/security/abac.service.js";
 import { numericParam } from "../http/params.js";
+import {
+  serializeCatalogLookup,
+  serializeColor,
+  serializeDesign,
+  serializeFabric,
+  serializeFabricPrice,
+  serializeFabricVariant,
+  serializeQualityRule,
+  serializeSupplier,
+  serializeYarn,
+  serializeYarnPrice,
+  serializeYarnVariant,
+} from "../serializers/catalog.serializer.js";
+import { serializeAvailableFabric } from "../serializers/stock.serializer.js";
 
 export class CatalogController {
   static async getPublicCatalog(_req: Request, res: Response, next: NextFunction) {
     try {
       const catalog = await StockService.getAvailableFabrics(true);
-      res.json(catalog);
+      res.json(catalog.map(serializeAvailableFabric));
     } catch (error) {
       next(error);
     }
@@ -17,7 +31,7 @@ export class CatalogController {
   static async getLookup(_req: Request, res: Response, next: NextFunction) {
     try {
       const data = await CatalogService.getLookup();
-      res.json(data);
+      res.json(serializeCatalogLookup(data));
     } catch (error) {
       next(error);
     }
@@ -30,7 +44,7 @@ export class CatalogController {
       const activeOnly = req.query.activeOnly === "true";
       const fabrics = await CatalogService.listFabrics(activeOnly);
       const sanitized = fabrics.map((f) => AbacService.maskForRole(req.user?.roles ?? [], f));
-      res.json(sanitized);
+      res.json(sanitized.map(serializeFabric));
     } catch (error) {
       next(error);
     }
@@ -40,7 +54,7 @@ export class CatalogController {
     try {
       const id = numericParam(req);
       const fabric = await CatalogService.getFabric(id);
-      res.json(AbacService.maskForRole(req.user?.roles ?? [], fabric));
+      res.json(serializeFabric(AbacService.maskForRole(req.user?.roles ?? [], fabric)));
     } catch (error) {
       next(error);
     }
@@ -50,7 +64,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createFabric(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeFabric(created));
     } catch (error) {
       next(error);
     }
@@ -61,7 +75,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateFabric(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeFabric(updated));
     } catch (error) {
       next(error);
     }
@@ -73,7 +87,7 @@ export class CatalogController {
     try {
       const activeOnly = req.query.activeOnly === "true";
       const yarns = await CatalogService.listYarns(activeOnly);
-      res.json(yarns);
+      res.json(yarns.map(serializeYarn));
     } catch (error) {
       next(error);
     }
@@ -83,7 +97,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createYarn(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeYarn(created));
     } catch (error) {
       next(error);
     }
@@ -94,7 +108,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateYarn(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeYarn(updated));
     } catch (error) {
       next(error);
     }
@@ -105,7 +119,7 @@ export class CatalogController {
   static async listColors(_req: Request, res: Response, next: NextFunction) {
     try {
       const colors = await CatalogService.listColors();
-      res.json(colors);
+      res.json(colors.map(serializeColor));
     } catch (error) {
       next(error);
     }
@@ -115,7 +129,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createColor(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeColor(created));
     } catch (error) {
       next(error);
     }
@@ -126,7 +140,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateColor(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeColor(updated));
     } catch (error) {
       next(error);
     }
@@ -146,7 +160,7 @@ export class CatalogController {
   static async listDesigns(_req: Request, res: Response, next: NextFunction) {
     try {
       const designs = await CatalogService.listDesigns();
-      res.json(designs);
+      res.json(designs.map(serializeDesign));
     } catch (error) {
       next(error);
     }
@@ -156,7 +170,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createDesign(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeDesign(created));
     } catch (error) {
       next(error);
     }
@@ -167,7 +181,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateDesign(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeDesign(updated));
     } catch (error) {
       next(error);
     }
@@ -190,7 +204,7 @@ export class CatalogController {
     try {
       const activeOnly = req.query.activeOnly === "true";
       const suppliers = await CatalogService.listSuppliers(activeOnly);
-      res.json(suppliers);
+      res.json(suppliers.map(serializeSupplier));
     } catch (error) {
       next(error);
     }
@@ -200,7 +214,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createSupplier(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeSupplier(created));
     } catch (error) {
       next(error);
     }
@@ -211,7 +225,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateSupplier(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeSupplier(updated));
     } catch (error) {
       next(error);
     }
@@ -223,7 +237,7 @@ export class CatalogController {
     try {
       const activeOnly = req.query.activeOnly === "true";
       const variants = await CatalogService.listFabricVariants(activeOnly);
-      res.json(variants);
+      res.json(variants.map(serializeFabricVariant));
     } catch (error) {
       next(error);
     }
@@ -233,7 +247,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createFabricVariant(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeFabricVariant(created));
     } catch (error) {
       next(error);
     }
@@ -244,7 +258,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setFabricVariantStatus(id, req.body.isActive, actorUserId);
-      res.json(updated);
+      res.json(serializeFabricVariant(updated));
     } catch (error) {
       next(error);
     }
@@ -254,7 +268,7 @@ export class CatalogController {
     try {
       const activeOnly = req.query.activeOnly === "true";
       const variants = await CatalogService.listYarnVariants(activeOnly);
-      res.json(variants);
+      res.json(variants.map(serializeYarnVariant));
     } catch (error) {
       next(error);
     }
@@ -264,7 +278,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createYarnVariant(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeYarnVariant(created));
     } catch (error) {
       next(error);
     }
@@ -275,7 +289,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setYarnVariantStatus(id, req.body.isActive, actorUserId);
-      res.json(updated);
+      res.json(serializeYarnVariant(updated));
     } catch (error) {
       next(error);
     }
@@ -289,7 +303,7 @@ export class CatalogController {
       const activeOnly = req.query.activeOnly === "true";
       const prices = await CatalogService.listFabricPrices(fabricId, activeOnly);
       const sanitized = prices.map((p) => AbacService.maskForRole(req.user?.roles ?? [], p));
-      res.json(sanitized);
+      res.json(sanitized.map(serializeFabricPrice));
     } catch (error) {
       next(error);
     }
@@ -308,7 +322,7 @@ export class CatalogController {
         },
         actorUserId,
       );
-      res.status(201).json(created);
+      res.status(201).json(serializeFabricPrice(created));
     } catch (error) {
       next(error);
     }
@@ -319,7 +333,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setFabricPriceStatus(id, req.body.isActive, actorUserId);
-      res.json(updated);
+      res.json(serializeFabricPrice(updated));
     } catch (error) {
       next(error);
     }
@@ -330,7 +344,7 @@ export class CatalogController {
       const yarnId = req.query.yarnId ? Number(req.query.yarnId) : undefined;
       const activeOnly = req.query.activeOnly === "true";
       const prices = await CatalogService.listYarnPrices(yarnId, activeOnly);
-      res.json(prices);
+      res.json(prices.map(serializeYarnPrice));
     } catch (error) {
       next(error);
     }
@@ -350,7 +364,7 @@ export class CatalogController {
         },
         actorUserId,
       );
-      res.status(201).json(created);
+      res.status(201).json(serializeYarnPrice(created));
     } catch (error) {
       next(error);
     }
@@ -361,7 +375,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setYarnPriceStatus(id, req.body.isActive, actorUserId);
-      res.json(updated);
+      res.json(serializeYarnPrice(updated));
     } catch (error) {
       next(error);
     }
@@ -373,7 +387,7 @@ export class CatalogController {
     try {
       const activeOnly = req.query.activeOnly === "true";
       const rules = await CatalogService.listQualityRules(activeOnly);
-      res.json(rules);
+      res.json(rules.map(serializeQualityRule));
     } catch (error) {
       next(error);
     }
@@ -383,7 +397,7 @@ export class CatalogController {
     try {
       const actorUserId = req.user!.userId;
       const created = await CatalogService.createQualityRule(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeQualityRule(created));
     } catch (error) {
       next(error);
     }
@@ -394,7 +408,7 @@ export class CatalogController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateQualityRule(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeQualityRule(updated));
     } catch (error) {
       next(error);
     }

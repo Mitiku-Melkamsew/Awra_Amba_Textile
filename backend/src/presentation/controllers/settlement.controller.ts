@@ -1,6 +1,17 @@
 import type { Request, Response, NextFunction } from "express";
 import { SettlementService } from "../../application/services/settlement.service.js";
 import { numericParam } from "../http/params.js";
+import {
+  serializeBatchCommitResult,
+  serializeBatchPayResult,
+  serializePendingSummary,
+  serializeSettlement,
+  serializeSettlementBatch,
+  serializeSettlementPayment,
+  serializeSettlementPreview,
+  serializeZigsLedgerRow,
+} from "../serializers/settlement.serializer.js";
+import { serializeFabricReturn } from "../serializers/work-order.serializer.js";
 
 export class SettlementController {
   static async preview(req: Request, res: Response, next: NextFunction) {
@@ -14,7 +25,7 @@ export class SettlementController {
         req.body?.overrides ?? [],
         includeZigIds,
       );
-      res.json(preview);
+      res.json(serializeSettlementPreview(preview));
     } catch (error) {
       next(error);
     }
@@ -27,7 +38,7 @@ export class SettlementController {
         req.body,
         actorUserId,
       );
-      res.status(201).json(result);
+      res.status(201).json(serializeBatchCommitResult(result));
     } catch (error) {
       next(error);
     }
@@ -38,7 +49,7 @@ export class SettlementController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await SettlementService.cancelSettlement(id, req.body, actorUserId);
-      res.json(result);
+      res.json(serializeSettlement(result));
     } catch (error) {
       next(error);
     }
@@ -47,7 +58,7 @@ export class SettlementController {
   static async getPendingSummary(_req: Request, res: Response, next: NextFunction) {
     try {
       const summary = await SettlementService.getPendingSettlementsSummary();
-      res.json(summary);
+      res.json(serializePendingSummary(summary));
     } catch (error) {
       next(error);
     }
@@ -57,7 +68,7 @@ export class SettlementController {
     try {
       const statusFilter = req.query.status as string | undefined;
       const ledger = await SettlementService.getZigsLedger(statusFilter);
-      res.json(ledger);
+      res.json(ledger.map(serializeZigsLedgerRow));
     } catch (error) {
       next(error);
     }
@@ -70,7 +81,7 @@ export class SettlementController {
         ...req.body,
         recordedByUserId: actorUserId,
       });
-      res.status(201).json(result);
+      res.status(201).json(serializeBatchCommitResult(result));
     } catch (error) {
       next(error);
     }
@@ -79,7 +90,7 @@ export class SettlementController {
   static async listBatches(_req: Request, res: Response, next: NextFunction) {
     try {
       const batches = await SettlementService.listBatches();
-      res.json(batches);
+      res.json(batches.map(serializeSettlementBatch));
     } catch (error) {
       next(error);
     }
@@ -89,7 +100,7 @@ export class SettlementController {
     try {
       const id = numericParam(req);
       const batch = await SettlementService.getBatch(id);
-      res.json(batch);
+      res.json(serializeSettlementBatch(batch));
     } catch (error) {
       next(error);
     }
@@ -99,7 +110,7 @@ export class SettlementController {
     try {
       const id = numericParam(req);
       const settlement = await SettlementService.getSettlement(id);
-      res.json(settlement);
+      res.json(serializeSettlement(settlement));
     } catch (error) {
       next(error);
     }
@@ -126,7 +137,7 @@ export class SettlementController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const payment = await SettlementService.paySettlement(id, req.body, actorUserId);
-      res.json(payment);
+      res.json(serializeSettlementPayment(payment));
     } catch (error) {
       next(error);
     }
@@ -137,7 +148,7 @@ export class SettlementController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await SettlementService.payBatch(id, req.body, actorUserId);
-      res.json(result);
+      res.json(serializeBatchPayResult(result));
     } catch (error) {
       next(error);
     }
@@ -148,7 +159,7 @@ export class SettlementController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await SettlementService.cancelBatch(id, req.body, actorUserId);
-      res.json(result);
+      res.json(serializeSettlementBatch(result));
     } catch (error) {
       next(error);
     }
@@ -159,7 +170,7 @@ export class SettlementController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await SettlementService.overrideLine(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeFabricReturn(updated));
     } catch (error) {
       next(error);
     }

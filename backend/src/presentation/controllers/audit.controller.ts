@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { AuditService } from "../../application/services/audit.service.js";
+import { serializeAuditList } from "../serializers/audit.serializer.js";
 
 export class AuditController {
   static async query(req: Request, res: Response, next: NextFunction) {
@@ -17,7 +18,7 @@ export class AuditController {
         offset: offset ? Number(offset) : 0,
       });
 
-      res.json(result);
+      res.json(serializeAuditList(result));
     } catch (error) {
       next(error);
     }

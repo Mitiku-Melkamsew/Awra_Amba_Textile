@@ -1,12 +1,20 @@
 import type { Request, Response, NextFunction } from "express";
 import { ReportService } from "../../application/services/report.service.js";
 import { numericParam } from "../http/params.js";
+import {
+  serializeFinancialSummary,
+  serializeHisabReport,
+  serializeMerchantBalanceItem,
+  serializeProductionSummary,
+  serializeSettlementPaymentReportItem,
+  serializeWeaverBalanceItem,
+} from "../serializers/report.serializer.js";
 
 export class ReportController {
   static async listSettlementPayments(_req: Request, res: Response, next: NextFunction) {
     try {
       const payments = await ReportService.listSettlementPayments();
-      res.json(payments);
+      res.json(payments.map(serializeSettlementPaymentReportItem));
     } catch (error) {
       next(error);
     }
@@ -23,7 +31,7 @@ export class ReportController {
         return;
       }
 
-      res.json(await ReportService.getPaymentHisab(paymentId));
+      res.json(serializeHisabReport(await ReportService.getPaymentHisab(paymentId)));
     } catch (error) {
       next(error);
     }
@@ -40,7 +48,7 @@ export class ReportController {
         return;
       }
 
-      res.json(await ReportService.getSettlementHisab(settlementId));
+      res.json(serializeHisabReport(await ReportService.getSettlementHisab(settlementId)));
     } catch (error) {
       next(error);
     }
@@ -51,7 +59,7 @@ export class ReportController {
       const startDate = req.query.startDate ? new Date(String(req.query.startDate)) : undefined;
       const endDate = req.query.endDate ? new Date(String(req.query.endDate)) : undefined;
       const summary = await ReportService.getFinancialSummary(startDate, endDate);
-      res.json(summary);
+      res.json(serializeFinancialSummary(summary));
     } catch (error) {
       next(error);
     }
@@ -62,7 +70,7 @@ export class ReportController {
       const startDate = req.query.startDate ? new Date(String(req.query.startDate)) : undefined;
       const endDate = req.query.endDate ? new Date(String(req.query.endDate)) : undefined;
       const summary = await ReportService.getProductionSummary(startDate, endDate);
-      res.json(summary);
+      res.json(serializeProductionSummary(summary));
     } catch (error) {
       next(error);
     }
@@ -71,7 +79,7 @@ export class ReportController {
   static async getWeaversBalance(_req: Request, res: Response, next: NextFunction) {
     try {
       const balances = await ReportService.getWeaversBalanceReport();
-      res.json(balances);
+      res.json(balances.map(serializeWeaverBalanceItem));
     } catch (error) {
       next(error);
     }
@@ -80,7 +88,7 @@ export class ReportController {
   static async getMerchantsBalance(_req: Request, res: Response, next: NextFunction) {
     try {
       const balances = await ReportService.getMerchantsBalanceReport();
-      res.json(balances);
+      res.json(balances.map(serializeMerchantBalanceItem));
     } catch (error) {
       next(error);
     }

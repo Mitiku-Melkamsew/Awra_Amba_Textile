@@ -4,6 +4,12 @@ import { StockService } from "../../application/services/stock.service.js";
 import { DirectTransactionService } from "../../application/services/direct-transaction.service.js";
 import { AbacService } from "../../application/security/abac.service.js";
 import { numericParam } from "../http/params.js";
+import { serializeMerchantProfile } from "../serializers/user.serializer.js";
+import { serializeAvailableFabric } from "../serializers/stock.serializer.js";
+import {
+  serializeDirectTransaction,
+  serializeDirectTransactionList,
+} from "../serializers/direct-transaction.serializer.js";
 
 export class MerchantPortalController {
   static async getProfile(req: Request, res: Response, next: NextFunction) {
@@ -14,10 +20,12 @@ export class MerchantPortalController {
         UserService.getUserBalance(userId),
       ]);
 
-      res.json({
-        ...user,
-        balance,
-      });
+      res.json(
+        serializeMerchantProfile({
+          ...user,
+          balance,
+        }),
+      );
     } catch (error) {
       next(error);
     }
@@ -27,7 +35,7 @@ export class MerchantPortalController {
     try {
       // maskInternalPrices = true strips weaverRate and supplier costs
       const catalog = await StockService.getAvailableFabrics(true);
-      res.json(catalog);
+      res.json(catalog.map(serializeAvailableFabric));
     } catch (error) {
       next(error);
     }
@@ -46,7 +54,7 @@ export class MerchantPortalController {
         lines: t.lines?.map((l: any) => AbacService.maskForRole(req.user?.roles ?? [], l)),
       }));
 
-      res.json({ transactions: sanitized, total: result.total });
+      res.json(serializeDirectTransactionList({ transactions: sanitized, total: result.total }));
     } catch (error) {
       next(error);
     }
@@ -67,7 +75,7 @@ export class MerchantPortalController {
         lines: txn.lines.map((l: any) => AbacService.maskForRole(req.user?.roles ?? [], l)),
       };
 
-      res.json(sanitized);
+      res.json(serializeDirectTransaction(sanitized));
     } catch (error) {
       next(error);
     }

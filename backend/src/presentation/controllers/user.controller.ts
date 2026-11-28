@@ -1,6 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
 import { UserService } from "../../application/services/user.service.js";
 import { numericParam } from "../http/params.js";
+import {
+  serializeUserBalance,
+  serializeUserList,
+  serializeUserSummary,
+} from "../serializers/user.serializer.js";
 
 export class UserController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -13,7 +18,7 @@ export class UserController {
         limit: limit ? Number(limit) : undefined,
         offset: offset ? Number(offset) : undefined,
       });
-      res.json(result);
+      res.json(serializeUserList(result));
     } catch (error) {
       next(error);
     }
@@ -23,7 +28,7 @@ export class UserController {
     try {
       const id = numericParam(req);
       const user = await UserService.getUserById(id);
-      res.json(user);
+      res.json(serializeUserSummary(user));
     } catch (error) {
       next(error);
     }
@@ -33,7 +38,7 @@ export class UserController {
     try {
       const actorUserId = req.user!.userId;
       const created = await UserService.createUser(req.body, actorUserId);
-      res.status(201).json(created);
+      res.status(201).json(serializeUserSummary(created));
     } catch (error) {
       next(error);
     }
@@ -44,7 +49,7 @@ export class UserController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await UserService.updateUser(id, req.body, actorUserId);
-      res.json(updated);
+      res.json(serializeUserSummary(updated));
     } catch (error) {
       next(error);
     }
@@ -55,7 +60,7 @@ export class UserController {
       const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await UserService.setUserStatus(id, req.body.isActive, actorUserId);
-      res.json(updated);
+      res.json(serializeUserSummary(updated));
     } catch (error) {
       next(error);
     }
@@ -110,7 +115,7 @@ export class UserController {
     try {
       const id = numericParam(req);
       const balance = await UserService.getUserBalance(id);
-      res.json(balance);
+      res.json(serializeUserBalance(balance));
     } catch (error) {
       next(error);
     }

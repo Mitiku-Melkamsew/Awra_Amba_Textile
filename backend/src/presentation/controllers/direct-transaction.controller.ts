@@ -6,6 +6,11 @@ import {
 } from "../../application/services/direct-transaction.service.js";
 import { ProcurementService } from "../../application/services/procurement.service.js";
 import { ValidationError } from "../../domain/errors/domain-errors.js";
+import {
+  serializeDirectTransaction,
+  serializeDirectTransactionList,
+  serializeDirectTxnPaymentResult,
+} from "../serializers/direct-transaction.serializer.js";
 
 export class DirectTransactionController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -20,7 +25,7 @@ export class DirectTransactionController {
         limit: limit ? Number(limit) : undefined,
         offset: offset ? Number(offset) : undefined,
       });
-      res.json(result);
+      res.json(serializeDirectTransactionList(result));
     } catch (error) {
       next(error);
     }
@@ -31,7 +36,7 @@ export class DirectTransactionController {
       const id = String(req.params.id);
       const type = req.query.type as string | undefined;
       const txn = await DirectTransactionService.getTransaction(id, type);
-      res.json(txn);
+      res.json(serializeDirectTransaction(txn));
     } catch (error) {
       next(error);
     }
@@ -77,7 +82,7 @@ export class DirectTransactionController {
           },
           actorUserId,
         );
-        return res.status(201).json(normalizeYarnPurchase(createdPurchase));
+        return res.status(201).json(serializeDirectTransaction(normalizeYarnPurchase(createdPurchase)));
       }
 
       const lines = (body.lines ?? []).map((l: any) => ({
@@ -96,7 +101,7 @@ export class DirectTransactionController {
         notes: body.notes ?? null,
         createdByUserId: actorUserId,
       });
-      res.status(201).json(created);
+      res.status(201).json(serializeDirectTransaction(created));
     } catch (error) {
       next(error);
     }
@@ -107,7 +112,7 @@ export class DirectTransactionController {
       const id = String(req.params.id);
       const actorUserId = req.user!.userId;
       const payment = await DirectTransactionService.recordPayment(id, req.body, actorUserId);
-      res.status(201).json(payment);
+      res.status(201).json(serializeDirectTxnPaymentResult(payment));
     } catch (error) {
       next(error);
     }
@@ -118,7 +123,7 @@ export class DirectTransactionController {
       const id = String(req.params.id);
       const actorUserId = req.user!.userId;
       const cancelled = await DirectTransactionService.cancelTransaction(id, actorUserId);
-      res.json(cancelled);
+      res.json(serializeDirectTransaction(cancelled));
     } catch (error) {
       next(error);
     }
