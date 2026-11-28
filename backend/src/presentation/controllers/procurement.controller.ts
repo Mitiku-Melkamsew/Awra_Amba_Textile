@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { ProcurementService } from "../../application/services/procurement.service.js";
+import { numericParam } from "../http/params.js";
 
 export class ProcurementController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -15,7 +16,7 @@ export class ProcurementController {
 
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const purchase = await ProcurementService.getPurchase(id);
       res.json(purchase);
     } catch (error) {

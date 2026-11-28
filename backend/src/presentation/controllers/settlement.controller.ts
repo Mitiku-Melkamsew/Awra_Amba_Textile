@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { SettlementService } from "../../application/services/settlement.service.js";
+import { numericParam } from "../http/params.js";
 
 export class SettlementController {
   static async preview(req: Request, res: Response, next: NextFunction) {
@@ -34,7 +35,7 @@ export class SettlementController {
 
   static async cancel(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await SettlementService.cancelSettlement(id, req.body, actorUserId);
       res.json(result);
@@ -86,7 +87,7 @@ export class SettlementController {
 
   static async getBatch(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const batch = await SettlementService.getBatch(id);
       res.json(batch);
     } catch (error) {
@@ -96,7 +97,7 @@ export class SettlementController {
 
   static async getSettlement(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const settlement = await SettlementService.getSettlement(id);
       res.json(settlement);
     } catch (error) {
@@ -106,7 +107,7 @@ export class SettlementController {
 
   static async getBatchCsv(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const csv = await SettlementService.exportBatchCsv(id);
       if (csv === null) {
         res.status(404).json({ error: `Settlement batch ${id} not found` });
@@ -122,7 +123,7 @@ export class SettlementController {
 
   static async pay(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const payment = await SettlementService.paySettlement(id, req.body, actorUserId);
       res.json(payment);
@@ -133,7 +134,7 @@ export class SettlementController {
 
   static async payBatch(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await SettlementService.payBatch(id, req.body, actorUserId);
       res.json(result);
@@ -144,7 +145,7 @@ export class SettlementController {
 
   static async cancelBatch(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await SettlementService.cancelBatch(id, req.body, actorUserId);
       res.json(result);
@@ -155,7 +156,7 @@ export class SettlementController {
 
   static async overrideLine(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await SettlementService.overrideLine(id, req.body, actorUserId);
       res.json(updated);

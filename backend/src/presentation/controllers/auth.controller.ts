@@ -3,7 +3,7 @@ import { UserRole } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { PasswordService } from "../../infrastructure/auth/password.js";
 import { signToken } from "../../utils/jwt.js";
-import { formatUserFullName } from "../../utils/user-name.js";
+import { serializeAuthUser } from "../serializers/auth.serializer.js";
 import {
   UnauthorizedError,
   ConflictError,
@@ -38,17 +38,7 @@ export class AuthController {
 
       res.json({
         token,
-        user: {
-          userId: user.userId,
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: formatUserFullName(user),
-          phone: user.phone,
-          email: user.email,
-          roles,
-          isActive: user.isActive,
-        },
+        user: serializeAuthUser(user),
       });
     } catch (error) {
       next(error);
@@ -96,16 +86,7 @@ export class AuthController {
 
       res.status(201).json({
         token,
-        user: {
-          userId: user.userId,
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: formatUserFullName(user),
-          phone: user.phone,
-          roles,
-          isActive: user.isActive,
-        },
+        user: serializeAuthUser(user),
       });
     } catch (error) {
       next(error);
@@ -126,17 +107,7 @@ export class AuthController {
       }
 
       res.json({
-        user: {
-          userId: user.userId,
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: formatUserFullName(user),
-          phone: user.phone,
-          email: user.email,
-          roles: user.roles.map((r) => r.role),
-          isActive: user.isActive,
-        },
+        user: serializeAuthUser(user),
       });
     } catch (error) {
       next(error);
@@ -223,17 +194,7 @@ export class AuthController {
 
       res.json({
         token,
-        user: {
-          userId: updated.userId,
-          username: updated.username,
-          firstName: updated.firstName,
-          lastName: updated.lastName,
-          fullName: formatUserFullName(updated),
-          phone: updated.phone,
-          email: updated.email,
-          roles,
-          isActive: updated.isActive,
-        },
+        user: serializeAuthUser(updated),
       });
     } catch (error) {
       next(error);

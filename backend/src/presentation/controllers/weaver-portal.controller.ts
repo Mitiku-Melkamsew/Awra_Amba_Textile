@@ -6,6 +6,7 @@ import { ReportService } from "../../application/services/report.service.js";
 import { prisma } from "../../lib/prisma.js";
 import { AbacService } from "../../application/security/abac.service.js";
 import { NotFoundError } from "../../domain/errors/domain-errors.js";
+import { numericParam } from "../http/params.js";
 
 export class WeaverPortalController {
   static async getProfile(req: Request, res: Response, next: NextFunction) {
@@ -84,7 +85,7 @@ export class WeaverPortalController {
 
   static async getMySettlementStatement(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const settlement = await prisma.settlement.findUnique({
         where: { settlementId: id },
       });
@@ -155,7 +156,7 @@ export class WeaverPortalController {
 
   static async getMyPaymentStatement(req: Request, res: Response, next: NextFunction) {
     try {
-      const paymentId = Number(req.params.id);
+      const paymentId = numericParam(req);
       const payment = await prisma.settlementPayment.findUnique({
         where: { settlementPaymentId: paymentId },
         include: {

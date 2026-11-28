@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { ReportService } from "../../application/services/report.service.js";
+import { numericParam } from "../http/params.js";
 
 export class ReportController {
   static async listSettlementPayments(_req: Request, res: Response, next: NextFunction) {
@@ -13,7 +14,7 @@ export class ReportController {
 
   static async getPaymentHisab(req: Request, res: Response, next: NextFunction) {
     try {
-      const paymentId = Number(req.params.id);
+      const paymentId = numericParam(req);
       if (req.query.format === "csv") {
         const csv = await ReportService.exportPaymentHisabCsv(paymentId);
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -30,7 +31,7 @@ export class ReportController {
 
   static async getSettlementHisab(req: Request, res: Response, next: NextFunction) {
     try {
-      const settlementId = Number(req.params.id);
+      const settlementId = numericParam(req);
       if (req.query.format === "csv") {
         const csv = await ReportService.exportSettlementHisabCsv(settlementId);
         res.setHeader("Content-Type", "text/csv; charset=utf-8");

@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { UserRole } from "@prisma/client";
 import { WorkOrderService } from "../../application/services/work-order.service.js";
 import { ForbiddenError } from "../../domain/errors/domain-errors.js";
+import { numericParam } from "../http/params.js";
 
 export class WorkOrderController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -110,7 +111,7 @@ export class WorkOrderController {
 
   static async updateYarnGiven(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await WorkOrderService.updateYarnGiven(id, req.body, actorUserId);
       res.json(updated);
@@ -121,7 +122,7 @@ export class WorkOrderController {
 
   static async deleteYarnGiven(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await WorkOrderService.deleteYarnGiven(id, actorUserId);
       res.json(result);
@@ -148,7 +149,7 @@ export class WorkOrderController {
 
   static async updateFabricReturn(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await WorkOrderService.updateFabricReturn(id, req.body, actorUserId);
       res.json(updated);
@@ -159,7 +160,7 @@ export class WorkOrderController {
 
   static async deleteFabricReturn(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await WorkOrderService.deleteFabricReturn(id, actorUserId);
       res.json(result);

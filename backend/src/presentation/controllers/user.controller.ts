@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { UserService } from "../../application/services/user.service.js";
+import { numericParam } from "../http/params.js";
 
 export class UserController {
   static async list(req: Request, res: Response, next: NextFunction) {
@@ -20,7 +21,7 @@ export class UserController {
 
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const user = await UserService.getUserById(id);
       res.json(user);
     } catch (error) {
@@ -40,7 +41,7 @@ export class UserController {
 
   static async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await UserService.updateUser(id, req.body, actorUserId);
       res.json(updated);
@@ -51,7 +52,7 @@ export class UserController {
 
   static async setStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await UserService.setUserStatus(id, req.body.isActive, actorUserId);
       res.json(updated);
@@ -62,7 +63,7 @@ export class UserController {
 
   static async assignRole(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await UserService.assignRole(id, req.body.role, actorUserId);
       res.json(result);
@@ -73,7 +74,7 @@ export class UserController {
 
   static async setRoles(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await UserService.setRoles(id, req.body.roles, actorUserId);
       res.json(result);
@@ -84,7 +85,7 @@ export class UserController {
 
   static async revokeRole(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const role = req.params.role as any;
       const actorUserId = req.user!.userId;
       const result = await UserService.revokeRole(id, role, actorUserId);
@@ -96,7 +97,7 @@ export class UserController {
 
   static async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await UserService.resetPassword(id, req.body.newPassword, actorUserId);
       res.json(result);
@@ -107,7 +108,7 @@ export class UserController {
 
   static async getBalance(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const balance = await UserService.getUserBalance(id);
       res.json(balance);
     } catch (error) {

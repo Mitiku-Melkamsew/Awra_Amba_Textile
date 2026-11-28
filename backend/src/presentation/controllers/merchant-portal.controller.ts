@@ -3,6 +3,7 @@ import { UserService } from "../../application/services/user.service.js";
 import { StockService } from "../../application/services/stock.service.js";
 import { DirectTransactionService } from "../../application/services/direct-transaction.service.js";
 import { AbacService } from "../../application/security/abac.service.js";
+import { numericParam } from "../http/params.js";
 
 export class MerchantPortalController {
   static async getProfile(req: Request, res: Response, next: NextFunction) {
@@ -53,7 +54,7 @@ export class MerchantPortalController {
 
   static async getMyTransactionDetail(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const txn = await DirectTransactionService.getTransaction(id);
 
       AbacService.enforceMerchantOwnership(

@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { CatalogService } from "../../application/services/catalog.service.js";
 import { StockService } from "../../application/services/stock.service.js";
 import { AbacService } from "../../application/security/abac.service.js";
+import { numericParam } from "../http/params.js";
 
 export class CatalogController {
   static async getPublicCatalog(_req: Request, res: Response, next: NextFunction) {
@@ -37,7 +38,7 @@ export class CatalogController {
 
   static async getFabric(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const fabric = await CatalogService.getFabric(id);
       res.json(AbacService.maskForRole(req.user?.roles ?? [], fabric));
     } catch (error) {
@@ -57,7 +58,7 @@ export class CatalogController {
 
   static async updateFabric(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateFabric(id, req.body, actorUserId);
       res.json(updated);
@@ -90,7 +91,7 @@ export class CatalogController {
 
   static async updateYarn(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateYarn(id, req.body, actorUserId);
       res.json(updated);
@@ -122,7 +123,7 @@ export class CatalogController {
 
   static async updateColor(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateColor(id, req.body, actorUserId);
       res.json(updated);
@@ -133,7 +134,7 @@ export class CatalogController {
 
   static async deleteColor(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await CatalogService.deleteColor(id, actorUserId);
       res.json(result);
@@ -163,7 +164,7 @@ export class CatalogController {
 
   static async updateDesign(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateDesign(id, req.body, actorUserId);
       res.json(updated);
@@ -174,7 +175,7 @@ export class CatalogController {
 
   static async deleteDesign(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const result = await CatalogService.deleteDesign(id, actorUserId);
       res.json(result);
@@ -207,7 +208,7 @@ export class CatalogController {
 
   static async updateSupplier(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateSupplier(id, req.body, actorUserId);
       res.json(updated);
@@ -240,7 +241,7 @@ export class CatalogController {
 
   static async setFabricVariantStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setFabricVariantStatus(id, req.body.isActive, actorUserId);
       res.json(updated);
@@ -271,7 +272,7 @@ export class CatalogController {
 
   static async setYarnVariantStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setYarnVariantStatus(id, req.body.isActive, actorUserId);
       res.json(updated);
@@ -315,7 +316,7 @@ export class CatalogController {
 
   static async setFabricPriceStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setFabricPriceStatus(id, req.body.isActive, actorUserId);
       res.json(updated);
@@ -357,7 +358,7 @@ export class CatalogController {
 
   static async setYarnPriceStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.setYarnPriceStatus(id, req.body.isActive, actorUserId);
       res.json(updated);
@@ -390,7 +391,7 @@ export class CatalogController {
 
   static async updateQualityRule(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = Number(req.params.id);
+      const id = numericParam(req);
       const actorUserId = req.user!.userId;
       const updated = await CatalogService.updateQualityRule(id, req.body, actorUserId);
       res.json(updated);
