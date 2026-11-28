@@ -1,10 +1,10 @@
 import { Link, useParams } from "react-router-dom";
+import { AddFabricVariantModal } from "../../components/AddFabricVariantModal";
 import { useIssueZig } from "./issue-zig/useIssueZig";
 import { DeactivatedWeaverAlert } from "./issue-zig/DeactivatedWeaverAlert";
 import { FabricSelectionCard } from "./issue-zig/FabricSelectionCard";
 import { YarnLinesCard } from "./issue-zig/YarnLinesCard";
 import { IssueZigSummarySidebar } from "./issue-zig/IssueZigSummarySidebar";
-import { IssueZigFabricModal } from "./issue-zig/IssueZigFabricModal";
 
 export function IssueZigPage() {
   const { userId } = useParams<{ userId: string }>();
@@ -87,10 +87,12 @@ export function IssueZigPage() {
           {/* LEFT COLUMN: Main Form Cards */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             <FabricSelectionCard
-              fabricDisplayName={zig.fabricDisplayName}
+              selectedVariantId={zig.selectedVariantId}
+              fabricVariants={zig.fabricVariants}
               fabricSpecs={zig.fabricSpecs}
               weaverRate={zig.weaverRate}
-              onOpenModal={zig.openFabricModal}
+              onSelectVariant={zig.handleSelectVariantById}
+              onOpenAddNew={zig.handleOpenAddNewFabric}
             />
 
             <YarnLinesCard
@@ -122,27 +124,8 @@ export function IssueZigPage() {
         </div>
       </form>
 
-      {/* Fabric Selection Modal */}
-      <IssueZigFabricModal
-        isOpen={zig.isModalOpen}
-        onClose={() => zig.setIsModalOpen(false)}
-        modalSearch={zig.modalSearch}
-        setModalSearch={zig.setModalSearch}
-        modalFabricId={zig.modalFabricId}
-        setModalFabricId={zig.setModalFabricId}
-        modalWarpColorId={zig.modalWarpColorId}
-        setModalWarpColorId={zig.setModalWarpColorId}
-        modalWeftColorId={zig.modalWeftColorId}
-        setModalWeftColorId={zig.setModalWeftColorId}
-        modalDesignId={zig.modalDesignId}
-        setModalDesignId={zig.setModalDesignId}
-        fabrics={zig.fabrics}
-        colors={zig.colors}
-        designs={zig.designs}
-        fabricVariants={zig.fabricVariants}
-        onSelectVariant={zig.handleSelectModalVariant}
-        onApplyModalFabric={zig.handleApplyModalFabric}
-      />
+      {/* Inline Add New Fabric Variant Modal */}
+      <AddFabricVariantModal controller={zig.variantModal} />
     </div>
   );
 }

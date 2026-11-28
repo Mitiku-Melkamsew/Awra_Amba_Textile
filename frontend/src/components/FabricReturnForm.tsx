@@ -1,8 +1,8 @@
 import type { KeyboardEvent } from "react";
 import type { WorkOrderDetail } from "../api";
+import { AddFabricVariantModal } from "./AddFabricVariantModal";
 import { useFabricReturnForm, type FabricReturnRow } from "./fabric-returns/useFabricReturnForm";
 import { SearchableVariantSelect } from "../pages/admin/transactions/components/SearchableVariantSelect";
-import { CreateVariantModal } from "../pages/admin/transactions/components/CreateVariantModal";
 import { DeductionsSection } from "./fabric-returns/DeductionsSection";
 import { GroupedReturnsCard } from "./fabric-returns/GroupedReturnsCard";
 
@@ -426,76 +426,7 @@ export function FabricReturnForm({
       </div>
 
       {/* MODAL: Add new fabric variant (with inline base fabric/color/design creation) */}
-      <CreateVariantModal
-        isOpen={form.showCreateVariantModal}
-        onClose={() => form.setShowCreateVariantModal(false)}
-        isFabric={true}
-        variantModalError={form.variantModalError}
-        savingVariant={form.savingVariant}
-        onSaveNewVariant={form.handleSaveNewVariant}
-        fabrics={form.fabrics}
-        yarns={[]}
-        colors={form.colors}
-        designs={form.designs}
-        suppliers={[]}
-        newFvFabricId={form.newFvFabricId}
-        setNewFvFabricId={form.setNewFvFabricId}
-        newFvWarpColorId={form.newFvWarpColorId}
-        setNewFvWarpColorId={form.setNewFvWarpColorId}
-        newFvWeftColorId={form.newFvWeftColorId}
-        setNewFvWeftColorId={form.setNewFvWeftColorId}
-        newFvDesignId={form.newFvDesignId}
-        setNewFvDesignId={form.setNewFvDesignId}
-        newYvYarnId=""
-        setNewYvYarnId={() => {}}
-        newYvColorId=""
-        setNewYvColorId={() => {}}
-        newYvSupplierId=""
-        setNewYvSupplierId={() => {}}
-        showNewFabricForm={form.showNewFabricForm}
-        setShowNewFabricForm={form.setShowNewFabricForm}
-        inlineFabricName={form.inlineFabricName}
-        setInlineFabricName={form.setInlineFabricName}
-        inlineFabricWeight={form.inlineFabricWeight}
-        setInlineFabricWeight={form.setInlineFabricWeight}
-        inlineFabricLength={form.inlineFabricLength}
-        setInlineFabricLength={form.setInlineFabricLength}
-        inlineFabricWidth={form.inlineFabricWidth}
-        setInlineFabricWidth={form.setInlineFabricWidth}
-        handleCreateInlineFabric={form.handleCreateInlineFabric}
-        showNewWarpColorForm={form.showNewWarpColorForm}
-        setShowNewWarpColorForm={form.setShowNewWarpColorForm}
-        inlineWarpColorName={form.inlineWarpColorName}
-        setInlineWarpColorName={form.setInlineWarpColorName}
-        handleCreateInlineWarpColor={form.handleCreateInlineWarpColor}
-        showNewWeftColorForm={form.showNewWeftColorForm}
-        setShowNewWeftColorForm={form.setShowNewWeftColorForm}
-        inlineWeftColorName={form.inlineWeftColorName}
-        setInlineWeftColorName={form.setInlineWeftColorName}
-        handleCreateInlineWeftColor={form.handleCreateInlineWeftColor}
-        showNewDesignForm={form.showNewDesignForm}
-        setShowNewDesignForm={form.setShowNewDesignForm}
-        inlineDesignName={form.inlineDesignName}
-        setInlineDesignName={form.setInlineDesignName}
-        handleCreateInlineDesign={form.handleCreateInlineDesign}
-        showNewYarnForm={false}
-        setShowNewYarnForm={() => {}}
-        inlineYarnName=""
-        setInlineYarnName={() => {}}
-        handleCreateInlineYarn={async () => {}}
-        showNewYarnColorForm={false}
-        setShowNewYarnColorForm={() => {}}
-        inlineYarnColorName=""
-        setInlineYarnColorName={() => {}}
-        handleCreateInlineYarnColor={async () => {}}
-        showNewSupplierForm={false}
-        setShowNewSupplierForm={() => {}}
-        inlineSupplierName=""
-        setInlineSupplierName={() => {}}
-        inlineSupplierPhone=""
-        setInlineSupplierPhone={() => {}}
-        handleCreateInlineSupplier={async () => {}}
-      />
+      <AddFabricVariantModal controller={form.variantModal} />
     </div>
   );
 }

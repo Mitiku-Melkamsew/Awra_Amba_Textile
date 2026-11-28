@@ -12,8 +12,8 @@ import {
   type WorkOrderDetail,
 } from "../../api";
 import { fabricVariantName } from "../../utils/variantNames";
-import { findZigZagDesignId } from "../../utils/defaultDesign";
 import { toTitleCase } from "../../utils/formatters";
+import { useCreateFabricVariant } from "../useCreateFabricVariant";
 
 export type FabricReturnRow = WorkOrderDetail["fabricReturns"][number];
 
@@ -120,30 +120,6 @@ export function useFabricReturnForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Create Variant Modal State (aligned with Transactions -> Buy fabric)
-  const [showCreateVariantModal, setShowCreateVariantModal] = useState(false);
-  const [savingVariant, setSavingVariant] = useState(false);
-  const [variantModalError, setVariantModalError] = useState("");
-  const [newFvFabricId, setNewFvFabricId] = useState("");
-  const [newFvWarpColorId, setNewFvWarpColorId] = useState("");
-  const [newFvWeftColorId, setNewFvWeftColorId] = useState("");
-  const [newFvDesignId, setNewFvDesignId] = useState("");
-
-  const [showNewFabricForm, setShowNewFabricForm] = useState(false);
-  const [inlineFabricName, setInlineFabricName] = useState("");
-  const [inlineFabricWeight, setInlineFabricWeight] = useState("500");
-  const [inlineFabricLength, setInlineFabricLength] = useState("240");
-  const [inlineFabricWidth, setInlineFabricWidth] = useState("150");
-
-  const [showNewWarpColorForm, setShowNewWarpColorForm] = useState(false);
-  const [inlineWarpColorName, setInlineWarpColorName] = useState("");
-
-  const [showNewWeftColorForm, setShowNewWeftColorForm] = useState(false);
-  const [inlineWeftColorName, setInlineWeftColorName] = useState("");
-
-  const [showNewDesignForm, setShowNewDesignForm] = useState(false);
-  const [inlineDesignName, setInlineDesignName] = useState("");
-
   // Load catalog lookup & variants
   useEffect(() => {
     Promise.all([catalogApi.lookup(), catalogApi.fabricVariants()])
@@ -153,15 +129,6 @@ export function useFabricReturnForm({
         setDesigns(lookup.designs);
         setFabricVariants(variants);
         setQualityRules(lookup.qualityRules || []);
-
-        if (lookup.fabrics[0]) setNewFvFabricId(String(lookup.fabrics[0].fabricId));
-        if (lookup.colors[0]) {
-          setNewFvWarpColorId(String(lookup.colors[0].colorId));
-          setNewFvWeftColorId(String(lookup.colors[0].colorId));
-        }
-        const defaultDesign =
-          findZigZagDesignId(lookup.designs as any) ?? lookup.designs[0]?.designId;
-        if (defaultDesign) setNewFvDesignId(String(defaultDesign));
       })
       .catch((err) => {
         console.error("Failed to load catalog lookup for fabric return:", err);
@@ -544,115 +511,22 @@ export function useFabricReturnForm({
     }
   }
 
+  const variantModal = useCreateFabricVariant({
+    fabrics,
+    setFabrics,
+    colors,
+    setColors,
+    designs,
+    setDesigns,
+    setFabricVariants,
+    onSelectCreated: (created) => applySelectedVariant(created),
+  });
+
   function handleOpenCreateVariantModal(searchQuery?: string) {
-    setVariantModalError("");
-    setShowNewFabricForm(false);
-    setShowNewWarpColorForm(false);
-    setShowNewWeftColorForm(false);
-    setShowNewDesignForm(false);
-    if (searchQuery && searchQuery.trim()) {
-      setInlineFabricName(searchQuery.trim());
-    }
-    if (selectedVariant) {
-      const fId = selectedVariant.fabricId ?? selectedVariant.fabric?.fabricId;
-      const wId = selectedVariant.warpColorId ?? selectedVariant.warpColor?.colorId;
-      const fColorId = selectedVariant.weftColorId ?? selectedVariant.weftColor?.colorId;
-      const dId = selectedVariant.designId ?? selectedVariant.design?.designId;
-      if (fId) setNewFvFabricId(String(fId));
-      if (wId) setNewFvWarpColorId(String(wId));
-      if (fColorId) setNewFvWeftColorId(String(fColorId));
-      if (dId) setNewFvDesignId(String(dId));
-    } else {
-      if (fabrics[0] && !newFvFabricId) setNewFvFabricId(String(fabrics[0].fabricId));
-      if (colors[0] && !newFvWarpColorId) setNewFvWarpColorId(String(colors[0].colorId));
-      if (colors[0] && !newFvWeftColorId) setNewFvWeftColorId(String(colors[0].colorId));
-      if (designs[0] && !newFvDesignId) setNewFvDesignId(String(designs[0].designId));
-    }
-    setShowCreateVariantModal(true);
-  }
-
-  async function handleCreateInlineFabric() {
-    if (!inlineFabricName.trim()) return;
-    try {
-      const created = await catalogApi.createFabric({
-        name: inlineFabricName.trim().toLowerCase(),
-        standardWeightG: Number(inlineFabricWeight) || 500,
-        standardLengthCm: Number(inlineFabricLength) || 240,
-        standardWidthCm: Number(inlineFabricWidth) || 150,
-      });
-      setFabrics((prev) => [...prev, created]);
-      setNewFvFabricId(String(created.fabricId));
-      setInlineFabricName("");
-      setShowNewFabricForm(false);
-    } catch (err: any) {
-      setVariantModalError(err instanceof Error ? err.message : "Failed to create base fabric");
-    }
-  }
-
-  async function handleCreateInlineWarpColor() {
-    if (!inlineWarpColorName.trim()) return;
-    try {
-      const created = await catalogApi.createColor({ name: inlineWarpColorName.trim() });
-      setColors((prev) => [...prev, created]);
-      setNewFvWarpColorId(String(created.colorId));
-      setInlineWarpColorName("");
-      setShowNewWarpColorForm(false);
-    } catch (err: any) {
-      setVariantModalError(err instanceof Error ? err.message : "Failed to create color");
-    }
-  }
-
-  async function handleCreateInlineWeftColor() {
-    if (!inlineWeftColorName.trim()) return;
-    try {
-      const created = await catalogApi.createColor({ name: inlineWeftColorName.trim() });
-      setColors((prev) => [...prev, created]);
-      setNewFvWeftColorId(String(created.colorId));
-      setInlineWeftColorName("");
-      setShowNewWeftColorForm(false);
-    } catch (err: any) {
-      setVariantModalError(err instanceof Error ? err.message : "Failed to create color");
-    }
-  }
-
-  async function handleCreateInlineDesign() {
-    if (!inlineDesignName.trim()) return;
-    try {
-      const created = await catalogApi.createDesign({ name: inlineDesignName.trim() });
-      setDesigns((prev) => [...prev, created]);
-      setNewFvDesignId(String(created.designId));
-      setInlineDesignName("");
-      setShowNewDesignForm(false);
-    } catch (err: any) {
-      setVariantModalError(err instanceof Error ? err.message : "Failed to create design");
-    }
-  }
-
-  async function handleSaveNewVariant(e: FormEvent) {
-    e.preventDefault();
-    setSavingVariant(true);
-    setVariantModalError("");
-    try {
-      if (!newFvFabricId || !newFvWarpColorId || !newFvWeftColorId) {
-        throw new Error("Please select fabric and both warp and weft colors.");
-      }
-      const effectiveDesignId = Number(newFvDesignId || designs[0]?.designId || 1);
-      const created = await catalogApi.createFabricVariant({
-        fabricId: Number(newFvFabricId),
-        warpColorId: Number(newFvWarpColorId),
-        weftColorId: Number(newFvWeftColorId),
-        designId: effectiveDesignId,
-      });
-      const updated = await catalogApi.fabricVariants();
-      setFabricVariants(updated);
-      const matched = updated.find((v) => v.fabricVariantId === created.fabricVariantId) ?? created;
-      applySelectedVariant(matched);
-      setShowCreateVariantModal(false);
-    } catch (err: any) {
-      setVariantModalError(err instanceof Error ? err.message : "Failed to create fabric variant");
-    } finally {
-      setSavingVariant(false);
-    }
+    variantModal.open({
+      searchQuery,
+      currentVariant: selectedVariant ?? null,
+    });
   }
 
   async function handleSubmit(e?: FormEvent) {
@@ -915,47 +789,9 @@ export function useFabricReturnForm({
     liveGross,
     liveDeductionAmount,
     liveNetFabricValue,
-    showCreateVariantModal,
-    setShowCreateVariantModal,
-    savingVariant,
-    variantModalError,
-    newFvFabricId,
-    setNewFvFabricId,
-    newFvWarpColorId,
-    setNewFvWarpColorId,
-    newFvWeftColorId,
-    setNewFvWeftColorId,
-    newFvDesignId,
-    setNewFvDesignId,
-    showNewFabricForm,
-    setShowNewFabricForm,
-    inlineFabricName,
-    setInlineFabricName,
-    inlineFabricWeight,
-    setInlineFabricWeight,
-    inlineFabricLength,
-    setInlineFabricLength,
-    inlineFabricWidth,
-    setInlineFabricWidth,
-    handleCreateInlineFabric,
-    showNewWarpColorForm,
-    setShowNewWarpColorForm,
-    inlineWarpColorName,
-    setInlineWarpColorName,
-    handleCreateInlineWarpColor,
-    showNewWeftColorForm,
-    setShowNewWeftColorForm,
-    inlineWeftColorName,
-    setInlineWeftColorName,
-    handleCreateInlineWeftColor,
-    showNewDesignForm,
-    setShowNewDesignForm,
-    inlineDesignName,
-    setInlineDesignName,
-    handleCreateInlineDesign,
+    variantModal,
     handleSelectVariantById,
     handleOpenCreateVariantModal,
-    handleSaveNewVariant,
     handleSubmit,
     handleCancelEdit,
     handleStartEdit,

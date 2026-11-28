@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   catalogApi,
@@ -10,8 +9,9 @@ import {
   type Weaver,
 } from "../../../api";
 import { userService, workOrderService } from "../../../infrastructure/services";
-import { fabricNameFromParts } from "../../../utils/variantNames";
+import { fabricVariantName } from "../../../utils/variantNames";
 import { findZigZagDesignId } from "../../../utils/defaultDesign";
+import { useCreateFabricVariant } from "../../../components/useCreateFabricVariant";
 
 export interface YarnLineItem {
   id: string;
@@ -22,6 +22,22 @@ export interface YarnLineItem {
 
 export interface UseIssueZigProps {
   targetUserId?: string;
+}
+
+function resolveVariantWeaverRate(variant: any, fabrics: Fabric[]): number {
+  const direct = Number(
+    variant?.currentPrice?.weaverRate ??
+      variant?.fabric?.prices?.[0]?.weaverRate ??
+      variant?.prices?.[0]?.weaverRate ??
+      variant?.weaverRate ??
+      variant?.basePrice ??
+      0
+  );
+  if (direct > 0) return direct;
+  const fId = Number(variant?.fabricId ?? variant?.fabric?.fabricId ?? 0);
+  const fab = fabrics.find((f) => f.fabricId === fId);
+  const fabPrice = (fab as any)?.prices?.[0] ?? (fab as any)?.currentPrice;
+  return fabPrice ? Number(fabPrice.weaverRate ?? 0) : 0;
 }
 
 export function useIssueZig({ targetUserId }: UseIssueZigProps) {
@@ -35,32 +51,41 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
   const [fabricVariants, setFabricVariants] = useState<FabricVariant[]>([]);
   const [yarnVariants, setYarnVariants] = useState<any[]>([]);
 
-  // Selected Fabric states
-  const [fabricId, setFabricId] = useState("");
-  const [warpColorId, setWarpColorId] = useState("");
-  const [weftColorId, setWeftColorId] = useState("");
-  const [designId, setDesignId] = useState("");
-  const [weaverRate, setWeaverRate] = useState("0");
+  // Selected Fabric Variant state
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
+  const [weaverRate, setWeaverRate] = useState("0");
 
   // Yarn Lines
   const [yarnLines, setYarnLines] = useState<YarnLineItem[]>([
     { id: "yarn-1", yarnVariantId: "", quantity: "", unitPrice: "" },
   ]);
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalSearch, setModalSearch] = useState("");
-  const [modalFabricId, setModalFabricId] = useState("");
-  const [modalWarpColorId, setModalWarpColorId] = useState("");
-  const [modalWeftColorId, setModalWeftColorId] = useState("");
-  const [modalDesignId, setModalDesignId] = useState("");
-
   // Submission & Feedback
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  function applySelectedVariant(variant: FabricVariant | undefined, fabricList: Fabric[] = fabrics) {
+    if (!variant) {
+      setSelectedVariantId("");
+      setWeaverRate("0");
+      return;
+    }
+    setSelectedVariantId(String(variant.fabricVariantId));
+    setWeaverRate(String(resolveVariantWeaverRate(variant, fabricList)));
+  }
+
+  const variantModal = useCreateFabricVariant({
+    fabrics,
+    setFabrics,
+    colors,
+    setColors,
+    designs,
+    setDesigns,
+    setFabricVariants,
+    onSelectCreated: (created) => applySelectedVariant(created),
+  });
 
   // Load initial data
   useEffect(() => {
@@ -99,24 +124,22 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
         }));
         setYarnVariants(enrichedYarnVariants);
 
-        // Initialize fabric selection
-        const initialFabric = lookup.fabrics[0];
-        const initialWarp = lookup.colors[0];
-        const initialWeft = lookup.colors[0];
+        // Initialize default fabric variant selection
+        const initialFabricId = String(lookup.fabrics[0]?.fabricId ?? "");
+        const initialColorId = String(lookup.colors[0]?.colorId ?? "");
         const initialDesignId = String(
-          findZigZagDesignId(lookup.designs as any) ??
-          lookup.designs[0]?.designId ??
-          ""
+          findZigZagDesignId(lookup.designs as any) ?? lookup.designs[0]?.designId ?? ""
         );
+        const defaultMatch =
+          fv.find(
+            (v) =>
+              String(v.fabricId ?? v.fabric?.fabricId) === initialFabricId &&
+              String(v.warpColorId ?? v.warpColor?.colorId) === initialColorId &&
+              String(v.weftColorId ?? v.weftColor?.colorId) === initialColorId &&
+              String(v.designId ?? v.design?.designId) === initialDesignId
+          ) ?? fv[0];
 
-        if (initialFabric) {
-          setFabricId(String(initialFabric.fabricId));
-          const p = (initialFabric as any).prices?.[0] || (initialFabric as any).currentPrice;
-          if (p) setWeaverRate(String(p.weaverRate ?? "0"));
-        }
-        if (initialWarp) setWarpColorId(String(initialWarp.colorId));
-        if (initialWeft) setWeftColorId(String(initialWeft.colorId));
-        if (initialDesignId) setDesignId(initialDesignId);
+        applySelectedVariant(defaultMatch, lookup.fabrics);
 
         const inStockYarns = enrichedYarnVariants.filter((y) => y.stockSnapshot > 0);
         const defaultYarn = inStockYarns[0] ?? null;
@@ -138,30 +161,21 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
       .finally(() => setLoading(false));
   }, [targetUserId]);
 
+  const selectedVariant = useMemo(() => {
+    if (!selectedVariantId) return undefined;
+    return fabricVariants.find((v) => String(v.fabricVariantId) === selectedVariantId);
+  }, [fabricVariants, selectedVariantId]);
+
   const selectedFabric = useMemo(() => {
-    return fabrics.find((f) => String(f.fabricId) === fabricId) ?? fabrics[0];
-  }, [fabrics, fabricId]);
-
-  const selectedWarpColor = useMemo(() => {
-    return colors.find((c) => String(c.colorId) === warpColorId) ?? colors[0];
-  }, [colors, warpColorId]);
-
-  const selectedWeftColor = useMemo(() => {
-    return colors.find((c) => String(c.colorId) === weftColorId) ?? colors[0];
-  }, [colors, weftColorId]);
-
-  const selectedDesign = useMemo(() => {
-    return designs.find((d) => String(d.designId) === designId) ?? null;
-  }, [designs, designId]);
+    if (!selectedVariant) return undefined;
+    const fId = selectedVariant.fabricId ?? selectedVariant.fabric?.fabricId;
+    return fabrics.find((f) => f.fabricId === Number(fId)) ?? selectedVariant.fabric;
+  }, [selectedVariant, fabrics]);
 
   const fabricDisplayName = useMemo(() => {
-    if (!selectedFabric) return "Selecting fabric...";
-    const prodName = selectedFabric.name;
-    const warp = selectedWarpColor?.name;
-    const weft = selectedWeftColor?.name;
-    const des = selectedDesign?.name;
-    return fabricNameFromParts(prodName, warp, weft, des, " · ");
-  }, [selectedFabric, selectedWarpColor, selectedWeftColor, selectedDesign]);
+    if (!selectedVariant) return "Select a fabric variant...";
+    return fabricVariantName(selectedVariant, " · ");
+  }, [selectedVariant]);
 
   const fabricSpecs = useMemo(() => {
     const weight = selectedFabric?.standardWeightG ?? 64;
@@ -169,6 +183,22 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     const width = selectedFabric?.standardWidthCm ?? 100;
     return { weight, length, width };
   }, [selectedFabric]);
+
+  function handleSelectVariantById(variantIdStr: string) {
+    if (!variantIdStr) {
+      applySelectedVariant(undefined);
+      return;
+    }
+    const match = fabricVariants.find((v) => String(v.fabricVariantId) === variantIdStr);
+    applySelectedVariant(match);
+  }
+
+  function handleOpenAddNewFabric(query?: string) {
+    variantModal.open({
+      searchQuery: query,
+      currentVariant: selectedVariant ?? null,
+    });
+  }
 
   function handleAddYarnLine() {
     const inStock = yarnVariants.filter((y) => y.stockSnapshot > 0);
@@ -212,50 +242,6 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     setYarnLines((prev) =>
       prev.map((l) => (l.id === lineId ? { ...l, unitPrice: priceStr } : l))
     );
-  }
-
-  function openFabricModal() {
-    setModalFabricId(fabricId);
-    setModalWarpColorId(warpColorId);
-    setModalWeftColorId(weftColorId);
-    setModalDesignId(designId);
-    setModalSearch("");
-    setIsModalOpen(true);
-  }
-
-  function handleSelectModalVariant(variant: FabricVariant) {
-    if (variant.fabric?.fabricId) setModalFabricId(String(variant.fabric.fabricId));
-    else if (variant.fabricId) setModalFabricId(String(variant.fabricId));
-
-    if (variant.warpColor?.colorId) setModalWarpColorId(String(variant.warpColor.colorId));
-    if (variant.weftColor?.colorId) setModalWeftColorId(String(variant.weftColor.colorId));
-    if (variant.design?.designId) setModalDesignId(String(variant.design.designId));
-    setSelectedVariantId(String(variant.fabricVariantId));
-  }
-
-  function handleApplyModalFabric() {
-    setFabricId(modalFabricId);
-    setWarpColorId(modalWarpColorId);
-    setWeftColorId(modalWeftColorId);
-    setDesignId(modalDesignId);
-
-    const match = fabricVariants.find(
-      (v) =>
-        String(v.fabricId ?? v.fabric?.fabricId) === modalFabricId &&
-        String(v.warpColorId ?? v.warpColor?.colorId) === modalWarpColorId &&
-        String(v.weftColorId ?? v.weftColor?.colorId) === modalWeftColorId &&
-        String(v.designId ?? v.design?.designId) === modalDesignId
-    );
-    if (match) {
-      setSelectedVariantId(String(match.fabricVariantId));
-    }
-
-    const fab = fabrics.find((f) => String(f.fabricId) === modalFabricId);
-    if (fab) {
-      const p = (fab as any).prices?.[0] || (fab as any).currentPrice;
-      if (p) setWeaverRate(String(p.weaverRate ?? "0"));
-    }
-    setIsModalOpen(false);
   }
 
   const lineCalculations = useMemo(() => {
@@ -302,7 +288,7 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
 
   const validationProblems = useMemo(() => {
     const problems: string[] = [];
-    if (!fabricId) problems.push("Please select a fabric type.");
+    if (!selectedVariantId) problems.push("Please select a fabric type.");
 
     lineCalculations.forEach((c) => {
       const hasAnyInput = Boolean(c.line.yarnVariantId || c.line.quantity);
@@ -320,7 +306,7 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     });
 
     return problems;
-  }, [fabricId, lineCalculations]);
+  }, [selectedVariantId, lineCalculations]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -336,28 +322,7 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     setError("");
 
     try {
-      let finalVariantId = selectedVariantId ? Number(selectedVariantId) : 0;
-      if (!finalVariantId) {
-        const match = fabricVariants.find(
-          (v) =>
-            String(v.fabricId ?? v.fabric?.fabricId) === fabricId &&
-            String(v.warpColorId ?? v.warpColor?.colorId) === warpColorId &&
-            String(v.weftColorId ?? v.weftColor?.colorId) === weftColorId &&
-            String(v.designId ?? v.design?.designId) === designId
-        );
-        if (match) {
-          finalVariantId = match.fabricVariantId;
-        } else if (fabricId && warpColorId && weftColorId && designId) {
-          const createdFv = await catalogApi.createFabricVariant({
-            fabricId: Number(fabricId),
-            warpColorId: Number(warpColorId),
-            weftColorId: Number(weftColorId),
-            designId: Number(designId),
-          });
-          finalVariantId = createdFv.fabricVariantId;
-        }
-      }
-
+      const finalVariantId = selectedVariantId ? Number(selectedVariantId) : 0;
       if (!finalVariantId) {
         throw new Error("Please select a valid fabric variant");
       }
@@ -389,9 +354,7 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     weaver,
     weaverDisplayName,
     isDeactivated,
-    fabrics,
-    colors,
-    designs,
+    selectedVariantId,
     fabricVariants,
     yarnVariants,
     fabricDisplayName,
@@ -408,26 +371,14 @@ export function useIssueZig({ targetUserId }: UseIssueZigProps) {
     error,
     saving,
     loading,
+    variantModal,
+    handleSelectVariantById,
+    handleOpenAddNewFabric,
     handleAddYarnLine,
     handleRemoveYarnLine,
     handleYarnVariantChange,
     handleQuantityChange,
     handleUnitPriceChange,
-    openFabricModal,
-    isModalOpen,
-    setIsModalOpen,
-    modalSearch,
-    setModalSearch,
-    modalFabricId,
-    setModalFabricId,
-    modalWarpColorId,
-    setModalWarpColorId,
-    modalWeftColorId,
-    setModalWeftColorId,
-    modalDesignId,
-    setModalDesignId,
-    handleSelectModalVariant,
-    handleApplyModalFabric,
     handleSubmit,
   };
 }

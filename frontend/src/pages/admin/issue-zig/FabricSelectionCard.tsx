@@ -1,15 +1,22 @@
+import type { FabricVariant } from "../../../api";
+import { SearchableVariantSelect } from "../transactions/components/SearchableVariantSelect";
+
 export interface FabricSelectionCardProps {
-  fabricDisplayName: string;
+  selectedVariantId: string;
+  fabricVariants: FabricVariant[];
   fabricSpecs: { weight: number; length: number; width: number };
   weaverRate: string;
-  onOpenModal: () => void;
+  onSelectVariant: (variantId: string) => void;
+  onOpenAddNew: (query?: string) => void;
 }
 
 export function FabricSelectionCard({
-  fabricDisplayName,
+  selectedVariantId,
+  fabricVariants,
   fabricSpecs,
   weaverRate,
-  onOpenModal,
+  onSelectVariant,
+  onOpenAddNew,
 }: FabricSelectionCardProps) {
   return (
     <div
@@ -32,48 +39,45 @@ export function FabricSelectionCard({
         Fabric · ጨርቅ
       </h2>
 
-      <label className="form-label" style={{ marginBottom: "0.35rem" }}>
-        Fabric
-      </label>
-
-      {/* Selected Fabric Display Box */}
-      <div
-        style={{
-          background: "var(--color-orange-50, #fffaf5)",
-          border: "1px solid var(--color-orange-200, #fed7aa)",
-          borderRadius: "var(--radius-sm, 8px)",
-          padding: "0.85rem 1rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "1rem",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: "var(--color-primary, #ea580c)",
-              display: "inline-block",
-            }}
-          />
-          <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--color-orange-900, #7c2d12)" }}>
-            {fabricDisplayName}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onOpenModal}
-          className="btn btn-secondary"
+      <div style={{ marginBottom: "1rem" }}>
+        <div
           style={{
-            padding: "0.35rem 0.85rem",
-            fontSize: "0.85rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "0.35rem",
           }}
         >
-          Change
-        </button>
+          <label className="form-label" style={{ marginBottom: 0 }}>
+            Fabric
+          </label>
+          <button
+            type="button"
+            onClick={() => onOpenAddNew()}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--color-primary, #c2410c)",
+              fontSize: "0.8rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            + Add new fabric
+          </button>
+        </div>
+
+        <SearchableVariantSelect
+          isFabric={true}
+          canAddNew={true}
+          isSale={false}
+          selectedVariantId={selectedVariantId}
+          fabricVariants={fabricVariants}
+          yarnVariants={[]}
+          onSelect={onSelectVariant}
+          onAddNew={onOpenAddNew}
+        />
       </div>
 
       {/* Reference Sub-Box */}
